@@ -201,7 +201,7 @@ jobs:
           fi
       - name: Breaking-change check
         if: github.event_name == 'pull_request'
-        uses: oasdiff/oasdiff-action/breaking@v0.0.21
+        uses: oasdiff/oasdiff-action/breaking@v0.1.18
         with:
           base: openapi.base.json
           revision: openapi.head.json
