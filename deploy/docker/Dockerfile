@@ -15,7 +15,9 @@
 # FUNDROOM_VERSION (the OCI version label: the release version, or `<version>+git.<sha7>` for edge).
 
 ARG NODE_IMAGE=node:24-slim
-ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs24-debian12:nonroot
+# Debian 13: the debian12 variant no longer tracks Node 24 patch releases or Debian security
+# updates (it still carries Node 24.14 and an OpenSSL missing a CRITICAL fix that Debian has).
+ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs24-debian13:nonroot
 
 # --- build: install the workspace, compile every package and the SPA ---------------------
 FROM ${NODE_IMAGE} AS build
@@ -54,6 +56,13 @@ RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
 # layer that carries it and the licence file 778 kB, and the whole image unpacks to 591 MB
 # (`docker images`). If you change either, re-measure — the numbers here used to be "757 KB" and
 # "~300 MB" and both were wrong.
+#
+# DL3008 (pin apt versions) is waived for this one package on purpose: Debian keeps only the
+# current version of a package in a stable suite, so an `=<version>` pin breaks the build on the
+# next point release (or base-image suite bump) without making the bytes any more reproducible
+# than the base image tag already does. What the font renders is reported at boot instead
+# (`render.font_coverage`, see above).
+# hadolint ignore=DL3008
 RUN apt-get update \
     && apt-get install -y --no-install-recommends fonts-dejavu-core \
     && mkdir -p /fonts \
@@ -121,6 +130,7 @@ COPY --chown=nonroot:nonroot <<'FONTSCONF' /app/fonts/fonts.conf
   </match>
 </fontconfig>
 FONTSCONF
+
 # An empty /data owned by nonroot: a fresh named volume copies this ownership, so the
 # generated key, setup token and storage-fs objects can be written without root. Bind
 # mounts must be chowned to 65532 by the operator.

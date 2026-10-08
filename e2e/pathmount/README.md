@@ -117,7 +117,7 @@ browser                  │                                                    
 ## Versions
 
 nginx 1.29 (alpine), Caddy 2 (the digest compose.hosts.yaml pins), workerd 1.20260918.1 on
-node:24-slim, Next.js 16.3.5 + React 19.3.0 on node:24-alpine (exact versions, lockfile
+node:24-slim, Next.js 16.3.8 + React 19.3.0 on node:24-alpine (exact versions, lockfile
 committed), WordPress 7.1.2 (php8.3-apache), WP-CLI 2.12.0, MariaDB 11.8.9. Every image is pinned
 by digest in the overlay; versions were picked at least a week old (the workspace's
 `minimumReleaseAge` rule, applied by hand here since these are not pnpm dependencies).

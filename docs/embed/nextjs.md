@@ -138,7 +138,7 @@ Supported, not recommended. What you gain is first-party cookies and one origin 
    };
    ```
 
-   These are `e2e/pathmount/next/next.config.mjs` and `e2e/pathmount/next/proxy.js`, built with `next build` and served by `next start` (Next.js 16.3.5) in the `50-path-mount` end-to-end suite, unchanged. On Next.js 15 and earlier the same code goes in `middleware.js` with the function named `middleware`.
+   These are `e2e/pathmount/next/next.config.mjs` and `e2e/pathmount/next/proxy.js`, built with `next build` and served by `next start` (Next.js 16.3.8) in the `50-path-mount` end-to-end suite, unchanged. On Next.js 15 and earlier the same code goes in `middleware.js` with the function named `middleware`.
 
 4. Make sure no site-wide `headers()` entry applies to `/investors/*` (see gotchas).
 5. Deploy, then sign in through `https://acme.com/investors`: the session cookie is `__Secure-sid` on your site's origin with `Path=/investors`.

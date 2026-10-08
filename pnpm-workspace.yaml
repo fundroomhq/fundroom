@@ -9,6 +9,14 @@ packages:
 # Supply chain: refuse to resolve a version published less
 # than 7 days ago, so a hijacked release has a week to be noticed and yanked.
 minimumReleaseAge: 10080
+# Refuse a version that carries weaker trust evidence (provenance, trusted publisher) than one
+# published before it: the signature of a hijacked maintainer account. semver@6.3.1 is a
+# legitimate 6.x backport published without provenance after 7.x gained it.
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - "semver@6.3.1"
+# Transitive dependencies resolve from the registry only, never from a git URL or tarball.
+blockExoticSubdeps: true
 
 # Only packages that genuinely need postinstall scripts get to run them.
 # Add to this list deliberately; everything else is blocked by pnpm 10.
@@ -32,6 +40,9 @@ ignoredBuiltDependencies:
 overrides:
   xml-crypto: "^6.3.0"
   "@xmldom/xmldom": "^0.8.15"
+  # Stryker's dashboard client pins qs 6.15.1 exactly; 6.16.0 fixes GHSA-4mjr-xmp4-gh2g,
+  # GHSA-q8mj-m7cp-5q26 and GHSA-x5fp-wj9c-mxmx within the same major.
+  "typed-rest-client>qs": "^6.16.0"
 
 # Keep one copy of these across the workspace (peer dep sanity).
 catalog:
@@ -54,7 +65,8 @@ catalog:
   pg-boss: "^12.31.0"
   "@aws-sdk/client-s3": "^3.1130.0"
   "@aws-sdk/s3-request-presigner": "^3.1130.0"
-  nodemailer: "^10.0.6"
+  # 10.0.9: GHSA-g57g-f23g-4646.
+  nodemailer: "^10.0.9"
   "@types/nodemailer": "^8.0.1"
   react-email: "^6.9.5"
   react-dom: "^19.3.0"
@@ -64,7 +76,8 @@ catalog:
   "@tus/file-store": "^2.1.1"
   "@hyzyla/pdfium": "^2.1.13"
   pdf-lib: "^1.17.1"
-  sharp: "^0.35.4"
+  # 0.35.5: bundled librsvg fix (GHSA-wq5f-xc86-pv6w).
+  sharp: "^0.35.5"
   undici: "^8.10.2"
   testcontainers: "^12.1.0"
   "@testcontainers/toxiproxy": "^12.1.0"
