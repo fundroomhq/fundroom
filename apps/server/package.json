@@ -139,7 +139,7 @@
     "otpauth": "catalog:",
     "pdf-lib": "catalog:",
     "testcontainers": "catalog:",
-    "tsx": "^4.23.13",
+    "tsx": "^4.23.15",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
