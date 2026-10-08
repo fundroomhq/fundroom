@@ -1064,7 +1064,12 @@ describe("a principal that stops being an external investor lends nothing", () =
       await sql(
         `UPDATE core.membership SET kind = 'external', role = 'investor' WHERE id = '${pat.membershipId}'`,
       );
+      // Reopening does rest on the materialised rows, and a rebuild may have run while pat was
+      // staff: dan's request finds the table behind an earlier test's API bump, or that bump's
+      // `acl.changed` arrives through the outbox relay and queue (seconds later on a slow runner).
+      // Either drops dan's rows, and a bare version bump rebuilds nothing for the SQL read below.
       await bump();
+      await running.container.authz.rebuild(acmeId);
     }
     expect(await folderIdsVisibleTo(dan)).toEqual([BOARD_FOLDER.id, DR.id]);
   });

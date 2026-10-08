@@ -101,7 +101,12 @@ describe("fs storage specifics", () => {
   });
 
   it("healthCheck fails when the root is not writable", async () => {
-    const storage = createFsStorage({ root: "/proc/fundroom-cannot-exist/x" });
+    // A root under a regular file can never be created (ENOTDIR) on any OS. Not /proc: on Linux,
+    // Node's recursive mkdir under /proc never settles (it retries ENOENT forever), so the check
+    // would hang instead of failing.
+    const blocker = join(root, "a-file");
+    await writeFile(blocker, "not a directory");
+    const storage = createFsStorage({ root: join(blocker, "x") });
     await expect(storage.healthCheck()).rejects.toSatisfy((e) => isStorageError(e, "backend"));
   });
 

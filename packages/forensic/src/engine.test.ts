@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { Worker } from "node:worker_threads";
 import { describe, expect, it } from "vitest";
 import {
   type DetectCandidate,
@@ -159,6 +160,14 @@ const reference = rgbToGray(page);
 const marked = embedForensicMark(page, TRUE.seed);
 const markedGray = rgbToGray(marked);
 
+/*
+ * Detection is ~0.3 s of pure CPU per call here, but `pnpm coverage` (V8 block coverage counts
+ * every loop iteration) makes it 5–10× slower, and a shared CI runner another 2–3× (one test
+ * took 20 s there): the timeout is a hang guard, not a speed budget, so the default 5 s is far
+ * too short. The speed budgets are the `speed` block, measured outside the coverage session.
+ */
+const CPU_BOUND = { timeout: 120_000 };
+
 describe("embedForensicMark", () => {
   it("is deterministic, returns a new buffer and leaves the input alone", () => {
     const before = Uint8Array.from(page.data);
@@ -225,7 +234,7 @@ describe("embedForensicMark", () => {
   });
 });
 
-describe("detectForensicMarks", () => {
+describe("detectForensicMarks", CPU_BOUND, () => {
   it.each(Object.entries(attacks))("finds the recipient after: %s", (_name, attack) => {
     const res = detectForensicMarks(reference, attack(markedGray), [...DECOYS, TRUE]);
     expect(res.scores[0]?.id).toBe(TRUE.id);
@@ -314,7 +323,7 @@ describe("detectForensicMarks", () => {
   });
 });
 
-describe("thresholds scale with the number of candidates (fix R1-3)", () => {
+describe("thresholds scale with the number of candidates (fix R1-3)", CPU_BOUND, () => {
   it("Bonferroni on exp(−t²/2): max(6, √(2 ln(N·1e6))) and max(4, √(2 ln(N·100)))", () => {
     expect(forensicThresholds(0)).toEqual({ match: 6, inconclusive: 4 });
     expect(forensicThresholds(1)).toEqual({ match: 6, inconclusive: 4 });
@@ -376,25 +385,60 @@ describe("thresholds scale with the number of candidates (fix R1-3)", () => {
   });
 });
 
-describe("speed (generous ×4 bounds; scripts/bench.mjs prints the real numbers)", () => {
+/**
+ * Times one engine call in a fresh worker thread running the BUILT engine (dist/, as the
+ * detector's worker does — `pnpm --filter @fundroom/forensic build` first). A worker has its own
+ * V8 isolate, outside the coverage session of this test thread, so the budget measures the
+ * engine production runs rather than coverage instrumentation.
+ */
+function timeInWorker(
+  op: "embed" | "detect",
+  args: readonly unknown[],
+): Promise<{ ms: number; topId?: string }> {
+  const engineUrl = new URL("../dist/engine.js", import.meta.url).href;
+  const code = `
+    const { parentPort, workerData } = require("node:worker_threads");
+    import(workerData.engineUrl).then((engine) => {
+      const { op, args } = workerData;
+      if (op === "embed") {
+        engine.embedForensicMark(...args); // warm-up
+        const t0 = performance.now();
+        engine.embedForensicMark(...args);
+        parentPort.postMessage({ ms: performance.now() - t0 });
+      } else {
+        const t0 = performance.now();
+        const res = engine.detectForensicMarks(...args);
+        parentPort.postMessage({ ms: performance.now() - t0, topId: res.scores[0]?.id });
+      }
+    });
+  `;
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(code, { eval: true, workerData: { engineUrl, op, args } });
+    worker.once("message", (m: { ms: number; topId?: string }) => {
+      resolve(m);
+      void worker.terminate();
+    });
+    worker.once("error", reject);
+    worker.once("exit", (code) => reject(new Error(`timing worker exited (${code})`)));
+  });
+}
+
+describe("speed (generous ×4 bounds; scripts/bench.mjs prints the real numbers)", CPU_BOUND, () => {
   const big = syntheticPage(1600, 2070);
-  it("embeds a 1600×2070 page in ≤ 1 s", () => {
-    embedForensicMark(big, TRUE.seed); // warm-up
-    const t0 = performance.now();
-    embedForensicMark(big, TRUE.seed);
-    expect(performance.now() - t0).toBeLessThan(1000);
+  it("embeds a 1600×2070 page in ≤ 1 s", async () => {
+    const { ms } = await timeInWorker("embed", [big, TRUE.seed]);
+    expect(ms).toBeLessThan(1000);
   });
 
-  it("detects among 200 candidates in ≤ 12 s", () => {
+  it("detects among 200 candidates in ≤ 12 s", async () => {
     const ref = rgbToGray(big);
     const suspect = scaleTo(rgbToGray(embedForensicMark(big, TRUE.seed)), 1170);
     const cands = [
       TRUE,
       ...Array.from({ length: 199 }, (_, i) => ({ id: `s${i}`, seed: seedOf(`s${i}`) })),
     ];
-    const t0 = performance.now();
-    const res = detectForensicMarks(ref, suspect, cands);
-    expect(performance.now() - t0).toBeLessThan(12_000);
-    expect(res.scores[0]?.id).toBe(TRUE.id);
-  }, 30_000);
+    const { ms, topId } = await timeInWorker("detect", [ref, suspect, cands]);
+    expect(ms).toBeLessThan(12_000);
+    expect(topId).toBe(TRUE.id);
+  });
 });

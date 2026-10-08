@@ -42,7 +42,7 @@ describe("createForensicDetector", () => {
     const viaWorker = await d.detect(smallRef, smallSuspect, [truth, ...decoys]);
     expect(viaWorker).toEqual(detectForensicMarks(smallRef, smallSuspect, [truth, ...decoys]));
     expect(viaWorker.scores[0]).toMatchObject({ id: "truth", verdict: "match" });
-  });
+  }, 60_000);
 
   it("keeps the event loop free during a heavy detection", async () => {
     const big = page(1600, 2070);
@@ -90,23 +90,38 @@ describe("createForensicDetector", () => {
   }, 60_000);
 
   it("times out a stuck job, replaces its worker and keeps serving (fix RR-2)", async () => {
-    // ~1.8–2.1 s with 2,000 candidates (measured), well past the 900 ms deadline; the deadline in
-    // turn leaves a cold replacement worker plenty of time for the small queued job under load
+    // "Stuck" is relative to the deadline, and a CPU-bound job's wall time varies by an order of
+    // magnitude between a laptop and a loaded CI runner. So time the heavy job on this machine
+    // first (warm worker, no deadline) and give the detector half of that: the heavy job cannot
+    // finish in time, while the small queued job (~1/1000 of the work) easily fits on the cold
+    // replacement worker. A fixed deadline either never fires on a fast machine or also kills
+    // the small jobs on a slow one.
     const big = page(2400, 3105);
     const ref = rgbToGray(big);
     const suspect = rgbToGray(embedForensicMark(big, truth.seed));
     const many = Array.from({ length: 1999 }, (_, i) => ({ id: `t${i}`, seed: seedOf(`t${i}`) }));
-    const d = make({ concurrency: 1, maxQueue: 1, timeoutMs: 900 });
+    const probe = make({ concurrency: 1 });
+    await probe.detect(smallRef, smallSuspect, [truth]); // warm worker
+    const p0 = performance.now();
+    await probe.detect(ref, suspect, [truth, ...many]);
+    const heavyMs = performance.now() - p0;
+    await probe.close();
+
+    const timeoutMs = Math.max(500, Math.round(heavyMs / 2));
+    const d = make({ concurrency: 1, maxQueue: 1, timeoutMs });
     await d.detect(smallRef, smallSuspect, [truth]); // warm worker
     const t0 = performance.now();
     const slow = d.detect(ref, suspect, [truth, ...many]);
     const waiting = d.detect(smallRef, smallSuspect, [truth]); // queued behind the stuck one
     await expect(slow).rejects.toBeInstanceOf(ForensicTimeoutError);
-    expect(performance.now() - t0).toBeLessThan(1700);
+    // rejected at the deadline, not when the job would have finished
+    const elapsed = performance.now() - t0;
+    expect(elapsed).toBeGreaterThanOrEqual(timeoutMs - 5);
+    expect(elapsed).toBeLessThan(heavyMs * 0.9);
     // the queued job runs on a fresh worker, and the detector keeps serving
     expect((await waiting).scores[0]?.verdict).toBe("match");
     expect((await d.detect(smallRef, smallSuspect, [truth])).scores[0]?.verdict).toBe("match");
-  }, 60_000);
+  }, 120_000);
 
   it("a job that cannot be dispatched is rejected and frees its slot (fix RR-2)", async () => {
     const d = make({ concurrency: 1, maxQueue: 0 });

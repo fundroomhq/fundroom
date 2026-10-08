@@ -86,7 +86,10 @@ beforeAll(async () => {
   mailer = createMemoryMailer();
   env = freshSecrets(pg.connectionString);
   running = await startServer({
-    config: esignTestConfig(env),
+    // No worker role: every job here is run by the test (`runJob`). A worker would also pick up
+    // the `esign.collect` that a sync enqueues and, on a slow runner, collect the envelope before
+    // the round's contender starts — which then has nothing to lock, and the interleave is gone.
+    config: esignTestConfig(env, { ROLES: "api,web" }),
     logger: createLogger({ level: "error" }),
     mailer,
     esignAdapters: { docuseal: mem.definition },
