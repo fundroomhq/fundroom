@@ -1,0 +1,39 @@
+# Schemathesis configuration for the CI contract job (`.github/workflows/ci.yml`, job `contract`).
+# Paths are relative to the repository root, which is where the job runs it from:
+#
+#   schemathesis --config-file apps/server/contract/schemathesis.toml run openapi.json \
+#     --url http://127.0.0.1:3000/api/v1 --checks all --max-examples 50 --exclude-checks ignored_auth
+#
+# None of the entries below switches a response check off: they narrow an expectation to what
+# the API documents, or tell the data generator how to work.
+
+# The raw-bytes media types of the evidence upload (see hooks.py).
+hooks = "apps/server/contract/hooks.py"
+
+# A generator health check, not a response check. Some request bodies (the content page
+# document's `oneOf` blocks, arrays of patterned addresses) reject enough candidate values while
+# generating that Hypothesis gives up on the operation on some seeds and not others, which makes
+# the job pass or fail by chance. With it suppressed those operations are still generated for and
+# every check still runs on what is sent.
+suppress-health-check = ["filter_too_much"]
+
+# Test the responses the document describes. Following redirects would check the page a 302
+# leads to (the SPA's `/login`) against the API operation that answered the 302.
+max-redirects = 0
+
+# Operations that verify a secret the fuzzer cannot know (a one-time code, a magic-link or
+# revocation token, a passkey challenge) or that need a sign-in method this server is not
+# configured with (OIDC, passwords). A well-formed request is answered 400 with the error code
+# that says which (`invalid_code`, `expired`, `unsupported`), as each operation documents; every
+# other expectation of the check stands.
+[[operations]]
+include-name = [
+  "POST /auth/otp/verify",
+  "POST /auth/magic-link/confirm",
+  "POST /auth/passkeys/login/finish",
+  "POST /auth/sessions/revoke-by-token",
+  "POST /auth/password/login",
+  "POST /auth/oidc/begin",
+  "GET /auth/oidc/callback",
+]
+checks.positive_data_acceptance.expected-statuses = ["2xx", "3xx", "400", "401", "403", "404", "409", "429", "5xx"]

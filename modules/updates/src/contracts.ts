@@ -234,8 +234,18 @@ export const SubscriptionSchema = z
   .object({ subscribed: z.boolean() })
   .openapi("UpdateSubscription");
 export const SubscriptionBody = z.object({ subscribed: z.boolean() });
-export const UnsubscribeQuery = z.object({ token: z.string().min(16).max(2048) });
-export const UnsubscribeBody = z.object({ token: z.string().min(16).max(2048).optional() });
+/**
+ * `base64url(payload).base64url(hmac)` (`tokens.ts`), about 300 characters. The bound is what keeps
+ * the request line inside the HTTP server's 16 KiB head limit whatever is sent: past it the
+ * server answers 431 before any route runs, which no operation can document.
+ */
+const UnsubscribeToken = z
+  .string()
+  .min(16)
+  .max(1024)
+  .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u);
+export const UnsubscribeQuery = z.object({ token: UnsubscribeToken });
+export const UnsubscribeBody = z.object({ token: UnsubscribeToken.optional() });
 export const UnsubscribeResultSchema = z
   .object({ ok: z.literal(true), email: z.string(), alreadyUnsubscribed: z.boolean() })
   .openapi("UpdateUnsubscribeResult");

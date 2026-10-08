@@ -1,3 +1,5 @@
+// Must stay first: it has to run before any module that declares a zod schema (see the file).
+import "./lib/zod-jitless.js";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 // biome-ignore lint/correctness/useImportExtensions: stylesheet, bundled by Vite

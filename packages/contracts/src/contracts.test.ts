@@ -12,11 +12,14 @@ import {
   COMMON_ERROR_STATUSES,
   createApi,
   createRoute,
+  EMAIL_PATTERN,
+  EmailSchema,
   errorResponses,
   jsonBody,
   jsonResponse,
   kernel,
   platform,
+  SlugSchema,
   z,
 } from "./index.js";
 
@@ -122,6 +125,75 @@ describe("kernel schemas", () => {
         auth: { methods: ["email_otp"], passkeyRpId: "localhost" },
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("EmailSchema", () => {
+  const ok = (v: string) => EmailSchema.safeParse(v).success;
+
+  it("takes ordinary addresses", () => {
+    for (const v of [
+      "ada@example.com",
+      "o'neil+tag@mail.example.co.uk",
+      "a.b_c-d@x-y.io",
+      `${"a".repeat(64)}@example.com`,
+      `a@${"b".repeat(63)}.com`,
+    ]) {
+      expect(ok(v), v).toBe(true);
+    }
+  });
+
+  it("refuses what no mail server delivers to", () => {
+    for (const v of [
+      "a@b-.com", // label ends with a hyphen
+      "a@-b.com", // label starts with one
+      `a@${"b".repeat(64)}.com`, // label over 63
+      `a@${Array.from({ length: 4 }, () => "b".repeat(62)).join(".")}.com`, // domain over 253
+      `${"a".repeat(65)}@example.com`, // local part over 64
+      "a..b@example.com",
+      "a@example.c",
+      "a|b@example.com", // RFC 5322 allows it; the API does not
+      "a@x_y.com",
+    ]) {
+      expect(ok(v), v).toBe(false);
+    }
+  });
+
+  it("states the same rule in the document it validates by", () => {
+    const api = createApi();
+    api.openapi(
+      createRoute({
+        method: "post",
+        path: "/e",
+        request: { body: jsonBody(z.object({ email: EmailSchema })) },
+        responses: { 200: jsonResponse(z.object({}), "ok") },
+      }),
+      (c) => c.json({}, 200),
+    );
+    const doc = buildOpenApiDocument(api as never, { version: "0" });
+    expect(JSON.stringify(doc)).toContain(JSON.stringify(EMAIL_PATTERN.source));
+  });
+});
+
+describe("SlugSchema", () => {
+  it("documents a pattern that accepts exactly what it validates", () => {
+    const api = createApi();
+    api.openapi(
+      createRoute({
+        method: "post",
+        path: "/s",
+        request: { body: jsonBody(z.object({ slug: SlugSchema })) },
+        responses: { 200: jsonResponse(z.object({}), "ok") },
+      }),
+      (c) => c.json({}, 200),
+    );
+    const doc = JSON.stringify(buildOpenApiDocument(api as never, { version: "0" }));
+    const documented = /"slug":\{[^}]*"pattern":"((?:[^"\\]|\\.)*)"/u.exec(doc)?.[1];
+    expect(documented).toBeDefined();
+    const pattern = new RegExp(JSON.parse(`"${documented}"`) as string, "u");
+    for (const v of ["acme", "a", "v", "v1x", "x-1", "v0", "v12", "-a", "a-", "Acme", "1.2.3"]) {
+      expect(pattern.test(v), v).toBe(SlugSchema.safeParse(v).success);
+    }
   });
 });
 

@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { TimestampSchema } from "./schemas.js";
+import { EmailSchema, TimestampSchema } from "./schemas.js";
 
 /*
  * Branding (E1.7, EXECUTION_PLAN §12 "branding basics", design/03 F1, design/08 §4).
@@ -91,7 +91,7 @@ export const BrandingPatchBody = z
     accentColor: z.union([HexColorSchema, z.null()]).optional(),
     fontFamily: BrandFontSchema.optional(),
     radius: BrandRadiusSchema.optional(),
-    supportEmail: z.union([z.email().max(320), z.null()]).optional(),
+    supportEmail: z.union([EmailSchema, z.null()]).optional(),
     showPoweredBy: z.boolean().optional(),
   })
   .strict();

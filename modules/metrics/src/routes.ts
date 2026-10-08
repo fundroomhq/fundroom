@@ -1021,7 +1021,10 @@ export function registerMetricsRoutes(api: ModuleRouter, services: ModuleService
           in: "path",
           required: true,
           description: "Capability token minted at send time; `base64url(payload).base64url(hmac)`",
-          schema: { type: "string", maxLength: 4096 },
+          // base64url segments joined by `.`, under 1000 characters (at most CHART_MAX_SERIES
+          // ids). The bound keeps the request line inside the HTTP server's 16 KiB head limit
+          // whatever is sent; past it the server answers 431 before any route runs.
+          schema: { type: "string", maxLength: 1024, pattern: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$" },
         },
       ],
       responses: {

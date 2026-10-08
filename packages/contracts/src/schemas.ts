@@ -7,7 +7,23 @@ export const UuidSchema = z.uuid().openapi({
   description: "UUID (v7 for rows this server created)",
 });
 
-export const EmailSchema = z.email().max(320).openapi({ example: "ada@example.com" });
+/**
+ * The addresses the API takes: zod's practical subset of RFC 5322 for the local part, capped at 64
+ * octets (RFC 5321 §4.5.3.1.1), and a domain of well-formed DNS labels — no leading or trailing
+ * hyphen, at most 63 each, 253 in all — under an alphabetic TLD. zod's own default would take
+ * `a@b-.com` and a 65-character local part, which no mail server delivers to.
+ *
+ * `format: email` alone promises RFC 5322 in full (`a|b@example.com` included), so the document
+ * states the pattern too: a client — or a contract fuzzer — generating addresses from the schema
+ * produces only ones the server accepts.
+ */
+export const EMAIL_PATTERN =
+  /^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/u;
+
+export const EmailSchema = z
+  .email({ pattern: EMAIL_PATTERN })
+  .max(320)
+  .openapi({ example: "ada@example.com", pattern: EMAIL_PATTERN.source });
 
 /** Workspace slug: DNS label (`core.workspace.slug` CHECK). */
 /**
@@ -26,7 +42,9 @@ export const SlugSchema = z
   .refine((v) => !RESERVED_SLUG_RE.test(v), {
     message: "version-shaped slugs are reserved for the embed loader",
   })
-  .openapi({ example: "acme" });
+  // The document states the label rule and the reservation as one pattern (a DNS label cannot
+  // contain the dots of the `x.y.z` form, so `v<digits>` is the only reserved shape it can take).
+  .openapi({ example: "acme", pattern: "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$" });
 
 export const TimestampSchema = z.iso.datetime({ offset: true }).openapi({
   example: "2026-09-11T10:15:30.000Z",

@@ -15672,7 +15672,7 @@ export interface paths {
         };
         /**
          * Finish a staff SSO sign-in (the IdP round trip's last hop)
-         * @description Checks the `sso_req` binding cookie, consumes the single-use handoff, resolves the user (linking / JIT) and sets the session cookies. Always a redirect: to `returnTo`, to `/admin/sso?sso_test=…` for a test, or to `/login?sso_error=<code>` on failure — never JSON.
+         * @description Checks the `sso_req` binding cookie, consumes the single-use handoff, resolves the user (linking / JIT) and sets the session cookies. Always a redirect: to `returnTo`, to `/admin/sso?sso_test=…` for a test, or to `/login?sso_error=<code>` on failure. Only what never reaches the handler is JSON: a malformed query (an `h` over 256 characters) and the kernel's own refusals (unknown host, rate limit, unavailable).
          */
         get: {
             parameters: {
@@ -15692,6 +15692,65 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Malformed request or validation failure */
+                400: {
+                    headers: {
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found (also returned when the caller may not know whether it exists) */
+                404: {
+                    headers: {
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited; see `Retry-After` */
+                429: {
+                    headers: {
+                        /** @description Seconds to wait before retrying */
+                        "Retry-After"?: number;
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unexpected server error; the `requestId` locates the log line */
+                500: {
+                    headers: {
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description A dependency (mail, storage, database) is unavailable */
+                503: {
+                    headers: {
+                        /** @description Seconds to wait before retrying */
+                        "Retry-After"?: number;
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -78379,7 +78438,10 @@ export interface components {
             terminalAt: string | null;
         };
         RoundSignatureSigner: {
-            /** Format: email */
+            /**
+             * Format: email
+             * @example ada@example.com
+             */
             email: string;
             name: string;
         };

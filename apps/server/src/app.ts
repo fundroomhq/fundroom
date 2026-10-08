@@ -23,6 +23,7 @@ import {
   pageErrorResponse,
 } from "./middleware/errors.js";
 import { gpcConsent } from "./middleware/gpc.js";
+import { isWildcardMiddleware, methodNotAllowed } from "./middleware/method-not-allowed.js";
 import { requestId } from "./middleware/request-id.js";
 import { requestLog } from "./middleware/request-log.js";
 import { tenantResolution } from "./middleware/tenant.js";
@@ -576,11 +577,33 @@ export function createApp(options: AppOptions): Hono<AppEnv> {
   // context, which is what makes `cookieModeFor` issue the `SameSite=None; Partitioned` session
   // cookie a third-party iframe can actually send back. See `tenancy.ts`.
   apiMount.route("/", api);
+  // A known path with a method it does not serve is 405 + `Allow`, ahead of both mounts: each
+  // module's workspace guard (`use("*")` on `/<module>`) would otherwise answer first with
+  // something less accurate. The raw routes count as serving their paths; the guards do not.
+  // basePath is escaped; the rest of the pattern is literal.
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
+  const apiPrefix = new RegExp(
+    `^${basePath.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?:/(?:w|embed)/[^/]+)?/api/v1(?=/|$)`,
+    "u",
+  );
+  const rejectWrongMethod = methodNotAllowed({
+    routes: () => [
+      ...api.routes.filter((r) => !isWildcardMiddleware(r)),
+      ...(rawMount?.routes ?? []).filter(
+        (r) => !(isWildcardMiddleware(r) && /^\/[^/]+\/\*$/u.test(r.path)),
+      ),
+    ],
+    apiPath: (path) => {
+      const prefix = apiPrefix.exec(path);
+      return prefix === null ? undefined : path.slice(prefix[0].length) || "/";
+    },
+  });
   for (const prefix of [
     `${basePath}/api/v1`,
     `${basePath}/w/:slug/api/v1`,
     `${basePath}/embed/:slug/api/v1`,
   ]) {
+    app.use(`${prefix}/*`, rejectWrongMethod);
     if (rawMount !== undefined) app.route(prefix, rawMount);
     app.route(prefix, apiMount);
   }

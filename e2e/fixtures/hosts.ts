@@ -92,7 +92,7 @@ export function firefoxLocalDomains(): string {
 /* -------------------------------------------------------------------------------------- */
 
 /** The app's own published port, bypassing the edge. See `Api` for why that is the right door. */
-export const APP_URL = process.env["E2E_BASE_URL"] ?? "http://localhost:3200";
+export const APP_URL = process.env["E2E_BASE_URL"] ?? "http://localhost:3000";
 
 export interface ApiResult<T = unknown> {
   readonly status: number;

@@ -115,6 +115,9 @@ export const HandoffBody = z
       .trim()
       .min(32)
       .max(4096)
+      // Three base64url segments. Stated as a pattern so the document says what `trim` and
+      // `min` already mean together: whitespace is not part of the 32.
+      .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u)
       .openapi({ description: "Compact JWS (EdDSA), signed by a registered handoff key" }),
   })
   .openapi("EmbedHandoffRequest");

@@ -1,4 +1,4 @@
-import { TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import { EmailSchema, TimestampSchema, UuidSchema } from "@fundroom/contracts";
 import { ROUND_CLOSING_PREFILL_SOURCES } from "@fundroom/domain";
 import {
   ACCREDITATION_PATHS,
@@ -803,7 +803,7 @@ export const RoundSignatureRequestBody = z
     signer: z
       .object({
         name: z.string().trim().min(1).max(200),
-        email: z.email().max(320),
+        email: EmailSchema,
       })
       .strict()
       .openapi("RoundSignatureSigner")

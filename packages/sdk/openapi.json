@@ -46,7 +46,7 @@
               },
               "slug": {
                 "type": "string",
-                "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+                "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
                 "example": "acme"
               },
               "name": {
@@ -1654,7 +1654,7 @@
           },
           "slug": {
             "type": "string",
-            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+            "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
             "example": "acme"
           },
           "name": {
@@ -7580,6 +7580,7 @@
               "type": "string",
               "maxLength": 320,
               "format": "email",
+              "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
               "example": "ada@example.com"
             },
             "maxItems": 200,
@@ -11319,7 +11320,7 @@
           },
           "slug": {
             "type": "string",
-            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+            "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
             "example": "acme"
           },
           "name": {
@@ -12427,7 +12428,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+                "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
                 "example": "acme"
               },
               {
@@ -12605,7 +12606,7 @@
         "properties": {
           "slug": {
             "type": "string",
-            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+            "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
             "example": "acme"
           },
           "available": {
@@ -12962,7 +12963,7 @@
           },
           "slug": {
             "type": "string",
-            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+            "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
             "example": "acme"
           },
           "sourceCellId": {
@@ -23889,7 +23890,9 @@
           "email": {
             "type": "string",
             "maxLength": 320,
-            "format": "email"
+            "format": "email",
+            "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
+            "example": "ada@example.com"
           }
         },
         "required": [
@@ -26539,6 +26542,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   }
                 },
@@ -26748,6 +26752,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "code": {
@@ -26969,6 +26974,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   }
                 },
@@ -31287,6 +31293,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "password": {
@@ -34344,6 +34351,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "displayName": {
@@ -34359,7 +34367,7 @@
                   },
                   "workspaceSlug": {
                     "type": "string",
-                    "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+                    "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
                     "example": "acme"
                   }
                 },
@@ -34578,6 +34586,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   }
                 },
@@ -36410,6 +36419,7 @@
                           "type": "string",
                           "maxLength": 320,
                           "format": "email",
+                          "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                           "example": "ada@example.com"
                         },
                         "displayName": {
@@ -41978,6 +41988,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "displayName": {
@@ -42626,6 +42637,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "displayName": {
@@ -49819,7 +49831,9 @@
                       {
                         "type": "string",
                         "maxLength": 320,
-                        "format": "email"
+                        "format": "email",
+                        "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
+                        "example": "ada@example.com"
                       },
                       {
                         "type": "null"
@@ -52498,6 +52512,7 @@
                     "type": "string",
                     "minLength": 32,
                     "maxLength": 4096,
+                    "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
                     "description": "Compact JWS (EdDSA), signed by a registered handoff key"
                   }
                 },
@@ -60222,6 +60237,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "passcode": {
@@ -60453,6 +60469,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "code": {
@@ -62007,6 +62024,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "name": {
@@ -62235,6 +62253,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "code": {
@@ -79911,7 +79930,7 @@
           "auth"
         ],
         "summary": "Finish a staff SSO sign-in (the IdP round trip's last hop)",
-        "description": "Checks the `sso_req` binding cookie, consumes the single-use handoff, resolves the user (linking / JIT) and sets the session cookies. Always a redirect: to `returnTo`, to `/admin/sso?sso_test=…` for a test, or to `/login?sso_error=<code>` on failure — never JSON.",
+        "description": "Checks the `sso_req` binding cookie, consumes the single-use handoff, resolves the user (linking / JIT) and sets the session cookies. Always a redirect: to `returnTo`, to `/admin/sso?sso_test=…` for a test, or to `/login?sso_error=<code>` on failure. Only what never reaches the handler is JSON: a malformed query (an `h` over 256 characters) and the kernel's own refusals (unknown host, rate limit, unavailable).",
         "parameters": [
           {
             "schema": {
@@ -79930,6 +79949,110 @@
               "Location": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request or validation failure",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (also returned when the caller may not know whether it exists)",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; see `Retry-After`",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds to wait before retrying",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; the `requestId` locates the log line",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A dependency (mail, storage, database) is unavailable",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds to wait before retrying",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -79963,6 +80086,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   }
                 },
@@ -80145,6 +80269,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "code": {
@@ -82078,7 +82203,7 @@
                 "properties": {
                   "slug": {
                     "type": "string",
-                    "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+                    "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
                     "example": "acme"
                   },
                   "name": {
@@ -82100,6 +82225,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "planId": {
@@ -87103,7 +87229,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+              "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
               "example": "acme"
             },
             "required": true,
@@ -87426,6 +87552,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "companyName": {
@@ -87445,7 +87572,7 @@
                   },
                   "slug": {
                     "type": "string",
-                    "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+                    "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
                     "example": "acme"
                   },
                   "locale": {
@@ -87644,6 +87771,7 @@
                     "type": "string",
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "code": {
@@ -88010,7 +88138,7 @@
                   },
                   "confirmSlug": {
                     "type": "string",
-                    "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+                    "pattern": "^(?!v[0-9]+$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
                     "example": "acme",
                     "description": "Must equal the workspace's slug"
                   }
@@ -117601,7 +117729,8 @@
           {
             "schema": {
               "type": "string",
-              "maxLength": 2000
+              "maxLength": 1200,
+              "pattern": "^[0-9A-Za-z, -]*$"
             },
             "required": false,
             "name": "ids",
@@ -120637,7 +120766,8 @@
             "description": "Capability token minted at send time; `base64url(payload).base64url(hmac)`",
             "schema": {
               "type": "string",
-              "maxLength": 4096
+              "maxLength": 1024,
+              "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
             }
           }
         ],
@@ -136849,6 +136979,7 @@
                       "type": "string",
                       "maxLength": 320,
                       "format": "email",
+                      "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                       "example": "ada@example.com"
                     },
                     "maxItems": 5
@@ -139201,7 +139332,8 @@
             "schema": {
               "type": "string",
               "minLength": 16,
-              "maxLength": 2048
+              "maxLength": 1024,
+              "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
             },
             "required": true,
             "name": "token",
@@ -139616,6 +139748,7 @@
                     ],
                     "maxLength": 320,
                     "format": "email",
+                    "pattern": "^(?=[^@]{1,64}@)(?:[A-Za-z0-9_'+-]+\\.)*[A-Za-z0-9_'+-]*[A-Za-z0-9_+-]@(?=[^@]{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$",
                     "example": "ada@example.com"
                   },
                   "postalAddress": {

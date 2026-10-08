@@ -309,8 +309,17 @@ export const SeriesQuery = z.object({
   periodKind: CalendarPeriodKindSchema.default("month"),
   periods: z.coerce.number().int().min(1).max(60).default(12),
   end: TimestampSchema.optional(),
-  /** Comma-separated definition ids; omitted means "every metric this reader may see". */
-  ids: z.string().max(2000).optional(),
+  /**
+   * Comma-separated definition ids (up to 32); omitted means "every metric this reader may
+   * see". Ids that are not uuids are dropped by the handler. The length bound keeps the request
+   * line inside the HTTP server's 16 KiB head limit whatever is sent (past it the server answers
+   * 431 before any route runs, which no operation can document).
+   */
+  ids: z
+    .string()
+    .max(1200)
+    .regex(/^[0-9A-Za-z, -]*$/u)
+    .optional(),
 });
 
 // --- CSV import -----------------------------------------------------------------------------------

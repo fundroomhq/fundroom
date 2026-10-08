@@ -1,5 +1,4 @@
 import { getCspNonce } from "@fundroomhq/ui";
-import { z } from "zod";
 
 /*
  * Keeping the SPA inside its own Content-Security-Policy (E2.10). The document policy is strict
@@ -8,18 +7,18 @@ import { z } from "zod";
  * trusted-types default ProseMirrorClipboard`, packages/http security-headers.ts; enforced since
  * E3.2, report-only only when an operator sets CSP_TRUSTED_TYPES=report).
  * Three things in our dependency tree step outside it at runtime; `installCspGuards()` runs
- * first thing in `main.tsx`, before anything renders, and deals with each:
+ * first thing in `main.tsx`, before anything renders, and deals with 1 and 3 (2 cannot wait
+ * that long):
  *
  *  1. Radix Dialog's scroll lock (react-remove-scroll → react-style-singleton) injects a
  *     `<style>` whose nonce comes from `get-nonce`. Nothing ever called its `setNonce`, and the
  *     package is not ours to import, but `getNonce()` falls back to the global
  *     `__webpack_nonce__` — the documented webpack spelling, which it reads lazily when a
  *     dialog opens. Setting it here is the whole fix.
- *  2. Zod 4 probes for `eval` (`new Function("")`, caught) the first time an object schema
- *     parses, to decide whether to JIT its parsers. The throw is swallowed, but the browser
- *     still reports a `script-src` violation and a Trusted Types one, on every page that talks
- *     to the API. `jitless` skips the probe; the interpreter path is what runs under our CSP
- *     anyway.
+ *  2. Zod 4 probes for `eval` (`new Function("")`, caught) to decide whether to JIT its
+ *     parsers, and the browser reports that as a `script-src` and a Trusted Types violation.
+ *     The probe runs when a schema is constructed, at module evaluation, which is earlier than
+ *     this function can run: `zod-jitless.ts`, the first import of `main.tsx`, turns it off.
  *  3. The Trusted Types `default` policy below: the one place a *string* may reach an HTML
  *     sink. It passes exactly the literals listed in `TRUSTED_HTML` and nothing else.
  *
@@ -76,7 +75,6 @@ export function installCspGuards(win: Window & typeof globalThis = window): void
   if (nonce !== undefined) {
     (win as unknown as { __webpack_nonce__?: string }).__webpack_nonce__ = nonce;
   }
-  z.config({ jitless: true });
   const tt = (win as unknown as { trustedTypes?: TrustedTypesLike }).trustedTypes;
   if (tt !== undefined && tt.defaultPolicy === null) {
     tt.createPolicy(DEFAULT_POLICY, { createHTML: defaultPolicyCreateHTML });

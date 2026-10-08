@@ -58,6 +58,7 @@ export * as platform from "./platform.js";
 export * as portability from "./portability.js";
 export * as residency from "./residency.js";
 export {
+  EMAIL_PATTERN,
   EmailSchema,
   isoDate,
   OkSchema,

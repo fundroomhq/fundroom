@@ -280,13 +280,14 @@ export function registerSsoAuthRoutes(api: Api, deps: ApiDeps): void {
       tags: tagAuth,
       summary: "Finish a staff SSO sign-in (the IdP round trip's last hop)",
       description:
-        "Checks the `sso_req` binding cookie, consumes the single-use handoff, resolves the user (linking / JIT) and sets the session cookies. Always a redirect: to `returnTo`, to `/admin/sso?sso_test=…` for a test, or to `/login?sso_error=<code>` on failure — never JSON.",
+        "Checks the `sso_req` binding cookie, consumes the single-use handoff, resolves the user (linking / JIT) and sets the session cookies. Always a redirect: to `returnTo`, to `/admin/sso?sso_test=…` for a test, or to `/login?sso_error=<code>` on failure. Only what never reaches the handler is JSON: a malformed query (an `h` over 256 characters) and the kernel's own refusals (unknown host, rate limit, unavailable).",
       request: { query: z.object({ h: z.string().max(256).optional() }) },
       responses: {
         302: {
           description: "Signed in (or refused); redirect into the app",
           headers: { Location: { schema: { type: "string" } } },
         },
+        ...errorResponses(400, 404, 429, 500, 503),
       },
     }),
     async (c) => {
