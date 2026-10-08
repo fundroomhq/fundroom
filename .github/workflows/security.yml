@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: pnpm audit (high+)
         run: pnpm audit --audit-level=high --prod
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install Opengrep
         run: curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
       - name: Scan
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # The gitleaks binary from its official image, pinned by digest (v8.30.1). Not
@@ -91,7 +91,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: aquasecurity/trivy-action@0.33.1
         with:
           scan-type: fs
@@ -117,7 +117,7 @@ jobs:
     # workflow). deploy/docker/Dockerfile exists, so the old "once the Dockerfile exists" guard was
     # always true anyway; a missing Dockerfile should now fail loudly, not skip silently.
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: deploy/docker/Dockerfile
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: zizmorcore/zizmor-action@v0.1.1
 
   actionlint:
@@ -142,7 +142,7 @@ jobs:
     # Catches what GitHub would reject at load time (e.g. `hashFiles` in a job-level `if`), which
     # otherwise shows up only as a workflow that never starts.
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
 
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Build authz and its workspace deps (tests import them via dist/)
         run: pnpm --filter "@fundroom/authz..." build

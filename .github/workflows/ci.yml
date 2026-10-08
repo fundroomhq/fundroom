@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Biome
         run: pnpm exec biome ci --reporter=github .
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm build
       - run: pnpm coverage
@@ -149,7 +149,7 @@ jobs:
       # Pre-pull so the first test doesn't eat its timeout on image download.
       TESTCONTAINERS_RYUK_DISABLED: "false"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Pre-pull test images (Postgres 18, Mailpit, SeaweedFS)
         run: |
@@ -181,7 +181,7 @@ jobs:
       STORAGE_FS_PATH: /tmp/fundroom-storage
       LOG_LEVEL: warn
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
@@ -229,7 +229,7 @@ jobs:
     env:
       DATABASE_URL: postgres://seedhost:seedhost@localhost:5432/seedhost
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
@@ -261,7 +261,7 @@ jobs:
     # GitHub rejects the whole workflow — actionlint now runs clean.)
     if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'e2e')
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm build
       - name: Boot Compose CI stack
@@ -346,7 +346,7 @@ jobs:
     # `@setup` is the first-run wizard every later spec depends on; `@a11y` is 30-a11y; `@csp` is
     # 40-csp: zero enforced CSP and Trusted Types report-only violations on the key screens.
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm build
       - name: Boot Compose CI stack
@@ -372,7 +372,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm --filter @fundroomhq/ui... build
       - name: Storybook builds (stories carry the a11y addon in `error` mode)
@@ -388,7 +388,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - uses: shivammathur/setup-php@v2
         with:
@@ -428,7 +428,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: azure/setup-helm@v4

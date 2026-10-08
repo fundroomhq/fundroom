@@ -41,7 +41,7 @@ jobs:
       RUN_ACTIVE: ${{ github.event_name == 'schedule' || inputs.active == true }}
       COMPOSE: docker compose -p seedhost-zap -f deploy/compose/compose.ci.yaml -f .zap/compose.zap.yaml
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       # pnpm + a frozen install: the crawl pass needs @playwright/test (the other helpers are plain node).
