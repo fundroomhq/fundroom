@@ -1,0 +1,34 @@
+<!doctype html>
+<!--
+  The raw-iframe snippet (docs/embed/quickstart.md §2): no script at all, for the hosts that
+  allow an iframe and nothing else — Squarespace code blocks, Wix's HTML element, Notion's
+  /embed. Everything the loader adds is absent here by design: a fixed height, no deep links, no
+  theme from the page, and no link fallback if the frame is refused.
+
+  It is in the harness because it is the snippet with the *fewest* moving parts: if signing in
+  works here, the session cookie, `frame-ancestors` and the API prefix are right on their own,
+  with no loader in the way to have compensated for any of them.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Acme Inc — Investors (raw iframe)</title>
+    <link rel="stylesheet" href="host.css" />
+  </head>
+  <body>
+    <h1>Acme Inc</h1>
+    <p id="above">Pasted straight into the page editor.</p>
+
+    <iframe
+      src="https://portal.test/embed/acme-inc"
+      title="Investor relations portal"
+      style="width: 100%; height: 900px; border: 0; display: block"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
+      allow="clipboard-write; fullscreen; publickey-credentials-get"
+      referrerpolicy="strict-origin-when-cross-origin"
+    ></iframe>
+
+    <p id="below">Questions? Email investors@example.com.</p>
+  </body>
+</html>

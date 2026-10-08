@@ -1,0 +1,24 @@
+{
+  "CompanyInfo": {
+    "CompanyName": "Acme Robotics Inc",
+    "LegalName": "Acme Robotics, Inc.",
+    "CompanyAddr": {
+      "Id": "1",
+      "Line1": "1 Main St",
+      "City": "Mountain View",
+      "CountrySubDivisionCode": "CA",
+      "PostalCode": "94043"
+    },
+    "Country": "US",
+    "FiscalYearStartMonth": "January",
+    "domain": "QBO",
+    "sparse": false,
+    "Id": "1",
+    "SyncToken": "4",
+    "MetaData": {
+      "CreateTime": "2024-11-04T12:00:00-08:00",
+      "LastUpdatedTime": "2026-03-01T09:13:02-08:00"
+    }
+  },
+  "time": "2026-04-02T06:14:41.123-07:00"
+}

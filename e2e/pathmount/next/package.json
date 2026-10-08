@@ -1,0 +1,15 @@
+{
+  "name": "fundroom-pathmount-next",
+  "version": "0.0.0",
+  "private": true,
+  "description": "next.test for the path-mount e2e stack: a real Next.js app running the documented rewrites recipe. Not a workspace package (built in its own container).",
+  "scripts": {
+    "build": "next build",
+    "start": "next start --port 3000"
+  },
+  "dependencies": {
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}

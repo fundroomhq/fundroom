@@ -1,0 +1,32 @@
+{
+	"name": "seed-host/wordpress-plugin",
+	"description": "Development tooling for the FundRoom WordPress plugin. The shipped plugin has no PHP package dependencies and no autoloader; sodium is part of PHP core.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"homepage": "https://github.com/fundroomhq/fundroom",
+	"require": {
+		"php": ">=8.1",
+		"ext-json": "*",
+		"ext-sodium": "*"
+	},
+	"suggest": {
+		"ext-curl": "Required only for the opt-in proxy mode, which streams responses through cURL."
+	},
+	"require-dev": {
+		"squizlabs/php_codesniffer": "^3.13",
+		"wp-coding-standards/wpcs": "^3.2",
+		"phpcompatibility/phpcompatibility-wp": "^2.1",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0"
+	},
+	"scripts": {
+		"lint": "phpcs",
+		"lint:fix": "phpcbf",
+		"test": "php tests/run.php"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		},
+		"sort-packages": true
+	}
+}

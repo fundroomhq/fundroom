@@ -1,0 +1,38 @@
+{
+  "name": "@fundroom/directory",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The shared cell directory for FundRoom: global slug and hostname uniqueness, cross-cell routing and move bookkeeping between cells, with a local mode over a single database",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/contracts": "workspace:*",
+    "@fundroom/custom-domains": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "pg": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "@types/pg": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

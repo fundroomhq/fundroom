@@ -1,0 +1,42 @@
+{
+  "name": "@fundroom/accreditation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kernel accreditation-vendor service for FundRoom: the per-workspace vendor connection (sealed credentials), ModuleServices.accreditation (effective provider, vendor start/check/evidence outside transactions), the ops callback wake-up, and the in-memory adapter every test uses",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/audit": "workspace:*",
+    "@fundroom/crypto": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/module-kit": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "vitest": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:"
+  }
+}

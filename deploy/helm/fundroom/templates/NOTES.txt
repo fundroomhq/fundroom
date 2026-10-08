@@ -1,0 +1,63 @@
+FundRoom {{ .Chart.AppVersion }} ({{ include "fundroom.image" . }}) is installed as "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+{{- $server := printf "%s-server" (include "fundroom.prefix" .) }}
+{{- $ns := .Release.Namespace }}
+
+1. Wait for the server to become ready:
+
+     kubectl -n {{ $ns }} rollout status deploy/{{ $server }}
+{{- if include "fundroom.migrateOnStart" . }}
+
+   The CloudNativePG cluster "{{ include "fundroom.cnpgClusterName" . }}" may still be bootstrapping; the
+   server applies the migrations itself once the database is up (a few minutes on a first install):
+
+     kubectl -n {{ $ns }} get cluster {{ include "fundroom.cnpgClusterName" . }}
+{{- end }}
+
+2. Open {{ .Values.config.baseUrl }}/setup and enter the first-run setup token.
+{{- if .Values.secrets.existingSecret }}
+   It is SETUP_TOKEN in your Secret "{{ .Values.secrets.existingSecret }}" if you put one there:
+
+     kubectl -n {{ $ns }} get secret {{ .Values.secrets.existingSecret }} -o jsonpath='{.data.SETUP_TOKEN}' | base64 -d; echo
+
+   Otherwise each server pod generated its own and printed it to its log. With more than one
+   replica add SETUP_TOKEN to the Secret (the wizard may land on any pod), or read the log of
+   the pod you are served by:
+
+     kubectl -n {{ $ns }} logs deploy/{{ $server }} | grep -A4 "first-run setup"
+{{- else }}
+   Every server replica uses the same token, stored in the chart's Secret:
+
+     kubectl -n {{ $ns }} get secret {{ include "fundroom.chartSecretName" . }} -o jsonpath='{.data.SETUP_TOKEN}' | base64 -d; echo
+{{- end }}
+
+   Or ask a running server (the image is distroless: there is no shell, so call node directly):
+
+     kubectl -n {{ $ns }} exec deploy/{{ $server }} -- /nodejs/bin/node /app/dist/cli.js setup-token
+
+   The token stops working once setup is complete.
+
+3. Check the configuration from inside the cluster:
+
+     kubectl -n {{ $ns }} exec deploy/{{ $server }} -- /nodejs/bin/node /app/dist/cli.js doctor
+{{- if not .Values.ingress.enabled }}
+
+4. No Ingress was created (ingress.enabled=false). To try it locally:
+
+     kubectl -n {{ $ns }} port-forward svc/{{ include "fundroom.fullname" . }} 8080:{{ .Values.service.port }}
+{{- end }}
+{{- if eq .Values.config.customDomains.driver "manual" }}
+
+Custom domains: CUSTOM_DOMAIN_DRIVER=manual. Workspace domains are verified by DNS; routing and
+TLS for them is yours (add them to ingress.extraHosts with a certificate, or put Caddy in front —
+see the chart README).
+{{- end }}
+{{- if eq .Values.storage.driver "fs" }}
+
+WARNING: storage.driver=fs keeps documents on one volume{{ if not .Values.persistence.enabled }} (an emptyDir: they are LOST when the pod goes){{ end }}. Keep a single FundRoom pod; move to S3 before scaling.
+{{- end }}
+
+Back up the master key (FUNDROOM_SECRET_KEY / SECRET_KEY_RING) outside the cluster: without it
+every encrypted column is unreadable. Upgrades: `helm upgrade` runs the migrate Job first;
+`kubectl -n {{ $ns }} logs job/{{ include "fundroom.migrateHookName" . }}` if it fails, then
+`kubectl -n {{ $ns }} delete job,secret,configmap {{ include "fundroom.migrateHookName" . }}` (hook
+resources are not removed by a failed hook or by `helm uninstall`).

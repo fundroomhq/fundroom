@@ -1,0 +1,34 @@
+# CI render fixture (not a deployment example): `helm lint`/`helm template` + kubeconform + Trivy
+# run against each ci/*-values.yaml. The key below is the throwaway one .github/workflows/ci.yml uses.
+# An EU cell of a multi-region managed host, joined to a shared cell directory.
+config:
+  av:
+    acceptUnscanned: true
+  baseUrl: https://eu.investors.example.com
+  mail:
+    from: investors@example.com
+  tenancyMode: multi
+  extra:
+    CONTROL_PLANE: "on"
+    CELL_ID: eu-1
+secrets:
+  secretKey: Y2ktb25seS1rZXktbm90LWEtc2VjcmV0LTAwMDAwMDAwMDA=
+  smtpUrl: smtps://ci:hunter2@smtp.example.com:465
+storage:
+  s3:
+    bucket: fundroom-docs-eu
+    region: eu-central-1
+    accessKeyId: ci-access-key-id
+    secretAccessKey: ci-not-a-secret
+postgresql:
+  external:
+    url: postgres://seedhost:secret@db-eu.example.com:5432/seedhost?sslmode=verify-full
+residency:
+  region: eu
+  regionLabel: European Union (Frankfurt, Germany)
+  jurisdiction: eu
+  backupLocation: European Union (Frankfurt, Germany)
+  directory:
+    databaseUrl: postgres://seedhost:secret@directory.example.com:5432/directory?sslmode=verify-full
+  moves:
+    sourceRetentionHours: 24

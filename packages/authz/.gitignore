@@ -1,0 +1,3 @@
+# Stryker mutation testing (pnpm --filter @fundroom/authz mutation)
+reports/
+.stryker-tmp/

@@ -1,0 +1,59 @@
+name: Evidence
+
+# SOC 2 change-management evidence (docs/compliance/soc2-evidence.md): merged PRs with
+# their reviews, CI conclusion and changesets for a period, as a JSON + Markdown bundle kept
+# for 400 days. Monthly for the previous month, or on demand for any range.
+on:
+  schedule:
+    - cron: "23 5 1 * *" # monthly, 1st 05:23 UTC: the previous month
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "YYYY-MM-DD"
+        required: true
+      until:
+        description: "YYYY-MM-DD"
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+
+jobs:
+  change-management:
+    name: Change management bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Period
+        id: period
+        env:
+          IN_SINCE: ${{ inputs.since }}
+          IN_UNTIL: ${{ inputs.until }}
+        run: |
+          if [ -n "$IN_SINCE" ]; then
+            since="$IN_SINCE"; until="$IN_UNTIL"
+          else
+            since=$(date -u -d "$(date -u +%Y-%m-01) -1 month" +%Y-%m-%d)
+            until=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m-%d)
+          fi
+          echo "since=$since" >> "$GITHUB_OUTPUT"
+          echo "until=$until" >> "$GITHUB_OUTPUT"
+      - name: Collect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SINCE: ${{ steps.period.outputs.since }}
+          UNTIL: ${{ steps.period.outputs.until }}
+        run: node scripts/evidence/change-management.mjs --since "$SINCE" --until "$UNTIL" --repo "$GITHUB_REPOSITORY" --out evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: change-management-${{ steps.period.outputs.since }}_${{ steps.period.outputs.until }}
+          path: evidence/
+          retention-days: 400

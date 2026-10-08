@@ -1,0 +1,123 @@
+{{- $cnpgInstall := eq (include "fundroom.migrateOnStart" .) "true" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fundroom.prefix" . }}-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.componentLabels" (list . "server") | nindent 4 }}
+spec:
+  replicas: {{ .Values.server.replicaCount }}
+  revisionHistoryLimit: 5
+  {{- if eq .Values.storage.driver "fs" }}
+  # One ReadWriteOnce volume: the old pod must let go of it before the new one starts.
+  strategy:
+    type: Recreate
+  {{- else }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "fundroom.componentSelectorLabels" (list . "server") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "fundroom.componentSelectorLabels" (list . "server") | nindent 8 }}
+        {{- with .Values.server.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- include "fundroom.checksums" . | nindent 8 }}
+        {{- with .Values.server.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "fundroom.serviceAccountName" . }}
+      {{- include "fundroom.podCommon" . | nindent 6 }}
+      terminationGracePeriodSeconds: {{ .Values.server.terminationGracePeriodSeconds }}
+      {{- with .Values.server.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      containers:
+        - name: server
+          {{- include "fundroom.containerCommon" (dict "root" . "hook" false) | nindent 10 }}
+          args: ["serve"]
+          env:
+            - name: ROLES
+              value: "api,web"
+            - name: WORKER_MODE
+              value: {{ ternary "external" "embedded" .Values.worker.enabled | quote }}
+            - name: MIGRATE_ON_START
+              {{- if $cnpgInstall }}
+              # In-chart CloudNativePG cluster (postgresql.cnpg.migrateOnStart): the database does
+              # not exist while pre-install hooks run, so the server migrates on start under the
+              # runner's advisory lock. With `auto` that is the first install only; every upgrade
+              # then uses the pre-upgrade Job and sets false.
+              value: "true"
+              {{- else }}
+              # The pre-install/pre-upgrade migrate Job has already run.
+              value: "false"
+              {{- end }}
+            {{- if $cnpgInstall }}
+            - name: DATABASE_WAIT_TIMEOUT_MS
+              value: "300000"
+            {{- end }}
+            {{- with (include "fundroom.databaseEnv" . | trim) }}
+            {{- . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.server.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          # Liveness is /healthz only ("still answering, not draining"); /readyz runs the
+          # dependency probes, and wiring it to liveness would turn a Postgres or S3 blip into a
+          # restart storm (deploy/docker/Dockerfile HEALTHCHECK).
+          startupProbe:
+            httpGet:
+              path: {{ include "fundroom.path" (dict "root" . "path" "/healthz") }}
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: {{ ternary 72 36 $cnpgInstall }}
+          livenessProbe:
+            httpGet:
+              path: {{ include "fundroom.path" (dict "root" . "path" "/healthz") }}
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ include "fundroom.path" (dict "root" . "path" "/readyz") }}
+              port: http
+            periodSeconds: 10
+            # Each dependency probe is capped at 5 s inside the app.
+            timeoutSeconds: 8
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+      volumes:
+        {{- include "fundroom.volumes" (dict "root" . "hook" false) | nindent 8 }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

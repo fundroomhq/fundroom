@@ -1,0 +1,16 @@
+# Load-test overlay for the CI stack (deploy/compose/compose.ci.yaml): the same image, Postgres
+# and Mailpit, plus RATE_LIMIT_MULTIPLIER so setup() can open a few dozen email-code sessions
+# from one IP (the sign-in limits are 5 per address / 20 per IP per window). Test-only: config
+# refuses a multiplier other than 1 unless APP_ENV is set explicitly to dev/test/staging, so the
+# overlay pins APP_ENV=test itself.
+#
+#   E2E_APP_PORT=3300 E2E_MAILPIT_PORT=8325 docker compose -p seedhost-load \
+#     -f deploy/compose/compose.ci.yaml -f load/compose.load.yaml up -d --wait --build
+#
+# See load/README.md for the whole run.
+services:
+  app:
+    environment:
+      APP_ENV: test
+      RATE_LIMIT_MULTIPLIER: "${RATE_LIMIT_MULTIPLIER:-100}"
+      LOG_LEVEL: "${LOAD_LOG_LEVEL:-warn}"

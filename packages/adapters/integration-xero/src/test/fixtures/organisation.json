@@ -1,0 +1,32 @@
+{
+  "Id": "b1a6c1b8-0b0e-4a55-9e2c-2a6e1f0b7d10",
+  "Status": "OK",
+  "ProviderName": "Seed Host",
+  "DateTimeUTC": "/Date(1775640000000)/",
+  "Organisations": [
+    {
+      "APIKey": "",
+      "Name": "Acme Robotics Ltd",
+      "LegalName": "Acme Robotics Limited",
+      "PaysTax": true,
+      "Version": "UK",
+      "OrganisationType": "COMPANY",
+      "BaseCurrency": "GBP",
+      "CountryCode": "GB",
+      "IsDemoCompany": false,
+      "OrganisationStatus": "ACTIVE",
+      "FinancialYearEndDay": 31,
+      "FinancialYearEndMonth": 3,
+      "SalesTaxBasis": "ACCRUALS",
+      "DefaultSalesTax": "Tax Exclusive",
+      "DefaultPurchasesTax": "Tax Inclusive",
+      "CreatedDateUTC": "/Date(1700000000000)/",
+      "OrganisationEntityType": "COMPANY",
+      "Timezone": "GMTSTANDARDTIME",
+      "ShortCode": "!23eYt",
+      "OrganisationID": "4f2d7b1e-6a3c-4e8d-9b0a-1c2d3e4f5a6b",
+      "Edition": "BUSINESS",
+      "Class": "STANDARD"
+    }
+  ]
+}

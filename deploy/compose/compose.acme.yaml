@@ -1,0 +1,191 @@
+# Custom-domain e2e overlay. Layers a local ACME CA and a fake authoritative zone on
+# top of compose.ci.yaml so `e2e/tests/10-custom-domains.test.ts` can drive the whole flow —
+# add a domain, publish the records, verify, then be served on the customer's hostname over
+# HTTPS with a certificate this stack issued — without public DNS and without a real CA.
+#
+#   E2E_APP_PORT=3100 E2E_MAILPIT_PORT=8125 \
+#     docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.acme.yaml \
+#     up -d --wait --build
+#
+# It is a *separate* stack from the plain CI one, not an addition to it: `TENANCY_MODE=multi`
+# is what makes a Host header other than the canonical one resolve a workspace at all, and
+# `00-setup.test.ts` asserts the install is single-tenant. Run this overlay for
+# `10-custom-domains` only (`pnpm --filter @fundroom/e2e test:acme`).
+#
+# Everything below is a throwaway test fixture: the Pebble root, the challenge token, the
+# hostnames. `*.example.com` is IANA-reserved for documentation (RFC 2606) and cannot collide
+# with a real zone — and nothing here consults public DNS anyway.
+#
+# Four services:
+#
+#   pebble             a local RFC 8555 CA. Caddy points `ACME_CA` at it and trusts its root
+#                      through `SSL_CERT_FILE`.
+#   challtestsrv       the fake authoritative zone, and the only copy of it. The test publishes
+#                      the CNAME and the TXT here through the management API on :8055.
+#   doh                a DoH-JSON endpoint in front of challtestsrv, because the app verifies
+#                      over `DOH_ENDPOINTS` in the Cloudflare/Google JSON flavour and
+#                      challtestsrv speaks plain DNS. See e2e/acme/README.md.
+#   caddy              the edge, with the shipped deploy/caddy/Caddyfile unmodified: on-demand
+#                      TLS gated on the app's `ask` endpoint.
+#
+# `acmenet` exists for its static addresses, not for isolation. challtestsrv must answer every
+# A query with *Caddy's* address so the CA's HTTP-01/TLS-ALPN-01 validation arrives at the edge,
+# and Pebble must be handed challtestsrv's address as a resolver — neither can be a Compose
+# service name, so both are pinned. Every new service also joins the default network, which is
+# where `app` lives.
+
+name: seed-host-ci
+
+services:
+  app:
+    environment:
+      # multi is what lets a verified row decide *which* workspace a hostname serves.
+      TENANCY_MODE: multi
+      # Both defaults would work (the canonical host, and 1.1.1.1 + 8.8.8.8), and both would be
+      # wrong here: the canonical host is `localhost`, and the public resolvers know nothing
+      # about this zone.
+      CUSTOM_DOMAIN_DRIVER: caddy-ask
+      CUSTOM_DOMAIN_CNAME_TARGET: edge.fundroom-e2e.example.com
+      # One resolver, so the adapter clamps its quorum to 1 and says so. APP_ENV=test is what
+      # permits that; a second alias for the same container would satisfy the count while still
+      # being one cache, which is the downgrade `dedupeByHost` exists to prevent.
+      DOH_ENDPOINTS: http://doh:8053/dns-query
+      # Caddy terminates TLS and forwards the original Host; without this the app would call
+      # every request on the custom hostname plaintext http.
+      TRUST_PROXY: "true"
+    depends_on:
+      doh:
+        condition: service_healthy
+
+  pebble:
+    image: ghcr.io/letsencrypt/pebble@sha256:ddf230642b1a584f519f32e347de1b05a6e4c1f6c35c1863b33effeab5f78199
+    # -dnsserver resolves challenge targets through challtestsrv rather than Docker's resolver,
+    # so the hostname under test points at Caddy for the CA and nowhere else. `-strict` is left
+    # off (its default): it turns on Pebble's upcoming API breaking changes, which is a test of
+    # the ACME client, not of this flow.
+    command:
+      - -config
+      - /test/config/pebble-config.json
+      - -dnsserver
+      - 10.30.50.3:8053
+    environment:
+      # Pebble is built to be hostile on purpose: it sleeps a random 0-15 s before validating
+      # and rejects 5 % of nonces, both to shake out clients that assume otherwise. A test that
+      # left them on would be timing-dependent and would flake, so both are off — this stack
+      # exercises the custom-domain flow, not Caddy's ACME retry logic.
+      PEBBLE_VA_NOSLEEP: "1"
+      PEBBLE_WFE_NONCEREJECT: "0"
+    ports:
+      # The management interface, which is where Pebble publishes the root of the chain it
+      # *issues* from. That root is generated fresh on every start, so the test has to fetch
+      # it rather than carry a copy — see `e2e/acme/README.md`.
+      - "${E2E_PEBBLE_MGMT_PORT:-15000}:15000"
+    volumes:
+      # httpPort/tlsPort moved from 5002/5001 to 80/443: the challenge has to arrive on the
+      # ports the edge actually listens on. Mounted over the image's own copy so the relative
+      # certificate paths inside it still resolve.
+      - ../../e2e/acme/pebble-config.json:/test/config/pebble-config.json:ro
+    networks:
+      default: {}
+      acmenet:
+        ipv4_address: 10.30.50.2
+
+  challtestsrv:
+    image: ghcr.io/letsencrypt/pebble-challtestsrv@sha256:12ce21884def456bcf9786542113949e1f19dc7738d2c70e156c2d0c38a1405b
+    # Every A query answers with Caddy, which is what makes the CA's validation arrive at the
+    # edge; AAAA answers nothing, because a stray AAAA would send the CA to a host that is not
+    # Caddy and fail validation while everything else looked fine. The challenge listeners are
+    # disabled: Caddy answers its own challenges, challtestsrv is here for DNS only.
+    command:
+      - -defaultIPv4
+      - 10.30.50.4
+      - -defaultIPv6
+      - ""
+      - -dnsserver
+      - :8053
+      - -doh
+      - ""
+      - -http01
+      - ""
+      - -https01
+      - ""
+      - -tlsalpn01
+      - ""
+      - -management
+      - :8055
+    ports:
+      # The test publishes the customer's DNS records through this.
+      - "${E2E_CHALLTESTSRV_PORT:-8055}:8055"
+    networks:
+      default: {}
+      acmenet:
+        ipv4_address: 10.30.50.3
+
+  doh:
+    image: node:24-alpine@sha256:50c8e8ca1d27439048670df5883f32d57cf81cff6233222c893fd0d9884cbd81
+    command: ["node", "/srv/doh-shim.mjs"]
+    read_only: true
+    environment:
+      UPSTREAM_DNS: 10.30.50.3:8053
+      PORT: "8053"
+    volumes:
+      - ../../e2e/acme/doh-shim.mjs:/srv/doh-shim.mjs:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8053/healthz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      challtestsrv:
+        condition: service_started
+    networks:
+      default: {}
+      acmenet:
+        ipv4_address: 10.30.50.5
+
+  caddy:
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    ports:
+      # Only 443. Port 80 stays unpublished: the ACME HTTP-01 challenge is fetched by Pebble
+      # over the Compose network, so publishing it would add a host port conflict for nothing.
+      - "${E2E_CADDY_HTTPS_PORT:-8443}:443"
+    environment:
+      # `localhost` keeps the primary site block on Caddy's internal CA, so the only ACME order
+      # this stack ever places is the on-demand one for the hostname under test. Naming a real
+      # hostname here would have Caddy issue a second certificate at boot and turn a failure in
+      # the ACME wiring into a slow start rather than a test failure.
+      FUNDROOM_DOMAIN: localhost
+      ACME_EMAIL: e2e@example.com
+      ACME_CA: https://pebble:14000/dir
+      # Pebble's ACME endpoint serves a certificate signed by its own root (SAN `DNS:pebble`),
+      # which no public bundle contains. Go reads SSL_CERT_FILE for the whole root pool.
+      SSL_CERT_FILE: /etc/caddy/acme-ca-root.pem
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../e2e/acme/pebble-root.pem:/etc/caddy/acme-ca-root.pem:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      # The admin API, which only answers once the config has been loaded and provisioned.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 2s
+      timeout: 3s
+      retries: 40
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      default: {}
+      acmenet:
+        ipv4_address: 10.30.50.4
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  acmenet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.30.50.0/24

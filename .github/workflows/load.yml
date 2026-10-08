@@ -1,0 +1,53 @@
+name: Load
+
+# k6 smoke against the Compose CI stack (docs/runbooks/load-testing.md). On demand only:
+# the weekly load run needs a staging host with fixed resources, which a shared runner is not.
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: "Smoke duration (k6 syntax)"
+        default: "30s"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: k6 smoke (compose stack)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      E2E_APP_PORT: "3300"
+      E2E_MAILPIT_PORT: "8325"
+      COMPOSE: docker compose -p seedhost-load -f deploy/compose/compose.ci.yaml -f load/compose.load.yaml
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Boot the stack (CI compose + load overlay)
+        run: $COMPOSE up -d --wait --build
+      - name: Seed demo workspace
+        run: $COMPOSE run --rm app seed-demo --investors 10
+      - name: k6 smoke
+        env:
+          DURATION: ${{ inputs.duration }}
+        run: |
+          # The k6 image runs as uid 12345; the runner owns the workspace.
+          mkdir -p k6-out && chmod 0777 k6-out
+          docker run --rm --network seedhost-load_default \
+            -v "$PWD/load/k6:/scripts:ro" -v "$PWD/k6-out:/out" grafana/k6:2.3.0 run \
+            -e TARGET_URL=http://app:3000 -e PUBLIC_ORIGIN=http://localhost:3300 \
+            -e MAILPIT_URL=http://mailpit:8025 -e DURATION="$DURATION" \
+            --summary-export /out/summary.json /scripts/smoke.js
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: k6-smoke-summary
+          path: k6-out/summary.json
+      - name: App logs on failure
+        if: failure()
+        run: $COMPOSE logs app | tail -n 300
+      - name: Tear down
+        if: always()
+        run: $COMPOSE down -v

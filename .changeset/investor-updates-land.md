@@ -1,0 +1,16 @@
+---
+"@fundroom/module-updates": minor
+"@fundroom/markdown": minor
+"@fundroom/ports": minor
+"@fundroom/email-smtp": minor
+"@fundroom/module-kit": minor
+"@fundroom/db": minor
+"@fundroom/domain": minor
+"@fundroom/audit": patch
+"@fundroom/authz": minor
+"@fundroom/sdk": minor
+"@fundroom/server": minor
+"@fundroom/web": minor
+---
+
+Investor updates. New module package `@fundroom/module-updates` (`updates` schema: posts with immutable versions, sends and per-recipient status, private reply threads, unsubscribes, per-workspace sending domain with an envelope-encrypted DKIM key; `/api/v1/updates/*`: templates (YC, minimal, board, blank), drafts with autosave and conflicts, audience + per-section rules, test send, schedule/unschedule, send now, archive-only publish, archive/restore, sends and recipients, the member archive, reply threads, the subscription switch, public one-click unsubscribe, settings, sending-domain records + DNS verification; jobs `updates.send` and `updates.dispatch`). New `@fundroom/markdown` (the shared Markdown-subset parser with HTML, text and ProseMirror round trips) used by the web renderer, the email renderer and the new TipTap editor. `OutboundEmail.from` / `dkim` on the mailer port (SMTP adapter signs), `ModuleServices.tenancy` + `workspaceUrl`, `findWorkspaceById`, `WorkspaceSettings.updates`, events `update.sent` / `update.replied`, audit actions for updates and sending domains, matrix permissions `updates.read|manage|send|settings`. Web: `/updates` archive + email preference, `/updates/<slug>` with replies, `/admin/updates` list/editor/deliveries/threads, `/admin/updates/settings`, `/unsubscribe`; the module page cache is now keyed by surface.

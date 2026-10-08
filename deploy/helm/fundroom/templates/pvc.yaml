@@ -1,0 +1,24 @@
+{{- if and (eq .Values.storage.driver "fs") .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "fundroom.prefix" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.labels" . | nindent 4 }}
+  annotations:
+    # Documents live here: `helm uninstall` must not delete them.
+    helm.sh/resource-policy: keep
+    {{- with .Values.persistence.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  accessModes:
+    {{- toYaml .Values.persistence.accessModes | nindent 4 }}
+  {{- with .Values.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+{{- end }}

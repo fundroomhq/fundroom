@@ -1,0 +1,38 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "seed-host/portal",
+	"version": "0.1.0",
+	"title": "Investor portal",
+	"category": "embed",
+	"icon": "chart-line",
+	"description": "Your FundRoom investor portal, embedded in this page.",
+	"keywords": [ "investor", "portal", "fundroom", "investors" ],
+	"textdomain": "seed-host",
+	"attributes": {
+		"path": {
+			"type": "string",
+			"default": ""
+		},
+		"height": {
+			"type": "number",
+			"default": 0
+		},
+		"title": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"supports": {
+		"html": false,
+		"anchor": false,
+		"align": [ "wide", "full" ],
+		"customClassName": true,
+		"reusable": true,
+		"spacing": {
+			"margin": true
+		}
+	},
+	"editorScript": "file:./index.js",
+	"render": "file:./render.php"
+}

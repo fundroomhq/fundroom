@@ -1,0 +1,113 @@
+/*
+ * @fundroomhq/ui stylesheet. Import once per app (`import "@fundroomhq/ui/styles.css"`).
+ *
+ * Layers: DTCG tokens (generated `--sh-*` custom properties) → Tailwind theme aliases
+ * (`--color-primary: var(--sh-color-primary)`) so utilities such as `bg-primary` follow the
+ * workspace theme at runtime → base element styles. Dark mode is the `.dark` class on <html>
+ * (set by ThemeProvider) or `prefers-color-scheme` when the user has not chosen (tokens.css).
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+/*
+ * Sonner's stylesheet, bundled rather than injected. Sonner inserts the same CSS as an unnonced
+ * <style> at module load, which the document CSP refuses (E2.10); apps/web's Vite build strips
+ * that call (vite.config.ts `sonnerWithoutRuntimeCss`) and relies on this import instead.
+ */
+@import "sonner/dist/styles.css";
+@import "@fundroomhq/tokens/tokens.css";
+
+/* Component sources live next to this file; apps add their own `@source` lines. */
+@source "../components";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--sh-font-sans);
+  --font-mono: var(--sh-font-mono);
+
+  --radius-sm: calc(var(--sh-radius-base) - 4px);
+  --radius-md: calc(var(--sh-radius-base) - 2px);
+  --radius-lg: var(--sh-radius-base);
+  --radius-xl: calc(var(--sh-radius-base) + 4px);
+
+  --shadow-sm: var(--sh-shadow-sm);
+  --shadow-md: var(--sh-shadow-md);
+
+  --color-background: var(--sh-color-bg);
+  --color-foreground: var(--sh-color-fg);
+  --color-card: var(--sh-color-card);
+  --color-card-foreground: var(--sh-color-card-fg);
+  --color-popover: var(--sh-color-popover);
+  --color-popover-foreground: var(--sh-color-popover-fg);
+  --color-primary: var(--sh-color-primary);
+  --color-primary-foreground: var(--sh-color-primary-fg);
+  --color-secondary: var(--sh-color-secondary);
+  --color-secondary-foreground: var(--sh-color-secondary-fg);
+  --color-muted: var(--sh-color-muted);
+  --color-muted-foreground: var(--sh-color-muted-fg);
+  --color-accent: var(--sh-color-accent);
+  --color-accent-foreground: var(--sh-color-accent-fg);
+  --color-destructive: var(--sh-color-destructive);
+  --color-destructive-foreground: var(--sh-color-destructive-fg);
+  --color-success: var(--sh-color-success);
+  --color-success-foreground: var(--sh-color-success-fg);
+  --color-warning: var(--sh-color-warning);
+  --color-warning-foreground: var(--sh-color-warning-fg);
+  --color-border: var(--sh-color-border);
+  --color-input: var(--sh-color-input);
+  --color-ring: var(--sh-color-ring);
+  --color-sidebar: var(--sh-color-sidebar);
+  --color-sidebar-foreground: var(--sh-color-sidebar-fg);
+  --color-sidebar-accent: var(--sh-color-sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sh-color-sidebar-accent-fg);
+  --color-sidebar-border: var(--sh-color-sidebar-border);
+  --color-chart-1: var(--sh-color-chart-1);
+  --color-chart-2: var(--sh-color-chart-2);
+  --color-chart-3: var(--sh-color-chart-3);
+  --color-chart-4: var(--sh-color-chart-4);
+  --color-chart-5: var(--sh-color-chart-5);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    min-height: 100%;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  /*
+   * Reduced-motion reset. Every declaration is `!important` on purpose: this block sits in
+   * `@layer base`, and Tailwind's `transition-*`/`duration-*`/`delay-*` and tw-animate-css's
+   * `animate-*` utilities live in the later `utilities` layer, so normal declarations here lose
+   * to them (found by C-10). Important declarations reverse layer order, so these win over any
+   * normal utility. The selector is a plain list, not `:where(...)`: pseudo-elements are invalid
+   * inside `:where()` (Tailwind compiles it to `:where(*)`), which left `::before`/`::after`
+   * unreset; specificity is moot with `!important`. tw-animate-css (1.4) has no reduced-motion
+   * handling of its own and supports `delay-*`, hence the delays too. Durations stay 0.01ms rather than 0 so transitions still
+   * run and fire `transitionend` (a 0s transition never starts), and exit animations still end
+   * through `animationend` for Radix Presence.
+   */
+  /* biome-ignore-start lint/complexity/noImportantStyles: only !important beats the later utilities layer (see above). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  /* biome-ignore-end lint/complexity/noImportantStyles: only !important beats the later utilities layer (see above). */
+}

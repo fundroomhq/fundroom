@@ -1,0 +1,51 @@
+{
+  "name": "@fundroom/identity",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Identity and session kernel for FundRoom: users, sessions, devices, OTP, magic link, passkeys, TOTP, password, OIDC, memberships, invites, rate limiting, cookie and CSRF recipes",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/http/index.d.ts",
+      "default": "./dist/http/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/audit": "workspace:*",
+    "@fundroom/authz": "workspace:*",
+    "@fundroom/config": "workspace:*",
+    "@fundroom/csv": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/i18n": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "@simplewebauthn/server": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "jose": "catalog:",
+    "openid-client": "catalog:",
+    "otpauth": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "@types/pg": "catalog:",
+    "pg": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

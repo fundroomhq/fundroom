@@ -1,0 +1,37 @@
+{
+  "name": "@fundroom/crypto",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Envelope encryption for FundRoom: streaming AEAD for objects, per-workspace data keys in core.workspace_key, KEK rotation job",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/db": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@fundroom/config": "workspace:*",
+    "@fundroom/kms-local": "workspace:*",
+    "@types/node": "^24.13.4",
+    "@types/pg": "catalog:",
+    "pg": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

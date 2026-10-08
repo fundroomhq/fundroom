@@ -1,0 +1,172 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * 1" # weekly, Monday 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  audit:
+    name: pnpm audit + OSV-Scanner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - name: pnpm audit (high+)
+        run: pnpm audit --audit-level=high --prod
+      - name: OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v2
+        with:
+          scan-args: |
+            --config=.osv-scanner.toml
+            --lockfile=pnpm-lock.yaml
+            --recursive
+            ./
+
+  sast:
+    name: Opengrep
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Opengrep
+        run: curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+      - name: Scan
+        run: |
+          ~/.opengrep/cli/latest/opengrep scan \
+            --config p/default --config p/nodejs --config p/typescript --config p/secrets \
+            --exclude node_modules --exclude dist --exclude '**/*.test.ts' \
+            --error --sarif --sarif-output opengrep.sarif .
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: opengrep.sarif
+          category: opengrep
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: codeql
+
+  secrets:
+    name: gitleaks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # The gitleaks binary from its official image, pinned by digest (v8.30.1). Not
+      # gitleaks-action: v2 needs a paid licence key for repositories owned by an organisation.
+      - name: Scan the full history
+        run: >
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" -w /repo
+          zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --config /repo/.gitleaks.toml --redact --no-banner --exit-code 1
+
+  trivy-fs:
+    name: Trivy (filesystem)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          format: sarif
+          output: trivy-fs.sarif
+          trivyignores: .trivyignore
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+  dockerfile:
+    name: hadolint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # No `hashFiles(...)` guard: it is not available in a job-level `if` (GitHub rejects the whole
+    # workflow). deploy/docker/Dockerfile exists, so the old "once the Dockerfile exists" guard was
+    # always true anyway; a missing Dockerfile should now fail loudly, not skip silently.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: deploy/docker/Dockerfile
+          failure-threshold: warning
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: deploy/docker/postgres-pgbackrest.Dockerfile
+          failure-threshold: warning
+
+  actions-lint:
+    name: zizmor (workflow hardening)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: zizmorcore/zizmor-action@v0.1.1
+
+  actionlint:
+    name: actionlint (workflow validity)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # Catches what GitHub would reject at load time (e.g. `hashFiles` in a job-level `if`), which
+    # otherwise shows up only as a workflow that never starts.
+    steps:
+      - uses: actions/checkout@v5
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+
+  mutation:
+    name: Stryker (authz)
+    # Weekly and on demand: ~35 s today, but mutation cost grows with the evaluator and
+    # it guards regressions in test strength, not in behaviour, so it does not gate PRs.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - name: Build authz and its workspace deps (tests import them via dist/)
+        run: pnpm --filter "@fundroom/authz..." build
+      - name: Mutation test (fails under thresholds.break)
+        # A full run (~35 s) rather than incremental: Stryker's incremental diff sees source and
+        # test files, not the matrix YAML or built dependencies, so a cached file can be stale.
+        run: pnpm --filter @fundroom/authz exec stryker run --force
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stryker-authz-report
+          path: |
+            packages/authz/reports/mutation/index.html
+            packages/authz/reports/mutation/mutation.json
+          retention-days: 30

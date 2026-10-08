@@ -1,0 +1,32 @@
+{
+  "name": "@fundroom/round-terms",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Round instrument terms: the SAFE/note/priced zod schemas, the ownership calculator, the US accreditation-path rule and the allocation roll-up — pure, shared by the server and the browser",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/decimal": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,142 @@
+{{- /*
+The `fundroom migrate` Job runs as a pre-install/pre-upgrade hook, i.e. before any release
+resource exists or changes. So it cannot load the chart's ConfigMap/Secret or use the chart's
+ServiceAccount on install: it gets its own copies as hook resources with a lower hook weight
+(created first, deleted with the Job once it succeeds), or reads secrets.existingSecret, which
+must exist beforehand. The hook Secret holds only the master key, DATABASE_URL and the
+cell directory's DIRECTORY_DATABASE_URL, whose migrations `migrate` applies too: hook resources
+outlive a failed hook and `helm uninstall`. With postgresql.mode=cnpg the database itself is a
+release resource, so the Job only runs pre-upgrade (and not at all with
+postgresql.cnpg.migrateOnStart=true); the first install migrates on server start instead.
+*/ -}}
+{{- if include "fundroom.migrateHookEnabled" . }}
+{{- $hook := ternary "pre-upgrade" "pre-install,pre-upgrade" (eq .Values.postgresql.mode "cnpg") -}}
+{{- $name := include "fundroom.migrateHookName" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.componentLabels" (list . "migrate") | nindent 4 }}
+  annotations:
+    helm.sh/hook: {{ $hook }}
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+data:
+  {{- include "fundroom.configData" . | nindent 2 }}
+{{- if not .Values.secrets.existingSecret }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.componentLabels" (list . "migrate") | nindent 4 }}
+  annotations:
+    helm.sh/hook: {{ $hook }}
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+type: Opaque
+stringData:
+  {{- include "fundroom.migrateSecretData" . | trim | nindent 2 }}
+{{- end }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.componentLabels" (list . "migrate") | nindent 4 }}
+  annotations:
+    helm.sh/hook: {{ $hook }}
+    helm.sh/hook-weight: "0"
+    # A failed Job is kept for `kubectl logs job/{{ $name }}`; the next attempt replaces it.
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migrate.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migrate.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "fundroom.componentSelectorLabels" (list . "migrate") | nindent 8 }}
+      {{- with .Values.migrate.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      restartPolicy: Never
+      {{- /* The chart's ServiceAccount does not exist yet on install; an existing one named by
+             the operator (create=false) does. Otherwise the namespace default, token unmounted. */}}
+      {{- if and (not .Values.serviceAccount.create) .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      {{- include "fundroom.podCommon" . | nindent 6 }}
+      containers:
+        - name: migrate
+          {{- include "fundroom.containerCommon" (dict "root" . "hook" true) | nindent 10 }}
+          args: ["migrate"]
+          env:
+            - name: ROLES
+              value: "api"
+            - name: MIGRATE_ON_START
+              value: "false"
+            # `migrate` sends no mail and touches no object storage, but config validation still
+            # demands those drivers' credentials in prod. Point it at inert drivers instead of
+            # copying SMTP/S3/ESP credentials into the hook Secret.
+            - name: MAILER_DRIVER
+              value: "smtp"
+            # smtps: prod refuses a plain-smtp relay outside the private network.
+            - name: SMTP_URL
+              value: "smtps://migrate.invalid:465"
+            {{- if include "fundroom.directoryEnabled" . }}
+            # With a cell directory, prod/staging refuse any storage driver but s3, so the
+            # hook keeps the release's s3 settings and gets inert credentials in place of the
+            # real ones, which it never receives.
+            - name: S3_ACCESS_KEY_ID
+              value: "migrate-unused"
+            - name: S3_SECRET_ACCESS_KEY
+              value: "migrate-unused"
+            {{- else }}
+            - name: STORAGE_DRIVER
+              value: "fs"
+            {{- end }}
+            - name: AV_DRIVER
+              value: "noop"
+            - name: AV_ACCEPT_UNSCANNED
+              value: "true"
+            # The hook Secret carries no METRICS_TOKEN, and `migrate` serves nothing.
+            - name: METRICS_ENABLED
+              value: "false"
+            # config.extra may select drivers whose credentials live in secrets.extra, which
+            # the hook Secret does not carry (STRIPE_*, CLOUDFLARE_API_TOKEN). `migrate` bills and
+            # registers nothing, so it runs with the inert drivers.
+            - name: BILLING_DRIVER
+              value: "none"
+            - name: CUSTOM_DOMAIN_DRIVER
+              value: "manual"
+            {{- with (include "fundroom.databaseEnv" . | trim) }}
+            {{- . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.migrate.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.migrate.resources | nindent 12 }}
+      volumes:
+        {{- include "fundroom.volumes" (dict "root" . "hook" true) | nindent 8 }}
+      {{- with .Values.migrate.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.migrate.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.migrate.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

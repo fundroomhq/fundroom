@@ -1,0 +1,36 @@
+<!doctype html>
+<!--
+  The same documented snippet on a page served over plain http (`http://insecure-host.test/`).
+
+  The loader must refuse to mount here and render the link instead. Not because the frame would
+  fail to load — it would load fine — but because the browser will not store the portal's
+  `Secure; HttpOnly; SameSite=None; Partitioned` session cookie for a frame inside an insecure
+  page, so every sign-in would succeed on the server and be forgotten by the browser. A silent
+  failure with no visible cause is the worst outcome available here, and a link is the best.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Acme Inc — Investors (insecure page)</title>
+    <link rel="stylesheet" href="host.css" />
+  </head>
+  <body>
+    <h1>Acme Inc</h1>
+    <p id="above">This page is served over http, which the portal refuses to be embedded in.</p>
+
+    <div id="investors"></div>
+
+    <p id="below">Questions? Email investors@example.com.</p>
+
+    <script src="https://portal.test/embed/v1/embed.js"></script>
+    <script src="instrument.js"></script>
+    <script>
+      SeedHost.init({
+        workspace: "acme-inc",
+        baseUrl: "https://portal.test",
+        el: "#investors",
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,45 @@
+<!doctype html>
+<!--
+  A host page that is both *strict* and *hostile*, which is the pair that matters.
+
+  Strict: the CSP below is what a security-conscious CMS sends, and nothing on this page may be
+  inline — no `<style>`, no `<script>`, no `style=` attribute. The loader has to survive it. That
+  is why it writes its iframe's geometry through CSSOM property assignments rather than a `style`
+  attribute (an attribute would be blocked, and a 0-height iframe looks exactly like a broken
+  embed), and why this page is the one that would catch a regression there.
+
+  Deliberately *not* strict in one direction: `connect-src` allows `https://portal.test`, so the
+  tag manager's credentialed `fetch()` at the portal's API is actually attempted and is refused
+  by the portal's own controls. Locking it down here would have proved only that this page's CSP
+  works, which is the site owner's control and not ours.
+
+  Hostile: `tag-manager.js` is the marketing snippet nobody audits — the thing that is on every
+  real page and that the iframe boundary exists for. It reads cookies, reaches into the frame,
+  calls the API with credentials and posts garbage over the bridge, and records everything it
+  manages to obtain. The test asserts that record is empty.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' https://portal.test; style-src 'self'; frame-src https://portal.test; connect-src https://portal.test; img-src 'self' data:; base-uri 'none'; form-action 'none'"
+    />
+    <title>Acme Inc — Investors (strict CSP)</title>
+    <link rel="stylesheet" href="host.css" />
+  </head>
+  <body>
+    <h1>Acme Inc</h1>
+    <p id="above">This page sends a strict Content-Security-Policy.</p>
+
+    <div id="investors"></div>
+
+    <p id="below">Questions? Email investors@example.com.</p>
+
+    <script src="https://portal.test/embed/v1/embed.js"></script>
+    <script src="instrument.js"></script>
+    <script src="mount.js"></script>
+    <script src="tag-manager.js"></script>
+  </body>
+</html>

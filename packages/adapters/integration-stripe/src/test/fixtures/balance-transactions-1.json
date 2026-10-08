@@ -1,0 +1,91 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "txn_3Pq0001AcmeTxn",
+      "object": "balance_transaction",
+      "amount": 10000,
+      "available_on": 1775080800,
+      "created": 1774908000,
+      "currency": "usd",
+      "description": null,
+      "exchange_rate": null,
+      "fee": 320,
+      "fee_details": [
+        {
+          "amount": 320,
+          "application": null,
+          "currency": "usd",
+          "description": "Stripe processing fees",
+          "type": "stripe_fee"
+        }
+      ],
+      "net": 9680,
+      "reporting_category": "charge",
+      "source": "ch_3Pq0001AcmeCh",
+      "status": "available",
+      "type": "charge"
+    },
+    {
+      "id": "txn_3Pq0002AcmeTxn",
+      "object": "balance_transaction",
+      "amount": -2500,
+      "available_on": 1774173600,
+      "created": 1774000800,
+      "currency": "usd",
+      "description": null,
+      "exchange_rate": null,
+      "fee": 0,
+      "fee_details": [],
+      "net": -2500,
+      "reporting_category": "refund",
+      "source": "ch_3Pq0002AcmeCh",
+      "status": "available",
+      "type": "refund"
+    },
+    {
+      "id": "txn_3Pq0003AcmeTxn",
+      "object": "balance_transaction",
+      "amount": -50000,
+      "available_on": 1773705600,
+      "created": 1773532800,
+      "currency": "usd",
+      "description": null,
+      "exchange_rate": null,
+      "fee": 0,
+      "fee_details": [],
+      "net": -50000,
+      "reporting_category": "payout",
+      "source": "ch_3Pq0003AcmeCh",
+      "status": "available",
+      "type": "payout"
+    },
+    {
+      "id": "txn_3Pq0004AcmeTxn",
+      "object": "balance_transaction",
+      "amount": 4999,
+      "available_on": 1772496000,
+      "created": 1772323200,
+      "currency": "usd",
+      "description": null,
+      "exchange_rate": null,
+      "fee": 175,
+      "fee_details": [
+        {
+          "amount": 175,
+          "application": null,
+          "currency": "usd",
+          "description": "Stripe processing fees",
+          "type": "stripe_fee"
+        }
+      ],
+      "net": 4824,
+      "reporting_category": "charge",
+      "source": "ch_3Pq0004AcmeCh",
+      "status": "available",
+      "type": "charge"
+    }
+  ],
+  "has_more": true,
+  "url": "/v1/balance_transactions"
+}

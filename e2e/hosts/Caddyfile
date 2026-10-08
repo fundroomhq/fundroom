@@ -1,0 +1,35 @@
+# The edge for the embed-host e2e stack (deploy/compose/compose.hosts.yaml).
+#
+# Not the shipped `deploy/caddy/Caddyfile`: that one is the product's edge and the custom-domain
+# suite tests it unmodified. This one is test scaffolding — its whole job is to put four real
+# origins in front of two containers so the browser sees a genuine cross-site embed.
+#
+# `local_certs` forces every site onto Caddy's internal CA. It is not a fallback: these are
+# `.test` names, RFC 6761 special-use, and no public CA can ever sign for them — so asking for a
+# public certificate would only produce a slow start and a confusing failure. The browser is
+# launched with `ignoreHTTPSErrors`; `e2e/hosts/README.md` says why that costs the suite nothing.
+{
+	local_certs
+	admin :2019
+}
+
+# The portal. One origin, and the only one the session cookie is ever set on.
+portal.test {
+	tls internal
+	reverse_proxy app:3000
+}
+
+# The customer's sites. `host-a` is where everything that must work happens; `host-b` exists to
+# be a *different site*, which is the only thing that can prove partition isolation; `host-c` is
+# the inner document of the double-iframe shape.
+host-a.test, host-b.test, host-c.test {
+	tls internal
+	reverse_proxy hosts:80
+}
+
+# The same pages over plain http, so the loader has something to refuse. Declared with an
+# explicit `http://` scheme, which is what keeps Caddy from adding the usual redirect to https:
+# a page that redirected would test the redirect and not the refusal.
+http://insecure-host.test {
+	reverse_proxy hosts:80
+}

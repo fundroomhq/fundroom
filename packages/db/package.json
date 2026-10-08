@@ -1,0 +1,48 @@
+{
+  "name": "@fundroom/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Drizzle schemas per Postgres schema, SQL migration runner, RLS tenant fence, and withTenant() for FundRoom",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "bin": {
+    "fundroom-db": "./dist/cli.js",
+    "seedhost-db": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "migrate": "node dist/cli.js migrate",
+    "migrate:status": "node dist/cli.js status",
+    "test:rls": "node dist/cli.js check-rls",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "drizzle-orm": "catalog:",
+    "pg": "catalog:"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "catalog:",
+    "@types/node": "^24.13.4",
+    "@types/pg": "catalog:",
+    "drizzle-kit": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

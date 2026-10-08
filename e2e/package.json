@@ -1,0 +1,33 @@
+{
+  "name": "@fundroom/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright end-to-end tests against the Compose CI stack (deploy/compose/compose.ci.yaml)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:a11y": "playwright test --project=chromium --grep \"@setup|@a11y\"",
+    "test:csp": "playwright test --project=chromium --grep \"@setup|@csp\"",
+    "test:acme": "E2E_ACME=1 playwright test tests/10-custom-domains.test.ts",
+    "test:hosts": "E2E_HOSTS=1 playwright test tests/20-embed-hosts.test.ts --project=hosts-chromium",
+    "test:hosts:firefox": "E2E_HOSTS=1 playwright test tests/20-embed-hosts.test.ts --project=hosts-firefox",
+    "test:pathmount": "E2E_PATHMOUNT=1 playwright test tests/50-path-mount.test.ts --project=pathmount-chromium",
+    "test:headed": "playwright test --headed",
+    "typecheck": "tsc -p tsconfig.json",
+    "stack:up": "docker compose -f ../deploy/compose/compose.ci.yaml up -d --wait --build",
+    "stack:down": "docker compose -f ../deploy/compose/compose.ci.yaml down -v && docker image prune -f",
+    "stack:up:acme": "docker compose -f ../deploy/compose/compose.ci.yaml -f ../deploy/compose/compose.acme.yaml up -d --wait --build",
+    "stack:down:acme": "docker compose -f ../deploy/compose/compose.ci.yaml -f ../deploy/compose/compose.acme.yaml down -v && docker image prune -f",
+    "stack:up:hosts": "docker compose -f ../deploy/compose/compose.ci.yaml -f ../deploy/compose/compose.hosts.yaml up -d --wait --build",
+    "stack:down:hosts": "docker compose -f ../deploy/compose/compose.ci.yaml -f ../deploy/compose/compose.hosts.yaml down -v && docker image prune -f",
+    "stack:up:pathmount": "docker compose -f ../deploy/compose/compose.ci.yaml -f ../deploy/compose/compose.pathmount.yaml up -d --wait --build",
+    "stack:down:pathmount": "docker compose -f ../deploy/compose/compose.ci.yaml -f ../deploy/compose/compose.pathmount.yaml down -v && (docker image rm seed-host-ci-worker seed-host-ci-next 2>/dev/null || true) && docker image prune -f"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:"
+  }
+}

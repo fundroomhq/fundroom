@@ -1,0 +1,10 @@
+{{- include "fundroom.validate" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fundroom.configMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.labels" . | nindent 4 }}
+data:
+  {{- include "fundroom.configData" . | nindent 2 }}

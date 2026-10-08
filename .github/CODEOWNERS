@@ -1,0 +1,51 @@
+# Code owners. Security-sensitive paths require two approving reviews, one of them from
+# @fundroomhq/security (branch protection: "Require review from Code Owners" + 2 approvals on
+# main). The teams belong to the fundroomhq organisation and must exist there before branch protection relies on them.
+#
+# Later rules win (GitHub uses the LAST matching pattern), so the catch-all comes first and the
+# specific paths after it. Every path below exists; `scripts/evidence/change-management.mjs`
+# reads this file to flag security-sensitive PRs that merged with fewer than two approvals.
+
+*                                         @fundroomhq/core
+
+# Tenancy, RLS and the database — two reviews.
+/packages/config/                         @fundroomhq/security @fundroomhq/core
+/packages/db/src/rls/                     @fundroomhq/security @fundroomhq/core
+/packages/db/src/tenant/                  @fundroomhq/security @fundroomhq/core
+/packages/db/src/break-glass/             @fundroomhq/security @fundroomhq/core
+/packages/db/migrations/                  @fundroomhq/security @fundroomhq/core
+/modules/*/migrations/                    @fundroomhq/security @fundroomhq/core
+/apps/server/src/tenancy.ts               @fundroomhq/security @fundroomhq/core
+
+# Identity, sessions, authorization, crypto, audit — two reviews.
+/packages/identity/                       @fundroomhq/security @fundroomhq/core
+/packages/authz/                          @fundroomhq/security @fundroomhq/core
+/packages/audit/                          @fundroomhq/security @fundroomhq/core
+/packages/crypto/                         @fundroomhq/security @fundroomhq/core
+/packages/embed/                          @fundroomhq/security @fundroomhq/core
+/packages/ports/src/auth.ts               @fundroomhq/security @fundroomhq/core
+/packages/adapters/kms-local/             @fundroomhq/security @fundroomhq/core
+
+# HTTP edge: security headers, CSP, middleware, auth routes, SSRF guard, first-run setup.
+/packages/http/                           @fundroomhq/security @fundroomhq/core
+/packages/outbound-http/                  @fundroomhq/security @fundroomhq/core
+/apps/server/src/middleware/              @fundroomhq/security @fundroomhq/core
+/apps/server/src/routes/auth*.ts          @fundroomhq/security @fundroomhq/core
+/apps/server/src/setup/                   @fundroomhq/security @fundroomhq/core
+/apps/server/src/cli-commands/break-glass*.ts  @fundroomhq/security @fundroomhq/core
+
+# Deployment and supply chain — two reviews.
+/deploy/                                  @fundroomhq/security @fundroomhq/devops
+/.github/                                 @fundroomhq/security @fundroomhq/devops
+/.gitleaks.toml                           @fundroomhq/security @fundroomhq/devops
+/.trivyignore                             @fundroomhq/security @fundroomhq/devops
+/.osv-scanner.toml                        @fundroomhq/security @fundroomhq/devops
+/lefthook.yml                             @fundroomhq/devops
+/pnpm-workspace.yaml                      @fundroomhq/devops
+/.npmrc                                   @fundroomhq/devops
+
+# Security policy, compliance evidence and operator runbooks for privileged access.
+/SECURITY.md                              @fundroomhq/security @fundroomhq/core
+/docs/compliance/                         @fundroomhq/security @fundroomhq/counsel
+/docs/runbooks/break-glass.md             @fundroomhq/security @fundroomhq/core
+/scripts/evidence/                        @fundroomhq/security @fundroomhq/core

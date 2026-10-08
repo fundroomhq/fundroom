@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": true,
+    "noEmit": true,
+    "tsBuildInfoFile": "dist/.tsbuildinfo.test",
+    "rootDir": "src",
+    "types": ["node"],
+    "jsx": "react-jsx"
+  },
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+  "references": [
+    {
+      "path": "./tsconfig.json"
+    }
+  ]
+}

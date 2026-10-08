@@ -1,0 +1,56 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "lib": ["ES2024", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "dist"],
+  "references": [
+    {
+      "path": "../ai"
+    },
+    {
+      "path": "../api-keys"
+    },
+    {
+      "path": "../audit"
+    },
+    {
+      "path": "../authz"
+    },
+    {
+      "path": "../db"
+    },
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../esign"
+    },
+    {
+      "path": "../events"
+    },
+    {
+      "path": "../identity"
+    },
+    {
+      "path": "../integrations"
+    },
+    {
+      "path": "../markdown"
+    },
+    {
+      "path": "../module-kit"
+    },
+    {
+      "path": "../ports"
+    },
+    {
+      "path": "../webhooks"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "fundroom.prefix" . }}-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.componentLabels" (list . "server") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "fundroom.componentSelectorLabels" (list . "server") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:
+        - port: http
+          protocol: TCP
+      {{- with .Values.networkPolicy.ingressFrom }}
+      from:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  egress:
+    {{- if .Values.networkPolicy.egress }}
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- else }}
+    - {}
+    {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "fundroom.prefix" . }}-jobs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.labels" . | nindent 4 }}
+spec:
+  # The worker and the migrate Job serve nothing; only a metrics scraper may reach them.
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/instance
+        operator: In
+        values: [{{ .Release.Name | quote }}]
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [{{ include "fundroom.name" . | quote }}]
+      - key: app.kubernetes.io/component
+        operator: In
+        values: [worker, migrate]
+  policyTypes: [Ingress, Egress]
+  {{- if .Values.networkPolicy.metricsFrom }}
+  ingress:
+    - ports:
+        - port: http
+          protocol: TCP
+      from:
+        {{- toYaml .Values.networkPolicy.metricsFrom | nindent 8 }}
+  {{- else }}
+  ingress: []
+  {{- end }}
+  egress:
+    {{- if .Values.networkPolicy.egress }}
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- else }}
+    - {}
+    {{- end }}
+{{- end }}

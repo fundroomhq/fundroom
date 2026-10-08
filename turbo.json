@@ -1,0 +1,47 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "globalDependencies": ["tsconfig.base.json", "biome.json", "pnpm-lock.yaml"],
+  "globalEnv": ["CI", "APP_ENV", "NODE_ENV"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build", "codegen"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.ts", "!**/*.md"],
+      "outputs": ["dist/**", "build/**", ".output/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "codegen"],
+      "outputs": ["*.tsbuildinfo", "**/*.tsbuildinfo"]
+    },
+    "lint": {},
+    "clean": {
+      "cache": false
+    },
+    "codegen": {
+      "dependsOn": ["^codegen"],
+      "inputs": [
+        "fundroom.tokens.json",
+        "messages/**",
+        "project.inlang/**",
+        "templates/**",
+        "scripts/build-tokens.mjs",
+        "scripts/copy-tokens.mjs",
+        "scripts/build-templates.mjs"
+      ],
+      "outputs": [
+        "src/paraglide/**",
+        "tokens.css",
+        "src/theme/default-tokens.json",
+        "src/generated/**"
+      ]
+    },
+    "storybook:build": {
+      "dependsOn": ["^build", "codegen"],
+      "outputs": ["storybook-static/**"]
+    }
+  }
+}

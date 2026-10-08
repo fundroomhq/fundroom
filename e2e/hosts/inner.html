@@ -1,0 +1,27 @@
+<!doctype html>
+<!--
+  The builder's sandbox document (served from `host-c.test`), holding the customer's snippet.
+  This is the middle frame of the Wix/Framer/Notion shape — see `nested.html`.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Embedded HTML</title>
+    <link rel="stylesheet" href="host.css" />
+  </head>
+  <body>
+    <div id="investors"></div>
+    <p id="below">&nbsp;</p>
+
+    <script src="https://portal.test/embed/v1/embed.js"></script>
+    <script src="instrument.js"></script>
+    <script>
+      SeedHost.init({
+        workspace: "acme-inc",
+        baseUrl: "https://portal.test",
+        el: "#investors",
+      });
+    </script>
+  </body>
+</html>

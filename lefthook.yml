@@ -1,0 +1,27 @@
+# Pre-commit hooks. Install with `pnpm install` (runs `lefthook install` via prepare).
+# Skip once with LEFTHOOK=0 git commit ... (never in CI; CI runs the full pipeline).
+
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+      run: pnpm exec biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+    gitleaks:
+      run: >
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks git --pre-commit --staged --redact --no-banner;
+        else
+          echo "gitleaks not installed; skipping local secret scan (CI still runs it). brew install gitleaks";
+        fi
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm typecheck

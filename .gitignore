@@ -1,0 +1,137 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+.output/
+storybook-static/
+# generated (turbo codegen)
+apps/web/src/paraglide/
+
+*.tsbuildinfo
+.turbo/
+
+# tests
+coverage/
+playwright-report/
+test-results/
+
+# local env / secrets (encrypted SOPS files under deploy/ are committed; plain ones never are)
+.env
+.env.*
+!.env.example
+# decrypted SOPS copies and age identities (deploy/sops/README.md); *.sops.env stays committable
+*.dec.env
+age-keys.txt
+*.pem
+*.key
+!**/fixtures/**/*.key
+
+# runtime data for local Compose
+/data/
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# inlang/paraglide compile cache
+apps/web/project.inlang/cache/
+
+# ---------------------------------------------------------------------------
+# Maintainer-local documents (design notes, decision records, planning,
+# security assessments). Not part of the published source tree.
+# ---------------------------------------------------------------------------
+/docs/adr/
+/docs/design/
+/docs/EXECUTION_PLAN.md
+/docs/fundroom/
+/docs/security/
+
+# Editor assistant / agent configuration and session files
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+**/CLAUDE.local.md
+AGENTS.md
+**/AGENTS.md
+GEMINI.md
+**/GEMINI.md
+copilot-instructions.md
+**/copilot-instructions.md
+.cursor/
+.cursorrules
+.cursorignore
+.cursor*
+.aider*
+.continue/
+.windsurf*
+*.jsonl
+
+# Scratch space
+tmp/
+.tmp/
+scratch/
+.scratch/
+
+# More secrets / key material (SOPS-encrypted *.sops.* files stay committable)
+*.dec.*
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+# Pebble's public test root (not a secret; e2e/acme/README.md), mounted by compose.acme.yaml
+!e2e/acme/pebble-root.pem
+
+# More editor / OS junk
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.history/
+*.code-workspace
+
+# More logs
+logs/
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Package pack outputs
+*.tgz
+
+# Test, coverage and report output
+blob-report/
+.lighthouseci/
+lighthouse-report*/
+reports/
+.stryker-tmp/
+load/results/
+load/**/*-summary.json
+.zap/reports/
+.zap/zap.yaml.bak
+zap-report*.html
+zap-report*.json
+junit*.xml
+.nyc_output/
+e2e/.state/
+
+# Build / tool caches (generated)
+.tanstack/
+.vite/
+.astro/
+.cache/
+.eslintcache
+.parcel-cache/
+.next/

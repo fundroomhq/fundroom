@@ -1,0 +1,28 @@
+{
+  "name": "@fundroom/decimal",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fixed-point decimal arithmetic on bigint at scale 1e6: the one way money and metric values are parsed, rounded and formatted (no dependencies, no I/O)",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

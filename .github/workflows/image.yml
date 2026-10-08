@@ -1,0 +1,192 @@
+name: Image
+
+# Multi-arch OCI image with SBOM, SLSA provenance, and keyless cosign signature.
+# `:edge` from main on every push (`:sha-<sha7>` for a manual run); semver tags only when
+# release.yml calls this with `version`: `X.Y.Z` always; `X.Y`, `X`, `latest` only for a
+# stable version that is the highest in that line (`floating`, computed by release.yml).
+# Order: build by digest → untagged index → SBOM → Trivy → sign → attest → provenance → tags LAST.
+# The logic is scripts/release/release-version.mjs (image-meta, push-index, apply-tags).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/docker/**"
+      - "apps/**"
+      - "packages/**"
+      - "modules/**"
+      - "pnpm-lock.yaml"
+  workflow_call:
+    inputs:
+      version:
+        description: The released version (apps/server/package.json); its git tag is v<version>
+        required: true
+        type: string
+      floating:
+        description: >-
+          Moving tags this release may take, space-separated subset of "minor major latest"
+          (release.yml computes it: each only for the highest release in its line)
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+
+# Edge pushes queue (a newer pending run replaces an older pending one), so `edge` never lands out
+# of order. A release has its own group, so an edge push can never cancel a pending release build.
+concurrency:
+  group: image-${{ inputs.version != '' && format('release-{0}', inputs.version) || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  meta:
+    name: Tags and version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      guard: ${{ steps.meta.outputs.guard }}
+      oci-version: ${{ steps.meta.outputs.oci-version }}
+      release: ${{ steps.meta.outputs.release }}
+      latest: ${{ steps.meta.outputs.latest }}
+    steps:
+      # Credentials kept (read-only token): image-meta checks `v<version>` on origin.
+      - uses: actions/checkout@v5
+      - id: meta
+        env:
+          VERSION: ${{ inputs.version }}
+          FLOATING: ${{ inputs.floating }}
+        run: |
+          args=(image-meta)
+          if [ -n "$VERSION" ]; then args+=(--version "$VERSION" --floating "$FLOATING"); fi
+          node scripts/release/release-version.mjs "${args[@]}"
+
+  build:
+    name: Build ${{ matrix.arch }}
+    # No `hashFiles(...)` guard: it is not available in a job-level `if` (GitHub rejects the whole
+    # workflow). deploy/docker/Dockerfile exists, so the old "once the Dockerfile exists" guard was
+    # always true anyway; a missing Dockerfile should now fail loudly, not skip silently.
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    needs: meta
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    outputs:
+      digest-amd64: ${{ steps.export.outputs.digest-amd64 }}
+      digest-arm64: ${{ steps.export.outputs.digest-arm64 }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          build-args: FUNDROOM_VERSION=${{ needs.meta.outputs.oci-version }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
+          provenance: false
+          sbom: false
+      - id: export
+        run: echo "digest-${{ matrix.arch }}=${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  manifest:
+    name: Merge manifest, SBOM, sign, attest
+    needs: [meta, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: oras-project/setup-oras@v1
+      # Pushed by digest with NO tag: nothing names this image until it has been scanned, signed
+      # and attested. The tags are applied in the last step (apply-tags).
+      - name: Create multi-arch index (untagged)
+        id: manifest
+        env:
+          DIGEST_AMD64: ${{ needs.build.outputs.digest-amd64 }}
+          DIGEST_ARM64: ${{ needs.build.outputs.digest-arm64 }}
+        run: node scripts/release/release-version.mjs push-index --image "$IMAGE" --digest "$DIGEST_AMD64" --digest "$DIGEST_ARM64"
+      - name: SBOM (SPDX + CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.manifest.outputs.digest }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-artifact: true
+          artifact-name: sbom.spdx.json
+          upload-release-assets: false
+      - name: Trivy (image)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.IMAGE }}@${{ steps.manifest.outputs.digest }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign (keyless, OIDC)
+        run: cosign sign --yes "${IMAGE}@${{ steps.manifest.outputs.digest }}"
+      - name: Attach SBOM attestation
+        run: cosign attest --yes --type spdxjson --predicate sbom.spdx.json "${IMAGE}@${{ steps.manifest.outputs.digest }}"
+      - name: Build provenance (SLSA)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true
+      # LAST: only a scanned, signed, attested digest gets a name. A release's X.Y.Z never moves:
+      # if it already names another digest (a re-run rebuilt the image), this fails.
+      - name: Apply tags
+        env:
+          TAGS: ${{ needs.meta.outputs.tags }}
+          GUARD: ${{ needs.meta.outputs.guard }}
+          DIGEST: ${{ steps.manifest.outputs.digest }}
+        run: node scripts/release/release-version.mjs apply-tags --image "$IMAGE" --digest "$DIGEST" --tags "$TAGS" --guard "$GUARD"
+
+  release-assets:
+    name: Attach SBOM, publish the GitHub release
+    needs: [meta, manifest]
+    if: needs.meta.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: sbom.spdx.json
+      # The tag step created the release as a draft; it is published only now, after the image
+      # is signed and tagged.
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          LATEST: ${{ needs.meta.outputs.latest }}
+        run: |
+          gh release upload "v${VERSION}" sbom.spdx.json --clobber --repo "$GITHUB_REPOSITORY"
+          gh release edit "v${VERSION}" --draft=false --latest="${LATEST}" --repo "$GITHUB_REPOSITORY"

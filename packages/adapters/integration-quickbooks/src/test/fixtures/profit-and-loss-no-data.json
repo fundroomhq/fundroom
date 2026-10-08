@@ -1,0 +1,46 @@
+{
+  "Header": {
+    "Time": "2026-04-02T06:14:41-07:00",
+    "ReportName": "ProfitAndLoss",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-01-01",
+    "EndPeriod": "2026-03-31",
+    "SummarizeColumnsBy": "Month",
+    "Currency": "GBP",
+    "Option": [
+      {
+        "Name": "AccountingStandard",
+        "Value": "IFRS"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "true"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "",
+        "ColType": "Account",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "account"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Total",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "total"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {}
+}

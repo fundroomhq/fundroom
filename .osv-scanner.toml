@@ -1,0 +1,4 @@
+# Allowlist for OSV-Scanner. Every entry needs a reason and an expiry review date.
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# reason = "dev-only dependency, not reachable at runtime; re-check 2026-12-01"

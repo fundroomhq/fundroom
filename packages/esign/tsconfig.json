@@ -1,0 +1,44 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "lib": ["ES2024"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "dist"],
+  "references": [
+    {
+      "path": "../audit"
+    },
+    {
+      "path": "../clickwrap"
+    },
+    {
+      "path": "../crypto"
+    },
+    {
+      "path": "../db"
+    },
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../events"
+    },
+    {
+      "path": "../identity"
+    },
+    {
+      "path": "../module-kit"
+    },
+    {
+      "path": "../ports"
+    },
+    {
+      "path": "../storage"
+    }
+  ]
+}

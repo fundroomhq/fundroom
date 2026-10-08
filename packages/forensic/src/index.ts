@@ -1,0 +1,37 @@
+export {
+  createForensicDetector,
+  ForensicBusyError,
+  type ForensicDetector,
+  type ForensicDetectorOptions,
+  ForensicTimeoutError,
+} from "./detector.js";
+export {
+  type DetectCandidate,
+  type DetectOptions,
+  type DetectResult,
+  detectForensicMarks,
+  type EmbedOptions,
+  embedForensicMark,
+  FORENSIC_AMPLITUDE,
+  FORENSIC_DEFAULT_MAX_CANDIDATES,
+  FORENSIC_DEFAULT_STRENGTH,
+  FORENSIC_INCONCLUSIVE_Z,
+  FORENSIC_MATCH_Z,
+  FORENSIC_MAX_ASPECT_FACTOR,
+  FORENSIC_MAX_SUSPECT_PIXEL_RATIO,
+  FORENSIC_MIN_ALIGNMENT_QUALITY,
+  type ForensicThresholds,
+  type ForensicVerdict,
+  forensicThresholds,
+  forensicVerdict,
+  type GrayImage,
+  type RgbImage,
+  rgbToGray,
+} from "./engine.js";
+export {
+  deriveForensicPatternKey,
+  FORENSIC_KEY_PURPOSE,
+  FORENSIC_TOKEN_BYTES,
+  forensicSeed,
+  newForensicToken,
+} from "./keys.js";

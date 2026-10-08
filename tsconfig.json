@@ -1,0 +1,573 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    {
+      "path": "packages/config"
+    },
+    {
+      "path": "packages/config/tsconfig.test.json"
+    },
+    {
+      "path": "packages/db"
+    },
+    {
+      "path": "packages/db/tsconfig.test.json"
+    },
+    {
+      "path": "packages/ports"
+    },
+    {
+      "path": "packages/identity"
+    },
+    {
+      "path": "packages/identity/tsconfig.test.json"
+    },
+    {
+      "path": "packages/domain"
+    },
+    {
+      "path": "packages/branding"
+    },
+    {
+      "path": "packages/branding/tsconfig.test.json"
+    },
+    {
+      "path": "packages/embed"
+    },
+    {
+      "path": "packages/embed/tsconfig.test.json"
+    },
+    {
+      "path": "packages/domain/tsconfig.test.json"
+    },
+    {
+      "path": "packages/events"
+    },
+    {
+      "path": "packages/events/tsconfig.test.json"
+    },
+    {
+      "path": "packages/audit"
+    },
+    {
+      "path": "packages/audit/tsconfig.test.json"
+    },
+    {
+      "path": "packages/authz"
+    },
+    {
+      "path": "packages/authz/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/queue-pgboss"
+    },
+    {
+      "path": "packages/adapters/queue-pgboss/tsconfig.test.json"
+    },
+    {
+      "path": "packages/share-links"
+    },
+    {
+      "path": "packages/share-links/tsconfig.test.json"
+    },
+    {
+      "path": "packages/api-keys"
+    },
+    {
+      "path": "packages/api-keys/tsconfig.test.json"
+    },
+    {
+      "path": "packages/webhooks"
+    },
+    {
+      "path": "packages/webhooks/tsconfig.test.json"
+    },
+    {
+      "path": "packages/esign"
+    },
+    {
+      "path": "packages/esign/tsconfig.test.json"
+    },
+    {
+      "path": "packages/accreditation"
+    },
+    {
+      "path": "packages/accreditation/tsconfig.test.json"
+    },
+    {
+      "path": "packages/sso"
+    },
+    {
+      "path": "packages/sso/tsconfig.test.json"
+    },
+    {
+      "path": "packages/scim"
+    },
+    {
+      "path": "packages/scim/tsconfig.test.json"
+    },
+    {
+      "path": "packages/search"
+    },
+    {
+      "path": "packages/search/tsconfig.test.json"
+    },
+    {
+      "path": "packages/portability"
+    },
+    {
+      "path": "packages/portability/tsconfig.test.json"
+    },
+    {
+      "path": "packages/i18n"
+    },
+    {
+      "path": "packages/i18n/tsconfig.test.json"
+    },
+    {
+      "path": "packages/storage"
+    },
+    {
+      "path": "packages/storage/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/storage-fs"
+    },
+    {
+      "path": "packages/adapters/storage-fs/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/storage-s3"
+    },
+    {
+      "path": "packages/adapters/storage-s3/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/kms-local"
+    },
+    {
+      "path": "packages/adapters/avscan-noop"
+    },
+    {
+      "path": "packages/adapters/avscan-noop/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/avscan-clamd"
+    },
+    {
+      "path": "packages/adapters/avscan-clamd/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/render-pdfium"
+    },
+    {
+      "path": "packages/adapters/render-pdfium/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/kms-local/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/email-smtp"
+    },
+    {
+      "path": "packages/adapters/email-smtp/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/email-resend"
+    },
+    {
+      "path": "packages/adapters/email-resend/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/email-postmark"
+    },
+    {
+      "path": "packages/adapters/email-postmark/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/email-ses"
+    },
+    {
+      "path": "packages/adapters/email-ses/tsconfig.test.json"
+    },
+    {
+      "path": "packages/crypto"
+    },
+    {
+      "path": "packages/crypto/tsconfig.test.json"
+    },
+    {
+      "path": "packages/mail"
+    },
+    {
+      "path": "packages/mail/tsconfig.test.json"
+    },
+    {
+      "path": "packages/outbound-http"
+    },
+    {
+      "path": "packages/outbound-http/tsconfig.test.json"
+    },
+    {
+      "path": "packages/http"
+    },
+    {
+      "path": "packages/http/tsconfig.test.json"
+    },
+    {
+      "path": "packages/contracts"
+    },
+    {
+      "path": "packages/contracts/tsconfig.test.json"
+    },
+    {
+      "path": "packages/module-kit"
+    },
+    {
+      "path": "packages/module-kit/tsconfig.test.json"
+    },
+    {
+      "path": "packages/sdk"
+    },
+    {
+      "path": "packages/sdk/tsconfig.test.json"
+    },
+    {
+      "path": "packages/csv"
+    },
+    {
+      "path": "packages/csv/tsconfig.test.json"
+    },
+    {
+      "path": "packages/charts"
+    },
+    {
+      "path": "packages/charts/tsconfig.test.json"
+    },
+    {
+      "path": "packages/forensic"
+    },
+    {
+      "path": "packages/forensic/tsconfig.test.json"
+    },
+    {
+      "path": "packages/decimal"
+    },
+    {
+      "path": "packages/decimal/tsconfig.test.json"
+    },
+    {
+      "path": "packages/update-check"
+    },
+    {
+      "path": "packages/update-check/tsconfig.test.json"
+    },
+    {
+      "path": "packages/round-terms"
+    },
+    {
+      "path": "packages/round-terms/tsconfig.test.json"
+    },
+    {
+      "path": "packages/markdown"
+    },
+    {
+      "path": "packages/clickwrap"
+    },
+    {
+      "path": "packages/clickwrap/tsconfig.test.json"
+    },
+    {
+      "path": "packages/compliance"
+    },
+    {
+      "path": "packages/compliance/tsconfig.test.json"
+    },
+    {
+      "path": "packages/custom-domains"
+    },
+    {
+      "path": "packages/custom-domains/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/dns-doh"
+    },
+    {
+      "path": "packages/adapters/dns-doh/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/sheets-google"
+    },
+    {
+      "path": "packages/adapters/sheets-google/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/chat-slack"
+    },
+    {
+      "path": "packages/adapters/chat-slack/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/domain-caddy-ask"
+    },
+    {
+      "path": "packages/adapters/domain-caddy-ask/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/domain-manual"
+    },
+    {
+      "path": "packages/adapters/domain-manual/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/accred-manual"
+    },
+    {
+      "path": "packages/adapters/accred-manual/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/accred-parallel-markets"
+    },
+    {
+      "path": "packages/adapters/accred-parallel-markets/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/accred-verifyinvestor"
+    },
+    {
+      "path": "packages/adapters/accred-verifyinvestor/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/esign-documenso"
+    },
+    {
+      "path": "packages/adapters/esign-documenso/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/esign-docuseal"
+    },
+    {
+      "path": "packages/adapters/esign-docuseal/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/esign-docusign"
+    },
+    {
+      "path": "packages/adapters/esign-docusign/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/esign-dropbox-sign"
+    },
+    {
+      "path": "packages/adapters/esign-dropbox-sign/tsconfig.test.json"
+    },
+    {
+      "path": "packages/markdown/tsconfig.test.json"
+    },
+    {
+      "path": "modules/content"
+    },
+    {
+      "path": "modules/content/tsconfig.test.json"
+    },
+    {
+      "path": "modules/data-room"
+    },
+    {
+      "path": "modules/data-room/tsconfig.test.json"
+    },
+    {
+      "path": "modules/updates"
+    },
+    {
+      "path": "modules/updates/tsconfig.test.json"
+    },
+    {
+      "path": "modules/analytics"
+    },
+    {
+      "path": "modules/analytics/tsconfig.test.json"
+    },
+    {
+      "path": "modules/notify"
+    },
+    {
+      "path": "modules/notify/tsconfig.test.json"
+    },
+    {
+      "path": "modules/metrics"
+    },
+    {
+      "path": "modules/metrics/tsconfig.test.json"
+    },
+    {
+      "path": "modules/round"
+    },
+    {
+      "path": "modules/round/tsconfig.test.json"
+    },
+    {
+      "path": "modules/crm"
+    },
+    {
+      "path": "modules/crm/tsconfig.test.json"
+    },
+    {
+      "path": "apps/server"
+    },
+    {
+      "path": "apps/server/tsconfig.test.json"
+    },
+    {
+      "path": "packages/ui"
+    },
+    {
+      "path": "packages/ui/tsconfig.test.json"
+    },
+    {
+      "path": "apps/web"
+    },
+    {
+      "path": "e2e"
+    },
+    {
+      "path": "packages/integrations"
+    },
+    {
+      "path": "packages/integrations/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/integration-quickbooks"
+    },
+    {
+      "path": "packages/adapters/integration-quickbooks/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/integration-xero"
+    },
+    {
+      "path": "packages/adapters/integration-xero/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/integration-stripe"
+    },
+    {
+      "path": "packages/adapters/integration-stripe/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/integration-slack"
+    },
+    {
+      "path": "packages/adapters/integration-slack/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/integration-calendly"
+    },
+    {
+      "path": "packages/adapters/integration-calendly/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/integration-calcom"
+    },
+    {
+      "path": "packages/adapters/integration-calcom/tsconfig.test.json"
+    },
+    {
+      "path": "modules/captable"
+    },
+    {
+      "path": "modules/captable/tsconfig.test.json"
+    },
+    {
+      "path": "packages/control-plane"
+    },
+    {
+      "path": "packages/control-plane/tsconfig.test.json"
+    },
+    {
+      "path": "packages/billing"
+    },
+    {
+      "path": "packages/billing/tsconfig.test.json"
+    },
+    {
+      "path": "packages/sanctions"
+    },
+    {
+      "path": "packages/sanctions/tsconfig.test.json"
+    },
+    {
+      "path": "packages/directory"
+    },
+    {
+      "path": "packages/directory/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/billing-stripe"
+    },
+    {
+      "path": "packages/adapters/billing-stripe/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/billing-manual"
+    },
+    {
+      "path": "packages/adapters/billing-manual/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/sanctions-ofac"
+    },
+    {
+      "path": "packages/adapters/sanctions-ofac/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/sanctions-opensanctions"
+    },
+    {
+      "path": "packages/adapters/sanctions-opensanctions/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/anchor-rfc3161"
+    },
+    {
+      "path": "packages/adapters/anchor-rfc3161/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/anchor-rekor"
+    },
+    {
+      "path": "packages/adapters/anchor-rekor/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/authz-openfga"
+    },
+    {
+      "path": "packages/adapters/authz-openfga/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/domain-cloudflare-saas"
+    },
+    {
+      "path": "packages/adapters/domain-cloudflare-saas/tsconfig.test.json"
+    },
+    {
+      "path": "packages/ai"
+    },
+    {
+      "path": "packages/ai/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/ai-openai-compatible"
+    },
+    {
+      "path": "packages/adapters/ai-openai-compatible/tsconfig.test.json"
+    },
+    {
+      "path": "packages/adapters/ai-anthropic"
+    },
+    {
+      "path": "packages/adapters/ai-anthropic/tsconfig.test.json"
+    }
+  ]
+}

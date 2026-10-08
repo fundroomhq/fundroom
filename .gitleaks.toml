@@ -1,0 +1,64 @@
+title = "FundRoom gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic fixtures and documentation examples"
+paths = [
+  '''\.env\.example$''',
+  '''docs/.*\.md$''',
+  '''packages/config/src/.*\.test\.ts$''',
+  '''e2e/fixtures/.*''',
+  # Tests and their fixtures carry synthetic keys, tokens and webhook secrets by design.
+  '''\.test\.tsx?$''',
+  '''(^|/)test/fixtures/''',
+  '''(^|/)apps/web/src/test/''',
+  # UI message catalogues: translation keys such as `apikeys_grace_0` look like keys to the generic rule.
+  '''(^|/)apps/web/messages/[^/]+\.json$''',
+]
+regexes = [
+  '''openssl rand -base64 32''',
+  # The CI/e2e master key: base64 of the ASCII "ci-only-key-not-a-secret-0000000000", used by
+  # compose.ci.yaml, the chart's ci/*-values.yaml and ci.yml. Exact value only, not the paths.
+  '''^Y2ktb25seS1rZXktbm90LWEtc2VjcmV0LTAwMDAwMDAwMDA=$''',
+  '''postgres://seedhost:(seedhost|secret|hunter2)@''',
+  # The public Standard Webhooks test vector's secret (standard-webhooks/libraries), used by the
+  # signer/verifier tests in packages/webhooks and packages/sdk. Exact value only.
+  '''whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw''',
+]
+
+# FundRoom's own credentials, so a pasted key or webhook secret fails CI.
+# `frk_` + base64url(32 bytes) = 43 characters (packages/api-keys/src/token.ts). Keys minted
+# before the FundRoom rename (A-2) start `shk_` and still authenticate, so both are secrets.
+[[rules]]
+id = "fundroom-api-key"
+description = "FundRoom workspace API key (frk_, or the pre-rename shk_)"
+regex = '''\b((?:frk|shk)_[A-Za-z0-9_-]{43})(?:[^A-Za-z0-9_-]|$)'''
+secretGroup = 1
+keywords = ["frk_", "shk_"]
+# A minted key is ~5.4 bits/char; fixtures like `frk_AAAA…` sit far below this.
+entropy = 3.5
+
+[[rules.allowlists]]
+description = "The documented example token in the OpenAPI contract (packages/contracts/src/api-keys.ts) and the web test's rotated token (apps/web/src/screens/api-keys-admin.test.tsx), before and after the rename"
+regexes = ['''(?:frk|shk)_(?:8Zr2Qk9v_TdM1sXpLb0HgC3nWyRfE6uJaZoP4iKtQvA|Zz9yXw8v_UtS7rQpOn6mLk5jIh4gFe3dCb2aZ1yXwVu)''']
+
+# The per-workspace SCIM bearer token, `frs_` + base64url(32 bytes) = 43
+# characters (packages/scim/src/token.ts); pre-rename tokens start `shs_` and still authenticate.
+[[rules]]
+id = "fundroom-scim-token"
+description = "FundRoom SCIM bearer token (frs_, or the pre-rename shs_)"
+regex = '''\b((?:frs|shs)_[A-Za-z0-9_-]{43})(?:[^A-Za-z0-9_-]|$)'''
+secretGroup = 1
+keywords = ["frs_", "shs_"]
+entropy = 3.5
+
+# `whsec_` + base64(32 bytes) = 43 characters + one `=` (packages/webhooks/src/signature.ts). The
+# Standard Webhooks test vector (`whsec_MfKQ…`, 24 bytes) is shorter and does not match.
+[[rules]]
+id = "fundroom-webhook-secret"
+description = "FundRoom outbound webhook signing secret"
+regex = '''\bwhsec_[A-Za-z0-9+/]{43}=?'''
+keywords = ["whsec_"]
+entropy = 3.5

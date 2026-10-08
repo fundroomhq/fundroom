@@ -1,0 +1,25 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": true,
+    "noEmit": true,
+    "tsBuildInfoFile": "dist/.tsbuildinfo.test",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.test.ts"],
+  "references": [
+    {
+      "path": "./tsconfig.json"
+    },
+    {
+      "path": "../../audit"
+    },
+    {
+      "path": "../../outbound-http"
+    }
+  ]
+}

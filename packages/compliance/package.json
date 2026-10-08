@@ -1,0 +1,48 @@
+{
+  "name": "@fundroom/compliance",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Offering mode, the tenant legal-document library, click-wrap acceptances, consent and the pre-existing-relationship heuristic for FundRoom",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "codegen": "node scripts/build-templates.mjs",
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/ai": "workspace:*",
+    "@fundroom/api-keys": "workspace:*",
+    "@fundroom/audit": "workspace:*",
+    "@fundroom/authz": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/esign": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/identity": "workspace:*",
+    "@fundroom/integrations": "workspace:*",
+    "@fundroom/markdown": "workspace:*",
+    "@fundroom/module-kit": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "@fundroom/webhooks": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "fflate": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

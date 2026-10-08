@@ -1,0 +1,95 @@
+# ZAP DAST overlay on the CI stack (rule decisions in .zap/rules.tsv).
+#
+#   docker compose -p seedhost-zap -f deploy/compose/compose.ci.yaml -f .zap/compose.zap.yaml up -d --wait
+#   docker compose -p seedhost-zap -f deploy/compose/compose.ci.yaml -f .zap/compose.zap.yaml \
+#     --profile zap run --rm --no-deps zap zap-baseline.py -t http://localhost:3000 …
+#
+# ZAP shares the app container's network namespace (`network_mode: service:app`) and scans
+# http://localhost:3000. Two things force that shape, and both were learned the hard way:
+#
+#  - The SPA only boots in a secure context (it calls `crypto.randomUUID`), and plain http is a
+#    secure context only on localhost. Scanning http://app:3000 from a sibling container gave the
+#    client spider a blank page and an "authenticated" scan that never called the API.
+#  - `app` is not even reachable over http from a browser: `.app` is an HSTS-preloaded TLD, so
+#    Firefox/Chromium upgrade http://app:3000 to https and fail the TLS handshake.
+#
+# BASE_URL therefore has to be http://localhost:3000 — the origin ZAP uses — so every absolute URL
+# the app emits (redirects, Reporting-Endpoints, security.txt Canonical, setup links) stays in
+# ZAP's scope. In TENANCY_MODE=single every Host is canonical and CSRF compares Origin with the
+# request's own Host, so e2e/security/session.mjs can still sign in from the runner through the
+# published port (http://localhost:${E2E_APP_PORT}).
+#
+# RATE_LIMIT_MULTIPLIER lifts every limiter ceiling 100x: a spider hits the OTP / public-link
+# endpoints far faster than a person, and a scan that spends its time on 429s scans nothing.
+# The config refuses a multiplier other than 1 unless APP_ENV is set explicitly to dev, test or
+# staging (never prod), so the overlay pins APP_ENV=test itself rather than relying on the base file.
+
+services:
+  app:
+    environment:
+      BASE_URL: http://localhost:3000
+      TENANCY_MODE: single
+      APP_ENV: test
+      RATE_LIMIT_MULTIPLIER: "100"
+    # The crawl pass's ZAP proxy (service `zap-proxy` below) lives in this network namespace, so
+    # its port is published here. Loopback only, and its API needs the per-run key (see below).
+    ports:
+      - "127.0.0.1:${ZAP_PROXY_PORT:-8090}:8090"
+
+  zap:
+    # Pinned by version AND digest (2.17.0, 2026-08-07). Bump both together.
+    image: zaproxy/zap-stable:2.17.0@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef
+    profiles: ["zap"]
+    network_mode: service:app
+    # The scripts read rules.tsv from and write reports to /zap/wrk. Relative paths in an overlay
+    # resolve against the FIRST file's directory (deploy/compose/), hence ../../.zap.
+    volumes:
+      - ../../.zap:/zap/wrk:rw
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # Pass 6, the browser crawl: ZAP as a daemon
+  # proxy that Playwright drives the real SPA through (`e2e/tests/zap-crawl.test.ts`, project
+  # `zap-crawl`). ZAP 2.17's own spiders stall after the first API call; a real Chromium does not.
+  #
+  #   docker compose … --profile zap-proxy up -d --wait --no-deps zap-proxy
+  #
+  # Same network namespace as the app, so the browser asks the proxy for http://localhost:3000 —
+  # a secure context (the browser only sees the URL) — and ZAP resolves `localhost` to the app.
+  #
+  # The API needs a key: ZAP_API_KEY, a random value generated per run (the workflow does
+  # `openssl rand -hex 32`) and handed to the Playwright spec in the same variable. Anything that
+  # can reach the port — another container on the runner, a local process — could otherwise drive
+  # ZAP's API (read every captured request, including the session cookies, or make ZAP fetch
+  # arbitrary URLs). The daemon refuses to start without one. `api.addrs` admits IPv4 loopback and
+  # the private ranges only (ZAP full-matches the regex; IPv6 `::1` is not admitted, hence the
+  # healthcheck's 127.0.0.1): the runner arrives from the Docker bridge gateway.
+  zap-proxy:
+    image: zaproxy/zap-stable:2.17.0@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef
+    profiles: ["zap-proxy"]
+    network_mode: service:app
+    environment:
+      ZAP_API_KEY: ${ZAP_API_KEY:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        test "$${#ZAP_API_KEY}" -ge 32 ||
+        { echo "zap-proxy: set ZAP_API_KEY to a random value of 32+ characters (openssl rand -hex 32)" >&2; exit 64; };
+        exec zap.sh -daemon -host 0.0.0.0 -port 8090
+        -config api.key="$$ZAP_API_KEY"
+        -config api.disablekey=false
+        -config api.nokeyforsafeops=false
+        -config 'api.addrs.addr.name=(127\..*|10\..*|172\.(1[6-9]|2[0-9]|3[01])\..*|192\.168\..*)'
+        -config api.addrs.addr.regex=true
+    volumes:
+      - ../../.zap:/zap/wrk:rw
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -H \"X-ZAP-API-Key: $$ZAP_API_KEY\" http://127.0.0.1:8090/JSON/core/view/version/"]
+      interval: 5s
+      timeout: 5s
+      start_period: 60s
+      retries: 30
+    depends_on:
+      app:
+        condition: service_healthy

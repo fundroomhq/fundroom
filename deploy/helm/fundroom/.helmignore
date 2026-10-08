@@ -1,0 +1,8 @@
+# Not packaged into the chart archive.
+ci/
+.DS_Store
+*.tgz
+*.orig
+*.swp
+*~
+.git/

@@ -1,0 +1,31 @@
+{
+  "name": "@fundroom/dns-doh",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DnsResolverPort over the JSON DNS-over-HTTPS API of IP-literal endpoints (1.1.1.1, 8.8.8.8), with a two-resolver quorum for any positive answer",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

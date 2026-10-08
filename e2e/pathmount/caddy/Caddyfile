@@ -1,0 +1,30 @@
+# caddy.test — the customer's site, with the Caddy recipe imported verbatim.
+#
+# Harness wrapping only. In production the site address would be `www.acme.com` and Caddy would
+# terminate TLS itself; here the edge (e2e/pathmount/edge/Caddyfile) terminates TLS in front of
+# it, so the site listens on plain http and trusts the edge's X-Forwarded-Proto (`https`), which
+# the recipe's reverse_proxy then passes on. `SSL_CERT_FILE` (compose.pathmount.yaml) points Go's
+# root pool at the edge's internal CA, so the recipe's hop to https://portal.test is verified.
+{
+	admin :2019
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+http://caddy.test {
+	# The recipe under test, byte for byte what the docs publish.
+	import seed-host-mount.caddy
+
+	# The marketing page. It sets a cookie on Path=/ so the spec can see what the recipe forwards.
+	handle / {
+		header Set-Cookie "host_session=caddy-secret; Path=/; Secure; HttpOnly; SameSite=Lax"
+		header Cache-Control "no-store"
+		header Content-Type "text/html; charset=utf-8"
+		respond `<!doctype html><html lang="en"><title>Acme (Caddy)</title><h1>Acme, served by Caddy</h1><p><a href="/portal/">Investor portal</a></p></html>` 200
+	}
+
+	handle {
+		respond 404
+	}
+}

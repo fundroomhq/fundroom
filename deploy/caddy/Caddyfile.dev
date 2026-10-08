@@ -1,0 +1,29 @@
+# Local dev (compose.dev.yaml): https://fundroom.localhost and https://<slug>.fundroom.localhost
+# with Caddy's internal CA, proxied to the server you run on the host (`pnpm dev`, :3000).
+# `*.localhost` resolves to 127.0.0.1 in every modern browser, no /etc/hosts edits needed.
+# Set BASE_URL=https://fundroom.localhost and TRUST_PROXY=true in your .env to use it
+# (TENANCY_MODE=multi makes the slug subdomains resolve workspaces).
+
+{
+	local_certs
+	auto_https disable_redirects
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+fundroom.localhost, *.fundroom.localhost {
+	tls internal
+
+	# Same reasoning as deploy/caddy/Caddyfile: `/internal/*` is the edge's own control surface,
+	# and `ask` is a database lookup keyed on a hostname the caller supplies. This file binds
+	# 0.0.0.0:80/443, so on a dev machine it is reachable from the LAN and not only from loopback.
+	# With BASE_PATH set, export FUNDROOM_BASE_PATH to the same value (the app serves its ops
+	# routes under it; SEEDHOST_BASE_PATH, the pre-rename name, is honoured too); unset, every
+	# token is `/internal/*`.
+	@internal path /internal/* {$FUNDROOM_BASE_PATH}/internal/* {$SEEDHOST_BASE_PATH}/internal/*
+	error @internal 404
+
+	encode zstd gzip
+	reverse_proxy host.docker.internal:3000
+}

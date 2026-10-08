@@ -1,0 +1,34 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      dev-tooling:
+        patterns: ["@biomejs/*", "turbo", "typescript", "vitest", "@vitest/*", "lefthook", "@changesets/*", "@commitlint/*", "tsx", "@types/*"]
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    labels: ["deps", "no-changeset"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["ci", "no-changeset"]
+  - package-ecosystem: docker
+    directory: /deploy/docker
+    schedule:
+      interval: weekly
+    labels: ["deploy", "no-changeset"]
+  # Pinned third-party images in the Compose stack (postgres, caddy, seaweedfs, clamav …). The
+  # FundRoom image itself is `:latest`/FUNDROOM_IMAGE there and is not bumped by this. The Helm
+  # chart has no chart dependencies and defaults its image to appVersion, so the `helm`
+  # ecosystem would have nothing to update; add it if the chart gains a dependency.
+  - package-ecosystem: docker-compose
+    directory: /deploy/compose
+    schedule:
+      interval: weekly
+    labels: ["deploy", "no-changeset"]

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "0c5f8b3a-1111-4a2b-8c3d-4e5f6a7b8c9d",
+    "authEventId": "11111111-aaaa-4bbb-8ccc-000000000001",
+    "tenantId": "6b3e2a1d-2222-4c5d-9e6f-7a8b9c0d1e2f",
+    "tenantType": "ORGANISATION",
+    "tenantName": "Older Org Pty",
+    "createdDateUtc": "2025-11-01T10:00:00.0000000",
+    "updatedDateUtc": "2025-11-01T10:00:00.0000000"
+  },
+  {
+    "id": "1d6f9c4b-3333-4b3c-9d4e-5f6a7b8c9d0e",
+    "authEventId": "22222222-bbbb-4ccc-8ddd-000000000002",
+    "tenantId": "4f2d7b1e-6a3c-4e8d-9b0a-1c2d3e4f5a6b",
+    "tenantType": "ORGANISATION",
+    "tenantName": "Acme Robotics Ltd",
+    "createdDateUtc": "2026-04-15T12:00:00.0000000",
+    "updatedDateUtc": "2026-04-15T12:00:00.0000000"
+  },
+  {
+    "id": "2e7a0d5c-4444-4c4d-8e5f-6a7b8c9d0e1f",
+    "authEventId": "22222222-bbbb-4ccc-8ddd-000000000002",
+    "tenantId": "9a8b7c6d-5555-4e4f-8a9b-0c1d2e3f4a5b",
+    "tenantType": "PRACTICEMANAGER",
+    "tenantName": "Practice",
+    "createdDateUtc": "2026-04-15T12:00:00.0000000",
+    "updatedDateUtc": "2026-04-15T12:00:00.0000000"
+  }
+]

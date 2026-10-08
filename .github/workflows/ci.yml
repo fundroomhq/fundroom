@@ -1,0 +1,490 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+  CI: "true"
+
+jobs:
+  static:
+    name: Lint & typecheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - name: Biome
+        run: pnpm exec biome ci --reporter=github .
+      - name: TypeScript (project references)
+        run: pnpm typecheck
+      - name: Layering rules (dependency-cruiser)
+        # After typecheck: workspace packages resolve through their emitted dist/.
+        run: pnpm lint:deps
+      - name: Generated files are current (tokens.css, routeTree.gen.ts, embed artifacts)
+        # The embed loader's bundle is committed as a generated module so the server can serve it
+        # from memory. A generated artifact nobody regenerates is a lie that
+        # compiles, so the diff is a gate rather than a convention. tokens.css is published as
+        # @fundroomhq/tokens and ui keeps a copy of its DTCG source.
+        run: |
+          pnpm --filter @fundroomhq/tokens codegen:check
+          pnpm --filter @fundroomhq/ui codegen:check
+          pnpm --filter @fundroom/embed codegen:check
+          git diff --exit-code -- apps/web/src/routeTree.gen.ts packages/tokens/tokens.css packages/ui/src/theme/default-tokens.json packages/embed/src/generated/artifacts.ts
+      - name: Webhook topic table is current (docs/api/webhooks.md)
+        # After typecheck: the script reads the built registry and event catalogue from dist/.
+        run: node scripts/render-webhook-topics.mjs --check && node --test scripts/render-webhook-topics.test.mjs
+      - name: SQL hygiene (no session-level SET)
+        run: pnpm lint:sql && node --test scripts/check-sql-hygiene.test.mjs scripts/evidence/change-management.test.mjs
+      - name: i18n (catalogue parity, pseudo-locale drift, unused keys, no JSX literals)
+        run: pnpm lint:i18n
+      - name: Edge config is valid (Caddyfile, unset env)
+        # Only FUNDROOM_DOMAIN is passed, exactly as compose defaults it: every optional
+        # placeholder stays unset, which is the case that breaks. Caddy substitutes an empty
+        # string for an unset `{$VAR}` and an argument that becomes empty disappears, so an
+        # unquoted optional placeholder fails to parse ("wrong argument count") and the edge
+        # never starts. `validate` provisions the config, so it also catches a bad issuer.
+        #
+        # A second pass sets FUNDROOM_BASE_PATH: the ask URL and the internal/metrics
+        # matchers embed it inside a token, and that has to parse both empty and set. The two
+        # path-mount e2e Caddyfiles follow — the edge, and the Caddy host recipe, which `import`s
+        # the documented snippet and so is validated from its directory rather than from stdin.
+        run: |
+          for f in deploy/caddy/Caddyfile deploy/caddy/Caddyfile.dev; do
+            for base in "" /investors; do
+              echo "::group::$f (FUNDROOM_BASE_PATH='$base')"
+              docker run --rm -i -e FUNDROOM_DOMAIN=localhost -e FUNDROOM_BASE_PATH="$base" caddy:2-alpine \
+                caddy validate --adapter caddyfile --config - < "$f"
+              echo "::endgroup::"
+            done
+          done
+          # A-2: an edge that still sets only the pre-rename names (SEEDHOST_DOMAIN,
+          # SEEDHOST_BASE_PATH) must parse AND keep the ask URL, health check and every refusal
+          # under its prefix; both base-path names set must refuse to start (doubled prefix).
+          echo "::group::deploy/caddy/Caddyfile (pre-rename SEEDHOST_* names only)"
+          docker run --rm -i -e SEEDHOST_DOMAIN=localhost -e SEEDHOST_BASE_PATH=/investors caddy:2-alpine \
+            caddy validate --adapter caddyfile --config - < deploy/caddy/Caddyfile
+          docker run --rm -i -e SEEDHOST_DOMAIN=localhost -e SEEDHOST_BASE_PATH=/investors caddy:2-alpine \
+            caddy adapt --adapter caddyfile --config - < deploy/caddy/Caddyfile > "$RUNNER_TEMP/caddy-legacy.json"
+          for want in '"http://app:3000/investors/internal/tls/ask"' '"/investors/internal/*"' \
+            '"/investors/metrics"' '"/investors/metrics/"' '"/investors/healthz"' '"localhost"'; do
+            grep -qF "$want" "$RUNNER_TEMP/caddy-legacy.json" || { echo "missing $want"; exit 1; }
+          done
+          if docker run --rm -i -e FUNDROOM_DOMAIN=localhost -e FUNDROOM_BASE_PATH=/investors \
+            -e SEEDHOST_BASE_PATH=/investors caddy:2-alpine \
+            caddy validate --adapter caddyfile --config - < deploy/caddy/Caddyfile; then
+            echo "both FUNDROOM_BASE_PATH and SEEDHOST_BASE_PATH set must refuse to start"; exit 1
+          fi
+          echo "::endgroup::"
+          echo "::group::e2e/pathmount/edge/Caddyfile"
+          docker run --rm -i caddy:2-alpine caddy validate --adapter caddyfile --config - < e2e/pathmount/edge/Caddyfile
+          echo "::endgroup::"
+          echo "::group::e2e/pathmount/caddy/Caddyfile (+ seed-host-mount.caddy)"
+          docker run --rm -v "$PWD/e2e/pathmount/caddy:/etc/caddy:ro" caddy:2-alpine \
+            caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile
+          echo "::endgroup::"
+      - name: Compose stacks resolve (every profile, every overlay, both Coolify variants)
+        # compose.local.yaml and compose.ci.yaml are standalone stacks, not overlays.
+        env:
+          S3_BUCKET: b
+          S3_ACCESS_KEY_ID: a
+          S3_SECRET_ACCESS_KEY: s
+          POSTGRES_PASSWORD: ci
+        run: |
+          docker compose -f deploy/compose/compose.yaml --profile worker --profile objstore --profile av --profile convert --profile search --profile backup config -q
+          for o in s3 acme hosts pathmount; do docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.$o.yaml config -q; done
+          docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.backup.yaml --profile backup --profile restore config -q
+          # Coolify: strip the Coolify-only key and give the `:?` prompts dummy values.
+          for f in compose.coolify.yaml compose.coolify-caddy.yaml; do
+            sed '/exclude_from_hc:/d' "deploy/coolify/$f" | BASE_URL=https://p.example MAIL_FROM=a@b.co SMTP_URL=smtp://x FUNDROOM_DOMAIN=x.example docker compose --project-directory deploy/coolify -f - config -q
+          done
+      - name: PaaS templates are current (Render, Railway, Fly, Coolify)
+        # One source (deploy/platforms/source.mjs) renders every template so env names cannot drift.
+        run: pnpm gen:deploy:check && node --test scripts/render-deploy-templates.test.mjs && node --test scripts/release/release-version.test.mjs scripts/release/check-changesets.test.mjs scripts/release/pack-check.test.mjs scripts/release/publish-packages.test.mjs && node scripts/release/check-changesets.mjs
+      - name: npm packages pack, keep their contract, and install (@fundroomhq/tokens, @fundroomhq/ui)
+        # Packs both as the release would, checks the tarball contract fundroom-web's
+        # sync-tokens relies on and ui's file list, then builds a Vite + Tailwind v4 + React 19
+        # consumer from the two tarballs. Only these two packages may be public.
+        run: pnpm packages:pack-check
+      - name: Changeset present
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changeset')
+        run: pnpm exec changeset status --since=origin/${{ github.base_ref }}
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      - run: pnpm coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-results
+          path: |
+            coverage/lcov.info
+            test-results/junit.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+  integration:
+    name: Integration tests (Testcontainers)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # Pre-pull so the first test doesn't eat its timeout on image download.
+      TESTCONTAINERS_RYUK_DISABLED: "false"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - name: Pre-pull test images (Postgres 18, Mailpit, SeaweedFS)
+        run: |
+          docker pull postgres:18-alpine
+          docker pull axllent/mailpit:v1.31.1
+          docker pull chrislusf/seaweedfs:3.97
+      - run: pnpm build
+      - run: pnpm test:integration
+
+  contract:
+    name: API contract (oasdiff, Schemathesis)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: seedhost
+          POSTGRES_PASSWORD: seedhost
+          POSTGRES_DB: seedhost
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U seedhost" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: test
+      BASE_URL: http://127.0.0.1:3000
+      DATABASE_URL: postgres://seedhost:seedhost@localhost:5432/seedhost
+      FUNDROOM_SECRET_KEY: Y2ktb25seS1rZXktbm90LWEtc2VjcmV0LTAwMDAwMDAwMDA=
+      STORAGE_FS_PATH: /tmp/fundroom-storage
+      LOG_LEVEL: warn
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      - name: Committed OpenAPI document is current
+        run: pnpm --filter @fundroom/server openapi:check
+      - name: Generate OpenAPI from code
+        run: pnpm --filter @fundroom/server openapi --out "$GITHUB_WORKSPACE/openapi.head.json"
+      - name: Generate OpenAPI from base branch
+        if: github.event_name == 'pull_request'
+        run: |
+          git worktree add ../base origin/${{ github.base_ref }}
+          if [ -f ../base/apps/server/package.json ]; then
+            (cd ../base && pnpm install --frozen-lockfile && pnpm build && pnpm --filter ./apps/server --fail-if-no-match openapi --out "$GITHUB_WORKSPACE/openapi.base.json")
+          else
+            cp "$GITHUB_WORKSPACE/openapi.head.json" "$GITHUB_WORKSPACE/openapi.base.json"
+          fi
+      - name: Breaking-change check
+        if: github.event_name == 'pull_request'
+        uses: oasdiff/oasdiff-action/breaking@v0.0.21
+        with:
+          base: openapi.base.json
+          revision: openapi.head.json
+          fail-on: ${{ contains(github.event.pull_request.labels.*.name, 'api-major') && 'NONE' || 'ERR' }}
+      - name: Schemathesis
+        run: |
+          pnpm --filter @fundroom/server start:ci &
+          npx --yes wait-on http://127.0.0.1:3000/healthz
+          pipx run schemathesis run openapi.head.json --url http://127.0.0.1:3000/api/v1 --checks all --max-examples 50 --exclude-checks ignored_auth
+
+  migrations:
+    name: Migrations (Squawk, up-from-empty, up-from-previous)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: seedhost
+          POSTGRES_PASSWORD: seedhost
+          POSTGRES_DB: seedhost
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U seedhost" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://seedhost:seedhost@localhost:5432/seedhost
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Squawk on new/changed SQL
+        uses: sbdchd/squawk-action@v2
+        with:
+          pattern: "**/migrations/*.sql"
+          version: latest
+      - run: pnpm build
+      - name: Migrate up on an empty database
+        run: pnpm --filter @fundroom/db migrate
+      - name: Migrate up from the previous release's schema
+        run: |
+          prev=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$prev" ]; then echo "no previous tag; skipping"; exit 0; fi
+          psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+          git worktree add ../prev "$prev"
+          (cd ../prev && pnpm install --frozen-lockfile && pnpm build && pnpm --filter ./packages/db --fail-if-no-match migrate)
+          pnpm --filter @fundroom/db migrate
+      - name: RLS catalog test
+        run: pnpm --filter @fundroom/db test:rls
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # Required on main; on PRs only with the `e2e` label. (The old `hashFiles(...)` "enabled once
+    # X exists" guards were removed: `hashFiles` is not available in a job-level `if`, so
+    # GitHub rejects the whole workflow — actionlint now runs clean.)
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'e2e')
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      - name: Boot Compose CI stack
+        run: docker compose -f deploy/compose/compose.ci.yaml up -d --wait
+      - run: pnpm --filter @fundroom/e2e exec playwright install --with-deps chromium
+      # `@a11y` specs run in their own job on every PR (below); leaving them out here keeps a
+      # labelled PR from running them twice. `00-setup` still runs here (it is `@setup`).
+      - run: pnpm --filter @fundroom/e2e test --grep-invert @a11y
+      # Custom domains run on a second stack rather than this one: compose.acme.yaml sets
+      # TENANCY_MODE=multi — nothing else lets a Host header that is not the canonical one
+      # resolve a workspace — and adds a local Pebble ACME CA and a fake authoritative zone,
+      # while `00-setup` asserts the install is single-tenant. The image is already built, so
+      # this is four small containers and about ten seconds.
+      #
+      # `!cancelled()` rather than the default: the two stacks are independent, and skipping the
+      # custom-domain coverage because something failed in the wizard suite would hide a second,
+      # unrelated regression. A failure in either step still fails the job.
+      - name: Swap to the custom-domain stack (local ACME CA + fake DNS)
+        if: ${{ !cancelled() }}
+        run: |
+          docker compose -f deploy/compose/compose.ci.yaml down -v
+          docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.acme.yaml up -d --wait
+      - name: E2E custom domains (Pebble ACME + Caddy on-demand TLS)
+        if: ${{ !cancelled() }}
+        run: pnpm --filter @fundroom/e2e test:acme
+      # Embed hosts need a third stack, for a reason no flag can paper over: cookie
+      # partitioning is keyed on the *site*, so two ports on localhost prove nothing and the
+      # harness needs genuinely distinct hostnames (portal.test, host-a.test, host-b.test) over
+      # https, since `Secure; SameSite=None; Partitioned` is unavailable off a secure context.
+      # Caddy's internal CA supplies that; the browser resolves the names itself, so nothing
+      # writes to /etc/hosts. Ports 443/80 are free on the runner and Docker binds them as root.
+      - name: Swap to the embed-hosts stack (nginx host sites behind Caddy)
+        if: ${{ !cancelled() }}
+        run: |
+          docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.acme.yaml down -v
+          docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.hosts.yaml up -d --wait
+      - name: E2E embed hosts (Chromium)
+        if: ${{ !cancelled() }}
+        run: |
+          pnpm --filter @fundroom/e2e exec playwright install --with-deps firefox
+          pnpm --filter @fundroom/e2e test:hosts
+      # Firefox gets a fresh stack because the spec drives a first-run install and its first
+      # assertion is that setup has not happened yet. It is the second engine that matters here:
+      # Firefox partitions third-party cookies by default, so it is the closest thing in CI to
+      # the behaviour Safari ships — see e2e/hosts/README.md for the real-Safari gap.
+      - name: E2E embed hosts (Firefox, on a fresh stack)
+        if: ${{ !cancelled() }}
+        run: |
+          docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.hosts.yaml down -v
+          docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.hosts.yaml up -d --wait
+          pnpm --filter @fundroom/e2e test:hosts:firefox
+      # Path mounts need a fourth stack: the portal under BASE_PATH=/investors behind five
+      # real reverse proxies (nginx, Caddy, workerd, Next.js, WordPress), each running the recipe
+      # the docs publish from e2e/pathmount/. `build worker next` builds the two host images
+      # (workerd, the Next.js app) and nothing else: the portal image is already built. Chromium
+      # only; see playwright.config.ts `pathmountBrowsers`.
+      - name: Swap to the path-mount stack (five host proxies behind a Caddy edge)
+        if: ${{ !cancelled() }}
+        run: |
+          docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.hosts.yaml down -v
+          docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.pathmount.yaml build worker next
+          docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.pathmount.yaml up -d --wait
+      - name: E2E path mounts (Chromium)
+        if: ${{ !cancelled() }}
+        run: pnpm --filter @fundroom/e2e test:pathmount
+      - name: Path-mount stack logs on failure
+        if: failure()
+        run: docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.pathmount.yaml logs --tail 200 app edge nginx hostcaddy worker next wordpress wpcli
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: e2e/test-results
+          retention-days: 7
+
+  a11y:
+    name: Accessibility (Playwright axe)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Every pull request, not only labelled ones: real-browser
+    # axe (WCAG 2.2 AA, colour contrast included) on the key pages and the viewer's keyboard map.
+    # `@setup` is the first-run wizard every later spec depends on; `@a11y` is 30-a11y; `@csp` is
+    # 40-csp: zero enforced CSP and Trusted Types report-only violations on the key screens.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      - name: Boot Compose CI stack
+        run: docker compose -f deploy/compose/compose.ci.yaml up -d --wait
+      - run: pnpm --filter @fundroom/e2e exec playwright install --with-deps chromium
+      - run: pnpm --filter @fundroom/e2e exec playwright test --project=chromium --grep "@setup|@a11y|@csp"
+      - name: App logs on failure
+        if: failure()
+        run: docker compose -f deploy/compose/compose.ci.yaml logs app --tail 300
+      # The HTML report carries every page's axe result as an attachment (pass or fail), so it
+      # is uploaded always, not only on failure.
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: a11y-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 14
+
+  design-system:
+    name: Design system (Storybook build, axe stories)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @fundroomhq/ui... build
+      - name: Storybook builds (stories carry the a11y addon in `error` mode)
+        run: pnpm --filter @fundroomhq/ui storybook:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: storybook
+          path: packages/ui/storybook-static
+          retention-days: 7
+
+  wordpress:
+    name: WordPress plugin (WPCS, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - uses: shivammathur/setup-php@v2
+        with:
+          # The floor declared in the plugin header and readme.txt, so the lint runs on the oldest
+          # runtime we claim to support rather than on whatever the runner happens to ship.
+          php-version: "8.1"
+          extensions: sodium, json
+          coverage: none
+          tools: composer:v2, cs2pr
+      - name: PHP syntax (minimum supported version)
+        run: find plugins/wordpress -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
+      - name: Install PHPCS + WPCS
+        working-directory: plugins/wordpress
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: PHPCS (WordPress Coding Standards)
+        working-directory: plugins/wordpress
+        run: vendor/bin/phpcs -q --report=checkstyle | cs2pr
+      - name: Plugin unit tests (proxy mode, settings)
+        working-directory: plugins/wordpress
+        run: composer test
+      # The zip must build from a clean checkout, and the build fails loudly when the loader is
+      # missing: that locally bundled copy is the wp.org guideline 8 guarantee, so it is
+      # a gate and not a convenience.
+      - run: pnpm --filter @fundroom/embed build
+      - run: node scripts/build-wordpress-plugin.mjs
+      - name: The committed version header matches readme.txt's Stable tag
+        # The build stamps it; a diff here means someone bumped one and not the other.
+        run: git diff --exit-code -- plugins/wordpress/seed-host.php
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wordpress-plugin
+          path: plugins/wordpress/dist/seed-host.zip
+          retention-days: 7
+
+  helm:
+    name: Helm chart (lint, template, kubeconform, Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - name: Lint and render every fixture
+        run: |
+          mkdir -p rendered
+          for f in deploy/helm/fundroom/ci/*-values.yaml; do
+            n=$(basename "$f" -values.yaml)
+            helm lint deploy/helm/fundroom --strict -f "$f"
+            helm template ci deploy/helm/fundroom -n ci -f "$f" > "rendered/$n.yaml"
+          done
+          helm template ci deploy/helm/fundroom -n ci -f deploy/helm/fundroom/ci/cnpg-values.yaml --is-upgrade > rendered/cnpg-upgrade.yaml
+      - name: Required values fail the render with a message
+        # `! cmd && grep` would not fail the step under `set -e`, so each case is an explicit `if`.
+        run: |
+          expect_fail() {
+            local pattern="$1"; shift
+            if helm template ci deploy/helm/fundroom "$@" 2> err.txt > /dev/null; then
+              echo "render unexpectedly succeeded: $*"; exit 1
+            fi
+            grep -q "$pattern" err.txt || { cat err.txt; exit 1; }
+          }
+          expect_fail 'config.baseUrl is required'
+          expect_fail 'storage.driver=fs' -f deploy/helm/fundroom/ci/fs-values.yaml --set server.replicaCount=2
+          expect_fail 'master key is required' -f deploy/helm/fundroom/ci/external-values.yaml --set secrets.secretKey=
+          expect_fail 'config.extra.SMTP_URL is a secret' -f deploy/helm/fundroom/ci/external-values.yaml --set config.extra.SMTP_URL=smtp://u:p@smtp.example.com:587
+          expect_fail 'config.extra.WORKER_CONCURRENCY is set by the chart' -f deploy/helm/fundroom/ci/external-values.yaml --set-string config.extra.WORKER_CONCURRENCY=8
+          expect_fail 'secrets.extra.ROLES is set by the chart' -f deploy/helm/fundroom/ci/external-values.yaml --set secrets.extra.ROLES=worker
+          expect_fail 'refuses unscanned uploads' -f deploy/helm/fundroom/ci/external-values.yaml --set config.av.acceptUnscanned=false
+          expect_fail 'add sslmode=verify-full&sslrootcert' -f deploy/helm/fundroom/ci/external-ca-values.yaml --set postgresql.external.url=postgres://u:p@db.example.com/x?sslmode=verify-full
+      - name: kubeconform (1.27 and current, CNPG CRDs from the datreeio catalog)
+        run: |
+          for v in 1.27.0 1.34.0; do
+            docker run --rm -v "$PWD/rendered:/r:ro" ghcr.io/yannh/kubeconform:v0.7.0 \
+              -strict -summary -kubernetes-version "$v" \
+              -schema-location default \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' /r
+          done
+      - name: Trivy config on the rendered manifests
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: config
+          scan-ref: rendered
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          trivyignores: .trivyignore
+
+  # Single required status for branch protection; add jobs here as they turn on.
+  ci-ok:
+    name: CI OK
+    runs-on: ubuntu-24.04
+    needs: [static, unit, integration, contract, migrations, e2e, a11y, design-system, wordpress, helm]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          echo '${{ toJSON(needs) }}' | jq -e 'to_entries | all(.value.result == "success" or .value.result == "skipped")'

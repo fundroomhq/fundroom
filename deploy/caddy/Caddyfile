@@ -1,0 +1,139 @@
+# Caddy in front of the Compose stack.
+#
+# - The primary domain (FUNDROOM_DOMAIN) gets an automatic Let's Encrypt / ZeroSSL certificate.
+# - Every other hostname is served only if the app's `ask` endpoint says so (on-demand TLS):
+#   a workspace's custom domain answers 200 once the app has verified its DNS (status
+#   `dns_ok` or `active`), so a stray CNAME cannot make Caddy request certificates. Caddy's own
+#   throttles stay in place.
+# - The app sees X-Forwarded-* (TRUST_PROXY=true in compose.yaml).
+#
+# Env: FUNDROOM_DOMAIN, ACME_EMAIL, ACME_CA, EDGE_EXPOSE_METRICS, EDGE_TRUSTED_PROXIES,
+# FUNDROOM_BASE_PATH. Optional placeholders are quoted, because an unset
+# variable expands to *no argument at all* rather than to an empty one: bare `email {$ACME_EMAIL}`
+# is a parse error ("wrong argument count") on a stack that never set ACME_EMAIL, which takes the
+# whole edge down. Quoted, Caddy reads an empty string and omits the field. FUNDROOM_BASE_PATH is
+# never an argument of its own: it is glued to the front of a path token (`{$FUNDROOM_BASE_PATH}/internal/*`),
+# so unset it leaves the plain path, and set it prefixes it.
+#
+# FUNDROOM_BASE_PATH must equal the app's BASE_PATH (path-mount mode), e.g.
+# `/investors`; leave it unset for BASE_PATH="". `fundroom doctor` reminds you when BASE_PATH is set.
+#
+# Renamed variables (A-2): FUNDROOM_DOMAIN and FUNDROOM_BASE_PATH were SEEDHOST_DOMAIN and
+# SEEDHOST_BASE_PATH. An edge that still sets an old name keeps working: the site address lists
+# both domain variables (an unset one adds no address), the refusals below match the bare path
+# and BOTH prefixes, and the ask URL / health check glue both base-path variables on (one of
+# them is empty). Setting both base-path variables would double the prefix there, so Caddy
+# refuses to start on it instead (the `@base_path_set_twice` line): rename, don't add.
+
+{
+	email "{$ACME_EMAIL}"
+
+	# The default issuer chain, written out so that ACME_CA can replace the primary CA: the e2e
+	# suite points it at a local Pebble (`ACME_CA=https://pebble:14000/dir`) instead of asking
+	# Let's Encrypt for a certificate from CI. These two lines are exactly what Caddy picks on its
+	# own — LE first, ZeroSSL as the rate-limit fallback — so an unset ACME_CA changes nothing.
+	# (The global `acme_ca` option cannot be used here: setting it collapses the chain to a single
+	# issuer, silently dropping the ZeroSSL fallback that covers Let's Encrypt rate-limit days.)
+	#
+	# A test CA serves its ACME directory under a self-signed root. Trust it with ACME_CA_ROOT in
+	# the compose env, which reaches this container as SSL_CERT_FILE: Go's crypto/x509 ignores that
+	# variable when it is empty, so there is nothing to undo in production — whereas Caddy's own
+	# `acme_ca_root` fails to provision on an empty value ("loading trusted root CA's PEM file").
+	cert_issuer acme {$ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
+	cert_issuer acme https://acme.zerossl.com/v2/DV90
+
+	on_demand_tls {
+		# Caddy dials the app directly over the Compose network for this check, so it does not
+		# pass through the site blocks below and the `/internal/*` refusal there cannot break
+		# certificate issuance.
+		#
+		# The app strips BASE_PATH before it matches its ops routes, so with BASE_PATH=/x the
+		# endpoint is really at `/x/internal/tls/ask`: FUNDROOM_BASE_PATH carries that prefix here
+		# and in the `@internal` refusal below. Leave one of them unprefixed and either this ask
+		# 404s (no custom domain could ever get a certificate) or the refusal stops matching (a
+		# domain-enumeration oracle back on the public internet).
+		# (SEEDHOST_BASE_PATH is the pre-rename name; at most one of the two is set, see the top.)
+		ask http://app:3000{$FUNDROOM_BASE_PATH}{$SEEDHOST_BASE_PATH}/internal/tls/ask
+	}
+	servers {
+		# Whose X-Forwarded-For/-Proto/-Host Caddy keeps (review R2-08). For everyone else Caddy
+		# replaces them with what it saw, which is what TRUST_PROXY_HOPS=1 in compose.yaml relies
+		# on. The default trusts only loopback — in practice nobody, because clients reach this
+		# container from outside it. `private_ranges` is NOT a safe default: behind Docker
+		# Desktop, rootless Docker or docker-proxy (IPv6 clients on an IPv4 bridge) every client
+		# arrives from a private gateway address, and would then choose its own client IP,
+		# scheme and host. Set EDGE_TRUSTED_PROXIES (space-separated CIDRs, or `private_ranges`)
+		# only for a CDN or load balancer in front of Caddy, and raise TRUST_PROXY_HOPS with it.
+		trusted_proxies static {$EDGE_TRUSTED_PROXIES:127.0.0.1/32 ::1/128}
+	}
+}
+
+(fundroom) {
+	# A-2 guard, never used as a matcher: it only parses with at most one of FUNDROOM_BASE_PATH /
+	# SEEDHOST_BASE_PATH set (each set one adds an argument; header_regexp takes at most three).
+	# "wrong argument count … at this line" means both are set: keep FUNDROOM_BASE_PATH only.
+	@base_path_set_twice header_regexp X-Fundroom-Unused ^$ {$FUNDROOM_BASE_PATH} {$SEEDHOST_BASE_PATH}
+
+	# `/internal/*` is the edge's own control surface, not a tenant's. `ask` takes an
+	# attacker-controlled `?domain=` and answers it from an indexed lookup over
+	# `core.custom_domain`: reachable from the internet it is a domain-enumeration oracle (a 200
+	# says "this hostname is hosted here and already claimed") and an unauthenticated way to put
+	# database load on the TLS handshake path — the exact DoS that on-demand TLS is supposed to
+	# avoid. The app rate-limits the route as well; this is the half that means no stranger ever
+	# gets to spend a connection on it.
+	#
+	# This refusal beats `reverse_proxy` wherever it is written: the Caddyfile adapter sorts
+	# handlers into its own directive order, in which `error` precedes `reverse_proxy`, and the
+	# first matching terminal handler in the subroute answers. Confirmed with `caddy adapt` — the
+	# 404 route is emitted ahead of the proxy route in both site blocks below.
+	#
+	# The app serves its ops routes under BASE_PATH, so the refusal covers `<base>/internal/*`
+	# (FUNDROOM_BASE_PATH, or its pre-rename name SEEDHOST_BASE_PATH) as well as the bare path;
+	# unset, every token is `/internal/*`.
+	@internal path /internal/* {$FUNDROOM_BASE_PATH}/internal/* {$SEEDHOST_BASE_PATH}/internal/*
+	error @internal 404
+
+	# `/metrics` lists every route template and status the app has served. The app
+	# only serves it with METRICS_TOKEN in prod, but a scraper belongs on the Compose network
+	# (`http://app:3000/metrics`), not on the internet, so the edge refuses it as well. To scrape
+	# through the edge instead (a hosted Prometheus), set EDGE_EXPOSE_METRICS=true on the caddy
+	# service; the app still requires `Authorization: Bearer <METRICS_TOKEN>`.
+	# The placeholder is inside a CEL string literal, so an unset variable yields '' (refuse),
+	# never a missing argument.
+	@metrics {
+		path /metrics /metrics/ {$FUNDROOM_BASE_PATH}/metrics {$FUNDROOM_BASE_PATH}/metrics/ {$SEEDHOST_BASE_PATH}/metrics {$SEEDHOST_BASE_PATH}/metrics/
+		expression `'{$EDGE_EXPOSE_METRICS}' != 'true'`
+	}
+	error @metrics 404
+
+	encode zstd gzip
+	reverse_proxy app:3000 {
+		# Zero-downtime upgrades: keep retrying while `app` is being replaced.
+		lb_try_duration 30s
+		lb_try_interval 500ms
+		# `/healthz`, not `/readyz`, on purpose. `/healthz` answers 503 while the
+		# app drains, which is what makes the rolling restart above seamless; `/readyz` runs the
+		# dependency probes. With the one app upstream this stack ships, pulling it from the pool
+		# on a Postgres or SMTP blip replaces the app's own 503 — which carries a body naming the
+		# failing check — with a bare Caddy 502, and puts a database ping plus a queue `stats()`
+		# on a 10-second timer from the proxy. The font guard `/readyz` used to be the only
+		# consumer of is now asserted at boot, so nothing is lost by leaving this alone.
+		# Under BASE_PATH like every ops route (FUNDROOM_BASE_PATH glued on, so unset it is `/healthz`):
+		# unprefixed, the check 404s with BASE_PATH set and the edge answers 503 to everything.
+		health_uri {$FUNDROOM_BASE_PATH}{$SEEDHOST_BASE_PATH}/healthz
+		health_interval 10s
+	}
+}
+
+# SEEDHOST_DOMAIN: the pre-rename name (A-2); unset, it adds no address.
+{$FUNDROOM_DOMAIN} {$SEEDHOST_DOMAIN} {
+	import fundroom
+}
+
+# Custom domains (verified by the app before Caddy is allowed to issue a certificate).
+https:// {
+	tls {
+		on_demand
+	}
+	import fundroom
+}

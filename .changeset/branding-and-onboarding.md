@@ -1,0 +1,33 @@
+---
+"@fundroom/branding": minor
+"@fundroom/domain": minor
+"@fundroom/contracts": minor
+"@fundroom/mail": minor
+"@fundroom/ports": minor
+"@fundroom/identity": minor
+"@fundroom/audit": minor
+"@fundroom/authz": minor
+"@fundroom/storage": minor
+"@fundroom/sdk": minor
+"@fundroom/server": minor
+"@fundroom/web": minor
+"@fundroom/module-data-room": minor
+"@fundroom/module-notify": minor
+"@fundroom/module-updates": minor
+---
+
+Branding basics and onboarding.
+
+A workspace now has a brand, and it stores a deliberately small one: an accent colour, a font choice from bundled stacks, a corner radius, a logo, a display name, a tagline, a support address and an attribution flag, all in a new `branding` block of `core.workspace.settings` (no migration, exactly as E1.6's `legal` block). Everything the portal actually renders is **derived** from that by the new dependency-free `@fundroom/branding`, and the derived `--sh-*` tokens are returned read-only. The DTCG theme document is now an output (`GET /branding/theme`, the shape E2.2 will serve at `/embed/<ws>/theme.json`), not the thing a tenant edits. A stored token map would have been unmigratable the next time the design system gained a token, and the existing value allow-list on `applyThemeTokens` stops CSS injection but does nothing to stop a workspace setting its foreground to its background.
+
+Contrast is therefore a property of the derivation rather than advice in the form. Each palette is solved separately — a colour legible on white is too dark on the near-black dark ground — and the fill and its label are solved *together*, scored on the weaker of the two ratios, because pushing a fill just far enough to clear the page background strands mid-tone reds and violets exactly where neither white nor ink reads on top. A sweep of the hue circle plus black and white confirms every input reaches WCAG AA on both pairs in both palettes. OKLCH is the working space (scaling lightness in HSL swings blues towards purple), and colours that leave sRGB are gamut-mapped by reducing chroma rather than clipping channels. **Fonts are a choice from bundled system stacks, never an upload or a CDN link** — the app CSP allows no external font origin, and that limit is recorded rather than hidden.
+
+The logo is **hosted, never hot-linked**: bytes are uploaded or pulled from the company's website through the existing SSRF-guarded `OutboundHttpPort`, stored at `ws/<workspace>/branding/<sha256>`, and served by a public cacheable route, which is also what makes them usable as an `<img src>` in email. The content type is decided by the **bytes** — `checkLogo()` sniffs PNG, JPEG and WebP headers and reads the intrinsic size from them — because the request's `Content-Type` and any filename are attacker-controlled and the sniffed value is echoed as a response header on a public route. SVG is deliberately not on the allow-list: it is a script carrier, and serving one from our own origin would hand a workspace admin stored XSS on the portal. Nothing decodes or re-encodes the image, so no image library enters the dependency tree.
+
+Per-workspace email branding is now real rather than merely possible. `createTemplatedMailer`'s brand resolver accepts a **promise** — the synchronous-only version would have forced a per-workspace lookup to read a possibly-cold cache and send the first email after every restart unbranded, a bug appearing once per deploy and never reproducing locally — and a resolver that rejects falls back to the default brand and still sends, because a branding lookup must never block a sign-in code. The workspace travels explicitly on `OutboundEmail.workspaceId` rather than being parsed out of the free-form `tags` array, and every workspace-scoped send site now stamps it; the instance-level setup mail probe deliberately does not. `EmailBrand` gained `tagline` and `showPoweredBy`, the latter dropping only the attribution line and never the support or postal lines.
+
+Branding is kernel rather than a module — every fact it owns lives on `core.workspace`, the same argument that put `access` and `compliance` there — with permissions `branding.read` / `branding.manage`, an admin Branding screen with a live preview derived in the browser from unsaved form state, and an admin Modules screen over the new `GET /modules/enablement` and `PATCH /modules/{id}`. Module enablement is `owner-or-admin` rather than a new permission: turning the data room off is not a capability within a module but a decision about the shape of the whole workspace. Both palettes are injected into the page config from the already-resolved workspace row, so a branded portal has no flash of unbranded content on first paint; in the embed tree host-posted tokens keep winning over the workspace brand, which the bridge now enforces across theme flips rather than only on first message.
+
+The setup wizard gains its remaining steps — company basics with the logo pulled from the company website, offering mode, the modules checklist, a data-room folder template, investor invites and an optional first update draft — and `seedDefaults()` from E1.6, previously exported with no caller, is finally wired, so a new workspace starts with a privacy notice and a default disclaimer. The new steps drive the **real** admin endpoints rather than privileged `/setup/*` mirrors, because a second authorisation surface for the same operations is a second place for them to disagree; the honest consequence is that changing the offering mode still requires step-up, so a founder who skipped the security step is told to finish it. Wizard progress is computed from the facts that exist — an owner, a passed probe, a brand, an offering period — not stored in a wizard-state table, the same move E1.6 made with `core.offering_period`, and it deliberately covers kernel facts only so the setup route never reads a module's tables.
+
+Three defects were found and fixed on the way through. `POST /data-room/templates/{id}/apply` assumed a root folder, which the data room creates lazily on the first `tree()` read — so applying a folder template to a data room nobody had opened, which is exactly what the wizard does, failed. `progress.branding` counted only an accent colour or a logo while the company step saves a display name and a tagline on their own, so a founder who did that was resumed back at the company step on every cold load; it now counts every nullable brand field and deliberately not the three that have non-null defaults. And the public logo route framed its body with the length recorded in settings rather than the length of the object it had just read, which would have made a settings/bucket divergence malformed rather than merely stale.

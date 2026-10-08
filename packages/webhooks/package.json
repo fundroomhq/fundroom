@@ -1,0 +1,39 @@
+{
+  "name": "@fundroom/webhooks",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Outbound webhooks for FundRoom: the Standard Webhooks signer and verifier (runtime-neutral, re-exported by the SDK), the endpoint and delivery domain types, and the repositories behind core.webhook_endpoint and core.webhook_delivery",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./signature": {
+      "types": "./dist/signature.d.ts",
+      "default": "./dist/signature.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/crypto": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

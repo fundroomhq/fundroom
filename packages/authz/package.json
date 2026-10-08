@@ -1,0 +1,49 @@
+{
+  "name": "@fundroom/authz",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Authorization kernel for FundRoom: staff RBAC matrix, grants + policy gates evaluator, effective_access rebuild, AuthzPort implementation",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    },
+    "./matrix.yaml": "./matrix/authz-matrix.yaml"
+  },
+  "files": [
+    "dist",
+    "matrix"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "matrix:docs": "node ../../scripts/render-authz-matrix.mjs",
+    "mutation": "stryker run"
+  },
+  "dependencies": {
+    "@fundroom/audit": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "vitest": "catalog:",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
+    "@types/node": "^24.13.4",
+    "@types/pg": "catalog:",
+    "pg": "catalog:",
+    "typescript": "catalog:"
+  }
+}

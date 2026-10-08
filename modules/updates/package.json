@@ -1,0 +1,46 @@
+{
+  "name": "@fundroom/module-updates",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FundRoom investor updates module: block editor drafts, YC/minimal/board templates, audiences, test send, schedule, send job with per-recipient status, web archive, reply threads, unsubscribe compliance, per-workspace sending domain (DKIM) records",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "catalog:",
+    "@fundroom/contracts": "workspace:*",
+    "@fundroom/crypto": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/i18n": "workspace:*",
+    "@fundroom/identity": "workspace:*",
+    "@fundroom/markdown": "workspace:*",
+    "@fundroom/module-content": "workspace:*",
+    "@fundroom/module-kit": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

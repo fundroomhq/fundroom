@@ -1,0 +1,551 @@
+{
+  "Header": {
+    "Time": "2026-04-02T06:14:41-07:00",
+    "ReportName": "ProfitAndLoss",
+    "DateMacro": "",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-01-01",
+    "EndPeriod": "2026-03-31",
+    "SummarizeColumnsBy": "Month",
+    "Currency": "USD",
+    "Option": [
+      {
+        "Name": "AccountingStandard",
+        "Value": "GAAP"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "",
+        "ColType": "Account",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "account"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Jan 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "StartDate",
+            "Value": "2026-01-01"
+          },
+          {
+            "Name": "EndDate",
+            "Value": "2026-01-31"
+          },
+          {
+            "Name": "ColKey",
+            "Value": "Jan 2026"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Feb 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "StartDate",
+            "Value": "2026-02-01"
+          },
+          {
+            "Name": "EndDate",
+            "Value": "2026-02-28"
+          },
+          {
+            "Name": "ColKey",
+            "Value": "Feb 2026"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Mar 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "StartDate",
+            "Value": "2026-03-01"
+          },
+          {
+            "Name": "EndDate",
+            "Value": "2026-03-31"
+          },
+          {
+            "Name": "ColKey",
+            "Value": "Mar 2026"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Total",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "total"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "Header": {
+          "ColData": [
+            {
+              "value": "Income"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "ColData": [
+                {
+                  "value": "Services",
+                  "id": "1"
+                },
+                {
+                  "value": "12000.00"
+                },
+                {
+                  "value": "15500.50"
+                },
+                {
+                  "value": ""
+                },
+                {
+                  "value": "27500.50"
+                }
+              ],
+              "type": "Data"
+            },
+            {
+              "ColData": [
+                {
+                  "value": "Subscription revenue",
+                  "id": "79"
+                },
+                {
+                  "value": "3000.00"
+                },
+                {
+                  "value": "3100.00"
+                },
+                {
+                  "value": "-250.25"
+                },
+                {
+                  "value": "5849.75"
+                }
+              ],
+              "type": "Data"
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total Income"
+            },
+            {
+              "value": "15000.00"
+            },
+            {
+              "value": "18600.50"
+            },
+            {
+              "value": "-250.25"
+            },
+            {
+              "value": "33350.25"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "Income"
+      },
+      {
+        "Header": {
+          "ColData": [
+            {
+              "value": "Cost of Goods Sold"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "ColData": [
+                {
+                  "value": "Hosting",
+                  "id": "80"
+                },
+                {
+                  "value": "900.00"
+                },
+                {
+                  "value": "950.00"
+                },
+                {
+                  "value": "1010.10"
+                },
+                {
+                  "value": "2860.10"
+                }
+              ],
+              "type": "Data"
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total Cost of Goods Sold"
+            },
+            {
+              "value": "900.00"
+            },
+            {
+              "value": "950.00"
+            },
+            {
+              "value": "1010.10"
+            },
+            {
+              "value": "2860.10"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "COGS"
+      },
+      {
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Gross Profit"
+            },
+            {
+              "value": "14100.00"
+            },
+            {
+              "value": "17650.50"
+            },
+            {
+              "value": "-1260.35"
+            },
+            {
+              "value": "30490.15"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "GrossProfit"
+      },
+      {
+        "Header": {
+          "ColData": [
+            {
+              "value": "Expenses"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "Header": {
+                "ColData": [
+                  {
+                    "value": "Payroll Expenses"
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  }
+                ]
+              },
+              "Rows": {
+                "Row": [
+                  {
+                    "ColData": [
+                      {
+                        "value": "Wages",
+                        "id": "90"
+                      },
+                      {
+                        "value": "20000.00"
+                      },
+                      {
+                        "value": "20000.00"
+                      },
+                      {
+                        "value": "21000.00"
+                      },
+                      {
+                        "value": "61000.00"
+                      }
+                    ],
+                    "type": "Data"
+                  }
+                ]
+              },
+              "Summary": {
+                "ColData": [
+                  {
+                    "value": "Total Payroll Expenses"
+                  },
+                  {
+                    "value": "20000.00"
+                  },
+                  {
+                    "value": "20000.00"
+                  },
+                  {
+                    "value": "21000.00"
+                  },
+                  {
+                    "value": "61000.00"
+                  }
+                ]
+              },
+              "type": "Section"
+            },
+            {
+              "ColData": [
+                {
+                  "value": "Rent or Lease",
+                  "id": "91"
+                },
+                {
+                  "value": "2500.00"
+                },
+                {
+                  "value": "2500.00"
+                },
+                {
+                  "value": "2500.00"
+                },
+                {
+                  "value": "7500.00"
+                }
+              ],
+              "type": "Data"
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total Expenses"
+            },
+            {
+              "value": "22500.00"
+            },
+            {
+              "value": "22500.00"
+            },
+            {
+              "value": "23500.00"
+            },
+            {
+              "value": "68500.00"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "Expenses"
+      },
+      {
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Net Operating Income"
+            },
+            {
+              "value": "-8400.00"
+            },
+            {
+              "value": "-4849.50"
+            },
+            {
+              "value": "-24760.35"
+            },
+            {
+              "value": "-38009.85"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "NetOperatingIncome"
+      },
+      {
+        "Header": {
+          "ColData": [
+            {
+              "value": "Other Income"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "ColData": [
+                {
+                  "value": "Interest Earned",
+                  "id": "92"
+                },
+                {
+                  "value": "12.34"
+                },
+                {
+                  "value": ""
+                },
+                {
+                  "value": "5.00"
+                },
+                {
+                  "value": "17.34"
+                }
+              ],
+              "type": "Data"
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Total Other Income"
+            },
+            {
+              "value": "12.34"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": "5.00"
+            },
+            {
+              "value": "17.34"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "OtherIncome"
+      },
+      {
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Net Other Income"
+            },
+            {
+              "value": "12.34"
+            },
+            {
+              "value": "0.00"
+            },
+            {
+              "value": "5.00"
+            },
+            {
+              "value": "17.34"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "NetOtherIncome"
+      },
+      {
+        "Summary": {
+          "ColData": [
+            {
+              "value": "Net Income"
+            },
+            {
+              "value": "-8387.66"
+            },
+            {
+              "value": "-4849.50"
+            },
+            {
+              "value": "-24755.35"
+            },
+            {
+              "value": "-37992.51"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "NetIncome"
+      }
+    ]
+  }
+}

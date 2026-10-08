@@ -1,0 +1,60 @@
+# ZAP rule decisions for FundRoom. Format, tab-separated:
+#   <pluginId>	<IGNORE|INFO|WARN|FAIL>	(<reason — required>)
+#   #@<alertRef>	<IGNORE|INFO|WARN|FAIL>	(<reason — required>)
+# ZAP's `-c` reads the plugin-id lines only (it int()s the id, so an alertRef like 10055-4 would
+# crash zap-baseline — hence the `#@` prefix, a comment to ZAP). e2e/security/zap-gate.mjs reads
+# both and is the real gate: an exact alertRef line wins, a plugin line can never accept a
+# Medium/High (only an alertRef line can), and anything unlisted FAILs at Medium+, WARNs below.
+# Triaged 2026-09-23 against ZAP 2.17.0 on the seeded CI stack.
+
+# --- Regression guards: passing today; a regression here is a real defect -----------------------
+10010	FAIL	(Session and auth cookies are HttpOnly by design; losing it exposes __Host-sid to script)
+10011	FAIL	(Cookies are Secure (__Host-/__Secure- prefixes require it); losing it is a real regression)
+10054	FAIL	(Every cookie sets SameSite; a missing or invalid value is a regression)
+#@10054-2	WARN	(SameSite=None is deliberate on the partitioned embed-iframe session cookie; first-party cookies are Lax — review if it shows on a non-/embed URL)
+10020	FAIL	(frame-ancestors 'none' + X-Frame-Options DENY on every page except /embed; losing them re-opens clickjacking)
+# /embed/<slug>/… is framed by design (per-workspace frame-ancestors allow-list), so no XFO there.
+10020	OUTOFSCOPE	^https?://[^/]+/embed/
+10021	FAIL	(nosniff is on every response; a missing header on a user-content response is exploitable)
+#@10038-1	FAIL	(CSP header missing on an HTML response is a CSP regression)
+#@10038-3	WARN	(Trusted Types is enforced by default (CSP_TRUSTED_TYPES=enforce), so no Report-Only header is sent; seeing one means the stack runs the report rollback switch (docs/runbooks/csp-reports.md) — check CSP_TRUSTED_TYPES)
+10037	FAIL	(No X-Powered-By is emitted; seeing one means a framework default leaked)
+10036	FAIL	(No Server header is emitted by the app; seeing one means version disclosure crept in)
+10023	FAIL	(Errors are the JSON envelope with a requestId only; stack traces or debug text are a defect)
+90022	FAIL	(Same as 10023 for application error pages)
+10062	WARN	(PII patterns: seeded data is synthetic (investors.test/example.com) — any hit needs a human look, not a red build)
+2	FAIL	(Private IP disclosure: nothing internal should reach a response)
+# Out of scope for rule 2 (browser crawl): the session lists (own, and a member's on People)
+# and the audit log show the client IP each session/event came from, by design. On a
+# stack reached through Docker's published port that IP is the bridge gateway (192.168.65.1 on
+# Docker Desktop, 172.17.0.1 on Linux runners), so it is private here and public in production.
+2	OUTOFSCOPE	^https?://[^/]+/api/v1/(?:me/sessions|access/people/[^/]+/sessions|audit/events)(?:$|[/?])
+3	FAIL	(Session ID in URL: sessions are cookie-only; an id in a URL is a regression)
+10003	FAIL	(Retire.js known-vulnerable JS library in the shipped bundle)
+10115	FAIL	(Script from a known-malicious domain (polyfill.io class))
+10017	FAIL	(Every script is same-origin; a cross-domain script include is a supply-chain regression)
+10098	FAIL	(No CORS wildcard is configured; Access-Control-Allow-Origin: * on an API response is a defect)
+
+# --- Accepted / false positive (every entry says why) -------------------------------------------
+10055	WARN	(CSP plugin: sub-alerts are triaged by alertRef below; any Medium+ sub-alert not listed fails by policy)
+#@10055-3	IGNORE	(CSP "Notices": report-uri is sent deliberately next to report-to, because Firefox and Safari do not deliver report-to yet)
+#@10055-4	FAIL	(ZAP-01 FIXED: document CSPs set worker-src 'none' (no workers ship); a wildcard/undefined directive coming back is a CSP regression)
+90004	WARN	(Site-isolation plugin: sub-alerts triaged by alertRef below)
+#@90004-1	FAIL	(ZAP-02 FIXED: CORP is same-origin on the SPA shell, /assets and the API; anything else there lets sibling tenant subdomains (TENANCY_MODE=multi) load them no-cors)
+# /embed/… is deliberately not same-origin: the loader /embed/v1/* is fetched by third-party host pages
+# (cross-origin) and the framed /embed/<slug> documents keep same-site for COEP hosts on the operator's own domain.
+#@90004-1	OUTOFSCOPE	^https?://[^/]+/embed/
+#@90004-2	IGNORE	(No COEP: the app does not need cross-origin isolation (no SharedArrayBuffer), and require-corp would break third-party logo/avatar images)
+#@90004-3	FAIL	(COOP is same-origin (same-origin-allow-popups on the OIDC/passkey pages); losing it is a regression)
+10049	IGNORE	(Cacheability is informational: HTML/API are private,no-store and hashed /assets are immutable for a year, both by design)
+10109	IGNORE	(Informational: "modern web application" — it is an SPA)
+10111	IGNORE	(Informational: authentication request identified)
+10112	IGNORE	(Informational: session-management response identified)
+10113	IGNORE	(Informational: verification request identified)
+10024	IGNORE	(Tokens in emailed links (magic-link peek, updates unsubscribe) by design: single-use, short TTL, Referrer-Policy strict-origin-when-cross-origin; the SPA exchanges them and replaces the URL)
+10027	WARN	(Suspicious comments in minified bundles are almost always library strings; look, do not fail)
+10096	IGNORE	(Timestamp disclosure: API bodies carry ISO timestamps by contract)
+10202	IGNORE	(No anti-CSRF token by design: CSRF is enforced by Origin/Sec-Fetch-Site checks on every unsafe method (packages/identity/src/csrf), and the SPA posts JSON via fetch, not HTML forms)
+90003	WARN	(SRI on same-origin module scripts adds nothing (same origin, CSP nonce); only a cross-origin script without SRI would matter, and 10017 fails that)
+100000	IGNORE	(API scan: 4xx for example ids / missing auth are the expected answers)
+100001	IGNORE	(API scan: text/csv from the documented CSV exports (analytics hot-list, acceptances export), and text/html from the SPA fallback that answers any non-/api path)

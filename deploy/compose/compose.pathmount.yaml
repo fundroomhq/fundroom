@@ -1,0 +1,228 @@
+# Path-mount e2e overlay. Layers a TLS edge and five customer websites on top of
+# compose.ci.yaml, each running one documented recipe that serves the portal under a path of its
+# own site, so `e2e/tests/50-path-mount.test.ts` can sign an investor in *through* each mount.
+#
+#   E2E_APP_PORT=3300 E2E_MAILPIT_PORT=8325 \
+#     docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.pathmount.yaml \
+#     up -d --wait --build
+#
+# A separate stack from the plain CI one (like compose.hosts.yaml): the portal runs under
+# `BASE_PATH=/investors` at `https://portal.test`, and `00-setup` drives a wizard at the root of
+# `http://localhost:3000`. Run this overlay for `50-path-mount` only
+# (`pnpm --filter @fundroom/e2e test:pathmount`).
+#
+#   edge        Caddy, `tls internal`. The portal's own front door (`portal.test`, also a network
+#               alias here, so every host proxies to https://portal.test through it) and the TLS
+#               terminator for the five host sites. e2e/pathmount/edge/Caddyfile.
+#   nginx       nginx.test   — nginx recipe, preserve shape            (/investors → /investors)
+#   hostcaddy   caddy.test   — Caddy recipe, replace shape             (/portal    → /investors)
+#   worker      worker.test  — Cloudflare Worker recipe in real workerd (/investors → /investors)
+#   next        next.test    — Next.js rewrites recipe, next build + start
+#   wordpress   wp.test      — the WordPress plugin's proxy mode (plugins/wordpress, mounted)
+#   wpdb, wpcli              — MariaDB, and a WP-CLI container that installs WordPress, activates
+#                              the plugin and turns proxy mode on, then stays up as a readiness flag.
+#
+# Every recipe file under e2e/pathmount/<host>/ is mounted (or, for Next.js, copied) verbatim —
+# they are the documented recipes (docs/embed/*), not paraphrases of them. The host containers
+# trust the edge's internal CA root through the `edge_ca` volume (read-only), so each
+# recipe's hop to the portal is verified TLS.
+
+name: seed-host-ci
+
+services:
+  app:
+    environment:
+      BASE_PATH: /investors
+      BASE_URL: https://portal.test/investors
+      # Every public mount, as the browser sees it. The Caddy host is the replace shape: its public
+      # prefix (/portal) differs from BASE_PATH.
+      PATH_MOUNTS: https://nginx.test/investors,https://caddy.test/portal,https://worker.test/investors,https://next.test/investors,https://wp.test/investors
+      # The edge terminates TLS and forwards Host/scheme; the host proxies' X-Forwarded-Host is
+      # kept by the edge (trusted_proxies); it picks between the four mounts that share /investors.
+      TRUST_PROXY: "true"
+
+  edge:
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    ports:
+      # 443 by default because the browser's URLs carry no port; Chromium's resolver rules can
+      # map a name to a port, so a non-default value works for the Chromium-only project.
+      - "${E2E_PATHMOUNT_HTTPS_PORT:-443}:443"
+    volumes:
+      - ../../e2e/pathmount/edge/Caddyfile:/etc/caddy/Caddyfile:ro
+      - edge_data:/data
+      - edge_config:/config
+      - edge_ca:/edge-ca
+    networks:
+      default:
+        aliases:
+          - portal.test
+    healthcheck:
+      # Config loaded AND the internal CA's root published. Caddy keeps the CA 0600 root in its
+      # data volume, and the host processes run unprivileged, so the (root) healthcheck copies the
+      # *public* root certificate — never the keys — world-readable into `edge_ca`, which the hosts
+      # mount read-only. Idempotent; the hosts start only once this has passed.
+      test:
+        - CMD-SHELL
+        - >-
+          install -m 0644 /data/caddy/pki/authorities/local/root.crt /edge-ca/root.crt &&
+          wget -qO- http://127.0.0.1:2019/config/ >/dev/null
+      interval: 2s
+      timeout: 3s
+      retries: 40
+    depends_on:
+      app:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    volumes:
+      - ../../e2e/pathmount/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../../e2e/pathmount/nginx/seed-host-mount.conf:/etc/nginx/seed-host-mount.conf:ro
+      # The recipe verifies the portal against the system bundle; here that bundle is the edge's root.
+      - type: volume
+        source: edge_ca
+        target: /etc/ssl/certs/ca-certificates.crt
+        read_only: true
+        volume:
+          subpath: root.crt
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      edge:
+        condition: service_healthy
+
+  hostcaddy:
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    environment:
+      # Go's root pool for the recipe's https upstream: the edge's internal CA.
+      SSL_CERT_FILE: /edge-ca/root.crt
+    volumes:
+      - ../../e2e/pathmount/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../e2e/pathmount/caddy/seed-host-mount.caddy:/etc/caddy/seed-host-mount.caddy:ro
+      - &edge_ca edge_ca:/edge-ca:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      edge:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../../e2e/pathmount/worker
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ../../e2e/pathmount/worker:/srv/worker:ro
+      - *edge_ca
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8787/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      edge:
+        condition: service_healthy
+
+  next:
+    build:
+      context: ../../e2e/pathmount/next
+    environment:
+      # Node's extra roots, for the rewrite proxy's https upstream: the edge's internal CA.
+      NODE_EXTRA_CA_CERTS: /edge-ca/root.crt
+    volumes:
+      - *edge_ca
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      edge:
+        condition: service_healthy
+
+  wpdb:
+    image: mariadb:11.8.9@sha256:79d59758afc91b89b120b0a8904d637f5a3b3e1c4900f29b740d6d46c72fef68
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  wordpress:
+    image: wordpress:7.1.2-php8.3-apache@sha256:8ae73d594a154e30b112e8d085afbc0895acf7651d8f53ef63aefb42e30822d5
+    environment: &wp_env
+      WORDPRESS_DB_HOST: wpdb
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      # The edge terminates TLS: WordPress must know its own address is https (is_ssl(), which
+      # the proxy's X-Forwarded-Proto and the cookie's Secure flag both follow).
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_HOME', 'https://wp.test' );
+        define( 'WP_SITEURL', 'https://wp.test' );
+        if ( ( $$_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '' ) === 'https' ) { $$_SERVER['HTTPS'] = 'on'; }
+    volumes:
+      - wp_html:/var/www/html
+      - ../../plugins/wordpress:/var/www/html/wp-content/plugins/seed-host:ro
+      - ../../e2e/pathmount/wp/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - *edge_ca
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1/wp-includes/images/blank.gif"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      wpdb:
+        condition: service_healthy
+      edge:
+        condition: service_healthy
+
+  wpcli:
+    image: wordpress:cli-2.12.0-php8.3@sha256:0f7f0f895c379bb7b60b8f09562811084ac0424d544747f76d95cc785feccac0
+    # The apache image's www-data (33), not the Alpine CLI image's (82): both write the same volume.
+    user: "33:33"
+    environment: *wp_env
+    command: ["sh", "/srv/wp/setup.sh"]
+    volumes:
+      - wp_html:/var/www/html
+      - ../../plugins/wordpress:/var/www/html/wp-content/plugins/seed-host:ro
+      - ../../e2e/pathmount/wp/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ../../e2e/pathmount/wp/setup.sh:/srv/wp/setup.sh:ro
+    healthcheck:
+      # setup.sh touches this once WordPress is installed and proxy mode is on, then idles; a
+      # one-shot container that exited would trip `up --wait`.
+      test: ["CMD", "test", "-f", "/tmp/seeded"]
+      interval: 2s
+      timeout: 3s
+      retries: 90
+    depends_on:
+      wordpress:
+        condition: service_healthy
+
+volumes:
+  edge_data:
+  edge_config:
+  edge_ca:
+  wp_html:

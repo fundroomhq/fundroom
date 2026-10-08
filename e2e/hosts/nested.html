@@ -1,0 +1,32 @@
+<!doctype html>
+<!--
+  The double-iframe shape: the builder puts
+  the customer's HTML in a sandbox document of its own, so the portal ends up two frames deep and
+  `location.ancestorOrigins` has two entries.
+
+  It works only if *every* ancestor is allow-listed — `frame-ancestors` is checked against the
+  whole chain, not against the immediate parent — which is exactly what this page is here to
+  demonstrate: `host-a.test` (this page) and `host-c.test` (the inner document) both have to be
+  on the workspace's list.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Acme Inc — Investors (builder wrapper)</title>
+    <link rel="stylesheet" href="host.css" />
+  </head>
+  <body>
+    <h1>Acme Inc</h1>
+    <p id="above">This page is a site builder: your HTML runs in a frame of its own.</p>
+
+    <iframe
+      id="builder-sandbox"
+      src="https://host-c.test/inner.html"
+      title="Embedded HTML"
+      style="width: 100%; height: 720px; border: 0; display: block"
+    ></iframe>
+
+    <p id="below">Questions? Email investors@example.com.</p>
+  </body>
+</html>

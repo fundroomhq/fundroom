@@ -1,0 +1,8 @@
+# Build output of scripts/build-wordpress-plugin.mjs.
+dist/
+
+# PHPCS/WPCS, installed with `composer install` and never shipped. `composer.lock` is deliberately
+# NOT ignored: it pins the linter versions CI runs, and a linter that changes under CI is a build
+# that breaks on somebody else's release day.
+vendor/
+.phpcs-cache

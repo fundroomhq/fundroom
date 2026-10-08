@@ -1,0 +1,38 @@
+{
+  "name": "@fundroom/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed API client for FundRoom generated from the OpenAPI 3.1 contract (openapi-typescript + openapi-fetch), with API-key auth and the Standard Webhooks verifier for receivers",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./webhooks": {
+      "types": "./dist/webhooks.d.ts",
+      "default": "./dist/webhooks.js"
+    }
+  },
+  "files": [
+    "dist",
+    "openapi.json"
+  ],
+  "scripts": {
+    "generate": "openapi-typescript openapi.json -o src/generated/openapi.ts --alphabetize --root-types",
+    "build": "pnpm generate && tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "openapi-fetch": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "openapi-typescript": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

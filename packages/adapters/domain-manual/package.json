@@ -1,0 +1,32 @@
+{
+  "name": "@fundroom/domain-manual",
+  "version": "0.0.0",
+  "private": true,
+  "description": "CustomDomainProviderPort for operators who terminate TLS themselves: FundRoom verifies ownership and nothing else",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/custom-domains": "workspace:*",
+    "@fundroom/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

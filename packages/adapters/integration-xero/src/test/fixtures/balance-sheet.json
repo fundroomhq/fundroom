@@ -1,0 +1,388 @@
+{
+  "Id": "2ddba304-6ed3-4da4-b185-3b6289699653",
+  "Status": "OK",
+  "ProviderName": "Seed Host",
+  "DateTimeUTC": "/Date(1775640000000)/",
+  "Reports": [
+    {
+      "ReportID": "BalanceSheet",
+      "ReportName": "Balance Sheet",
+      "ReportType": "BalanceSheet",
+      "ReportTitles": ["Balance Sheet", "Acme Robotics Ltd", "As at 31 March 2026"],
+      "ReportDate": "15 April 2026",
+      "UpdatedDateUTC": "/Date(1775640000000)/",
+      "Fields": [],
+      "Rows": [
+        {
+          "RowType": "Header",
+          "Cells": [
+            {
+              "Value": ""
+            },
+            {
+              "Value": "31 Mar 2026"
+            },
+            {
+              "Value": "28 Feb 2026"
+            },
+            {
+              "Value": "31 Jan 2026"
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "Assets",
+          "Rows": []
+        },
+        {
+          "RowType": "Section",
+          "Title": "Bank",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Business Cheque Account",
+                  "Attributes": [
+                    {
+                      "Value": "041207d2-3d61-4e5d-8c1a-b9236955a71c",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "205000.10",
+                  "Attributes": [
+                    {
+                      "Value": "041207d2-3d61-4e5d-8c1a-b9236955a71c",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "231250.75",
+                  "Attributes": [
+                    {
+                      "Value": "041207d2-3d61-4e5d-8c1a-b9236955a71c",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "250000.00",
+                  "Attributes": [
+                    {
+                      "Value": "041207d2-3d61-4e5d-8c1a-b9236955a71c",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Business Savings Account",
+                  "Attributes": [
+                    {
+                      "Value": "300f3bde-3a5c-4035-9ec5-45b09777679a",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "-1500.00",
+                  "Attributes": [
+                    {
+                      "Value": "300f3bde-3a5c-4035-9ec5-45b09777679a",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "100010.00",
+                  "Attributes": [
+                    {
+                      "Value": "300f3bde-3a5c-4035-9ec5-45b09777679a",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "100000.00",
+                  "Attributes": [
+                    {
+                      "Value": "300f3bde-3a5c-4035-9ec5-45b09777679a",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Bank"
+                },
+                {
+                  "Value": "203500.10"
+                },
+                {
+                  "Value": "331260.75"
+                },
+                {
+                  "Value": "350000.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "Current Assets",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Accounts Receivable",
+                  "Attributes": [
+                    {
+                      "Value": "b94495d0-44ab-4199-a1d0-427a4877e100",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "6100.00",
+                  "Attributes": [
+                    {
+                      "Value": "b94495d0-44ab-4199-a1d0-427a4877e100",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "5200.00",
+                  "Attributes": [
+                    {
+                      "Value": "b94495d0-44ab-4199-a1d0-427a4877e100",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "4000.00",
+                  "Attributes": [
+                    {
+                      "Value": "b94495d0-44ab-4199-a1d0-427a4877e100",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Current Assets"
+                },
+                {
+                  "Value": "6100.00"
+                },
+                {
+                  "Value": "5200.00"
+                },
+                {
+                  "Value": "4000.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "",
+          "Rows": [
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Assets"
+                },
+                {
+                  "Value": "209600.10"
+                },
+                {
+                  "Value": "336460.75"
+                },
+                {
+                  "Value": "354000.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "Liabilities",
+          "Rows": []
+        },
+        {
+          "RowType": "Section",
+          "Title": "Current Liabilities",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Accounts Payable",
+                  "Attributes": [
+                    {
+                      "Value": "f1e2d3c4-b5a6-4978-8695-a4b3c2d1e0f9",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "3000.00",
+                  "Attributes": [
+                    {
+                      "Value": "f1e2d3c4-b5a6-4978-8695-a4b3c2d1e0f9",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "2000.00",
+                  "Attributes": [
+                    {
+                      "Value": "f1e2d3c4-b5a6-4978-8695-a4b3c2d1e0f9",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "1000.00",
+                  "Attributes": [
+                    {
+                      "Value": "f1e2d3c4-b5a6-4978-8695-a4b3c2d1e0f9",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Current Liabilities"
+                },
+                {
+                  "Value": "3000.00"
+                },
+                {
+                  "Value": "2000.00"
+                },
+                {
+                  "Value": "1000.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "",
+          "Rows": [
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Liabilities"
+                },
+                {
+                  "Value": "3000.00"
+                },
+                {
+                  "Value": "2000.00"
+                },
+                {
+                  "Value": "1000.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Net Assets"
+                },
+                {
+                  "Value": "206600.10"
+                },
+                {
+                  "Value": "334460.75"
+                },
+                {
+                  "Value": "353000.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "Equity",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Current Year Earnings"
+                },
+                {
+                  "Value": "-37997.51"
+                },
+                {
+                  "Value": "-13237.16"
+                },
+                {
+                  "Value": "-8387.66"
+                }
+              ]
+            },
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Equity"
+                },
+                {
+                  "Value": "206600.10"
+                },
+                {
+                  "Value": "334460.75"
+                },
+                {
+                  "Value": "353000.00"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": true,
+    "noEmit": true,
+    "tsBuildInfoFile": "dist/.tsbuildinfo.test",
+    "rootDir": "src",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.test.ts"],
+  "references": [{ "path": "./tsconfig.json" }]
+}

@@ -1,0 +1,30 @@
+# CI render fixture (not a deployment example): `helm lint`/`helm template` + kubeconform + Trivy
+# run against each ci/*-values.yaml. The key below is the throwaway one .github/workflows/ci.yml uses.
+config:
+  av:
+    acceptUnscanned: true
+  # ingress-nginx sets X-Real-IP to the address it saw.
+  clientIpHeader: X-Real-IP
+  metricsEnabled: true
+  baseUrl: https://investors.example.com
+  mail:
+    from: investors@example.com
+secrets:
+  secretKey: Y2ktb25seS1rZXktbm90LWEtc2VjcmV0LTAwMDAwMDAwMDA=
+  smtpUrl: smtps://ci:hunter2@smtp.example.com:465
+  metricsToken: ci-metrics-token-not-a-secret
+storage:
+  s3:
+    bucket: fundroom-docs
+    region: eu-west-1
+    accessKeyId: ci-access-key-id
+    secretAccessKey: ci-not-a-secret
+postgresql:
+  external:
+    url: postgres://seedhost:secret@db.example.com:5432/seedhost?sslmode=verify-full
+ingress:
+  enabled: true
+  className: nginx
+  clusterIssuer: letsencrypt-prod
+  extraHosts:
+    - investors.acme.example

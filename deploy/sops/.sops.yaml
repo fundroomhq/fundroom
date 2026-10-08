@@ -1,0 +1,17 @@
+# SOPS creation rules for FundRoom env files (deploy/sops/README.md).
+#
+# Copy this file to the root of the repository that holds YOUR encrypted env files (sops looks for
+# .sops.yaml from the working directory upwards) and replace the recipient below with your age
+# PUBLIC key(s) — the `age1…` line age-keygen prints. Never put an AGE-SECRET-KEY here or anywhere
+# in a repository.
+#
+# The recipient below is a deliberately invalid placeholder: sops refuses to encrypt to it, so an
+# unedited copy cannot produce a file nobody can decrypt.
+creation_rules:
+  # Everything named *.sops.env (dotenv format: KEY=value lines, values encrypted, keys readable).
+  - path_regex: \.sops\.env$
+    # One recipient per person or machine that may decrypt, comma-separated. Keep at least two
+    # (for example an operator key and an offline recovery key) so losing one laptop is not
+    # losing production.
+    age: >-
+      age1replacewithyouragepublickeyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

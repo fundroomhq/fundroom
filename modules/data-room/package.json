@@ -1,0 +1,52 @@
+{
+  "name": "@fundroom/module-data-room",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FundRoom data room module: folder tree with index numbering, upload pipeline (scan, sanitise, encrypt, render), versions, protection, secure viewer, watermarked downloads, legal hold, recycle bin and purge",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "catalog:",
+    "@fundroom/authz": "workspace:*",
+    "@fundroom/contracts": "workspace:*",
+    "@fundroom/crypto": "workspace:*",
+    "@fundroom/csv": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/forensic": "workspace:*",
+    "@fundroom/identity": "workspace:*",
+    "@fundroom/module-kit": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "@fundroom/storage": "workspace:*",
+    "@fundroom/storage-fs": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

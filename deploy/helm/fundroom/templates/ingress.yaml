@@ -1,0 +1,46 @@
+{{- if .Values.ingress.enabled }}
+{{- $host := include "fundroom.ingressHost" . -}}
+{{- $path := default "/" .Values.config.basePath -}}
+{{- $svc := include "fundroom.fullname" . -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "fundroom.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.componentLabels" (list . "server") | nindent 4 }}
+  {{- if or .Values.ingress.clusterIssuer .Values.ingress.annotations }}
+  annotations:
+    {{- with .Values.ingress.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ . | quote }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  # The primary host only: workspace custom domains are verified with
+  # CUSTOM_DOMAIN_DRIVER=manual and their certificates are yours to terminate (README).
+  tls:
+    - hosts:
+        - {{ $host | quote }}
+      secretName: {{ default (printf "%s-tls" (include "fundroom.prefix" .)) .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    {{- range (prepend .Values.ingress.extraHosts $host) }}
+    - host: {{ . | quote }}
+      http:
+        paths:
+          - path: {{ $path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $svc }}
+                port:
+                  name: http
+    {{- end }}
+{{- end }}

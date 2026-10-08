@@ -1,0 +1,356 @@
+{
+  "Id": "a3c3f5b0-1d11-4b8a-9d7e-0f3a4f1a2b3c",
+  "Status": "OK",
+  "ProviderName": "Seed Host",
+  "DateTimeUTC": "/Date(1775640000000)/",
+  "Reports": [
+    {
+      "ReportID": "ProfitAndLoss",
+      "ReportName": "Profit and Loss",
+      "ReportType": "ProfitAndLoss",
+      "ReportTitles": ["Profit & Loss", "Acme Robotics Ltd", "1 March 2026 to 31 March 2026"],
+      "ReportDate": "15 April 2026",
+      "UpdatedDateUTC": "/Date(1775640000000)/",
+      "Fields": [],
+      "Rows": [
+        {
+          "RowType": "Header",
+          "Cells": [
+            {
+              "Value": ""
+            },
+            {
+              "Value": "31 Mar 2026"
+            },
+            {
+              "Value": "28 Feb 2026"
+            },
+            {
+              "Value": "31 Jan 2026"
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "Income",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Sales",
+                  "Attributes": [
+                    {
+                      "Value": "5040a2b4-f3a6-4ec4-8c3b-0e4a54a4a8b1",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "-250.25",
+                  "Attributes": [
+                    {
+                      "Value": "5040a2b4-f3a6-4ec4-8c3b-0e4a54a4a8b1",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "18600.50",
+                  "Attributes": [
+                    {
+                      "Value": "5040a2b4-f3a6-4ec4-8c3b-0e4a54a4a8b1",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "15000.00",
+                  "Attributes": [
+                    {
+                      "Value": "5040a2b4-f3a6-4ec4-8c3b-0e4a54a4a8b1",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Interest Income",
+                  "Attributes": [
+                    {
+                      "Value": "e0a58a0a-1b3a-4f11-9b35-4c9a5a0b6d77",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "",
+                  "Attributes": [
+                    {
+                      "Value": "e0a58a0a-1b3a-4f11-9b35-4c9a5a0b6d77",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "",
+                  "Attributes": [
+                    {
+                      "Value": "e0a58a0a-1b3a-4f11-9b35-4c9a5a0b6d77",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "12.34",
+                  "Attributes": [
+                    {
+                      "Value": "e0a58a0a-1b3a-4f11-9b35-4c9a5a0b6d77",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Income"
+                },
+                {
+                  "Value": "-250.25"
+                },
+                {
+                  "Value": "18600.50"
+                },
+                {
+                  "Value": "15012.34"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "Less Cost of Sales",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Cost of Goods Sold",
+                  "Attributes": [
+                    {
+                      "Value": "2b1c7a7e-0c52-4d3d-9d0e-6a1f8d7b2c11",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "1010.10",
+                  "Attributes": [
+                    {
+                      "Value": "2b1c7a7e-0c52-4d3d-9d0e-6a1f8d7b2c11",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "950.00",
+                  "Attributes": [
+                    {
+                      "Value": "2b1c7a7e-0c52-4d3d-9d0e-6a1f8d7b2c11",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "900.00",
+                  "Attributes": [
+                    {
+                      "Value": "2b1c7a7e-0c52-4d3d-9d0e-6a1f8d7b2c11",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Cost of Sales"
+                },
+                {
+                  "Value": "1010.10"
+                },
+                {
+                  "Value": "950.00"
+                },
+                {
+                  "Value": "900.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Gross Profit"
+                },
+                {
+                  "Value": "-1260.35"
+                },
+                {
+                  "Value": "17650.50"
+                },
+                {
+                  "Value": "14112.34"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "Less Operating Expenses",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Wages and Salaries",
+                  "Attributes": [
+                    {
+                      "Value": "7d8f1c2a-3b4e-4f5a-8b6c-9d0e1f2a3b4c",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "21000.00",
+                  "Attributes": [
+                    {
+                      "Value": "7d8f1c2a-3b4e-4f5a-8b6c-9d0e1f2a3b4c",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "20000.00",
+                  "Attributes": [
+                    {
+                      "Value": "7d8f1c2a-3b4e-4f5a-8b6c-9d0e1f2a3b4c",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "20000.00",
+                  "Attributes": [
+                    {
+                      "Value": "7d8f1c2a-3b4e-4f5a-8b6c-9d0e1f2a3b4c",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Rent",
+                  "Attributes": [
+                    {
+                      "Value": "8e9f0a1b-2c3d-4e5f-9a6b-7c8d9e0f1a2b",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "2500.00",
+                  "Attributes": [
+                    {
+                      "Value": "8e9f0a1b-2c3d-4e5f-9a6b-7c8d9e0f1a2b",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "2500.00",
+                  "Attributes": [
+                    {
+                      "Value": "8e9f0a1b-2c3d-4e5f-9a6b-7c8d9e0f1a2b",
+                      "Id": "account"
+                    }
+                  ]
+                },
+                {
+                  "Value": "2500.00",
+                  "Attributes": [
+                    {
+                      "Value": "8e9f0a1b-2c3d-4e5f-9a6b-7c8d9e0f1a2b",
+                      "Id": "account"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "RowType": "SummaryRow",
+              "Cells": [
+                {
+                  "Value": "Total Operating Expenses"
+                },
+                {
+                  "Value": "23500.00"
+                },
+                {
+                  "Value": "22500.00"
+                },
+                {
+                  "Value": "22500.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "",
+          "Rows": [
+            {
+              "RowType": "Row",
+              "Cells": [
+                {
+                  "Value": "Net Profit"
+                },
+                {
+                  "Value": "-24760.35"
+                },
+                {
+                  "Value": "-4849.50"
+                },
+                {
+                  "Value": "-8387.66"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

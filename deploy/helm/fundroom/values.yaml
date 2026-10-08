@@ -1,0 +1,465 @@
+# Default values for the FundRoom chart.
+#
+# The two values every install must set (the render fails with a message saying so otherwise):
+#   config.baseUrl         the public URL, e.g. https://investors.example.com
+#   secrets.secretKey      the master key: `openssl rand -base64 32` (or secrets.existingSecret)
+# plus a database (postgresql.external.url, or postgresql.mode=cnpg) and, with the default
+# storage.driver=s3, a bucket. values.schema.json rejects unknown keys, so a typo fails
+# `helm install` instead of being silently ignored.
+#
+# Environment variables: the chart maps the values below onto the app's env keys
+# (packages/config/src/schema.ts). Anything without a dedicated value goes through
+# config.extra (plain) or secrets.extra (secret), keyed by the env var name.
+
+# -- Override the chart name used in resource names.
+nameOverride: ""
+# -- Override the full resource name prefix (default: <release>-<chart>, collapsed when equal).
+fullnameOverride: ""
+
+image:
+  # -- The one FundRoom image; server, worker and the migrate job all run it with different args/env.
+  repository: ghcr.io/fundroomhq/fundroom
+  # -- Image tag. Empty means the chart's appVersion.
+  tag: ""
+  # -- Pin by digest (sha256:…); takes precedence over the tag. Recommended for production.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+# -- Pull secrets for a private mirror of the image, e.g. [{name: regcred}].
+imagePullSecrets: []
+
+# Non-secret configuration, rendered into a ConfigMap and loaded by every FundRoom container.
+config:
+  # -- REQUIRED. Public URL of the portal (BASE_URL). Must be https when appEnv is prod or staging.
+  # With a path mount (basePath) it includes that path, e.g. https://acme.com/investors.
+  baseUrl: ""
+  # -- Path-mount prefix (BASE_PATH), e.g. /investors. Leading slash, no trailing slash. Probes
+  # and the Ingress path follow it.
+  basePath: ""
+  # -- PATH_MOUNTS: public `origin + prefix` URLs another site's reverse proxy
+  # serves the portal under, e.g. [https://acme.com/investors]. The proxy sends
+  # `X-Forwarded-Prefix: <prefix>`; only a prefix listed here is honoured. At most 16, https in
+  # prod/staging, single tenancy only. See docs/embed/ for the proxy recipes.
+  pathMounts: []
+  # -- APP_ENV: prod | staging | test | dev. prod/staging enforce https, MAIL_FROM and SMTP_URL.
+  appEnv: prod
+  # -- INSTANCE_NAME, shown in emails, the TOTP issuer and the page title.
+  instanceName: FundRoom
+  # -- TENANCY_MODE: single (one workspace) or multi (workspaces by slug/custom domain).
+  tenancyMode: single
+  # -- TRUST_PROXY: honour X-Forwarded-* from the ingress controller. The image defaults to true;
+  # only set false if nothing sits in front of the Service.
+  trustProxy: true
+  # -- TRUST_PROXY_HOPS: proxies in front of the pods that *append* to X-Forwarded-For; the client address is the entry this many places from the right. 1 fits ingress-nginx
+  # with its default `use-forwarded-headers: false` (it replaces X-Forwarded-For) and Traefik; add
+  # one per CDN/load balancer in front of the ingress controller that appends.
+  trustProxyHops: 1
+  # -- CLIENT_IP_HEADER: read the client address from this single header instead (one your edge
+  # overwrites on every request, e.g. X-Real-IP from ingress-nginx, CF-Connecting-IP behind
+  # Cloudflare). Empty uses trustProxyHops.
+  clientIpHeader: ""
+  # -- LOG_LEVEL: trace | debug | info | warn | error.
+  logLevel: info
+  # -- MODULES: comma-separated compiled-in modules to load; empty loads all.
+  modules: ""
+  mail:
+    # -- MAILER_DRIVER: smtp | resend | postmark | ses. Provider keys go in secrets.smtpUrl or secrets.extra.
+    driver: smtp
+    # -- MAIL_FROM. Required when appEnv is prod/staging, and for every non-smtp driver.
+    from: ""
+    # -- MAIL_FROM_NAME, e.g. "Acme Investor Relations".
+    fromName: ""
+  customDomains:
+    # -- CUSTOM_DOMAIN_DRIVER. `manual` (the default here) verifies a workspace's custom domain by
+    # DNS and leaves TLS to you; `caddy-ask` only makes sense with Caddy on-demand TLS in front of
+    # the Service (see README "Custom domains"); `cloudflare-saas` registers verified
+    # domains with Cloudflare for SaaS, which issues and serves their certificates — set
+    # CLOUDFLARE_ZONE_ID in config.extra and CLOUDFLARE_API_TOKEN in secrets.extra.
+    driver: manual
+    # -- CUSTOM_DOMAIN_CNAME_TARGET: hostname customers CNAME to. Empty means the baseUrl host.
+    cnameTarget: ""
+  av:
+    # -- AV_DRIVER: noop (uploads marked `skipped`) or clamd (run ClamAV yourself; set clamdHost).
+    driver: noop
+    # -- CLAMD_HOST, e.g. clamav.clamav.svc.cluster.local.
+    clamdHost: ""
+    # -- AV_ACCEPT_UNSCANNED: with driver=noop, appEnv prod/staging refuses to start unless this
+    # is true. Uploads are then stored `skipped` and stay unservable unless a
+    # workspace allows unscanned files.
+    acceptUnscanned: false
+  # -- METRICS_ENABLED: auto (serve <basePath>/metrics in prod/staging only when
+  # secrets.metricsToken is set; always in dev/test), true (then prod/staging need the token) or
+  # false. The app requires `Authorization: Bearer <token>` whenever a token is set.
+  metricsEnabled: auto
+  # -- UPDATE_CHECK: the admin UI and `doctor` check for new releases (no identifiers sent).
+  updateCheck: true
+  # -- OTEL_EXPORTER_OTLP_ENDPOINT, e.g. http://otel-collector.observability:4318. Empty disables tracing export.
+  otelExporterOtlpEndpoint: ""
+  # -- Any other non-secret env keys from packages/config/src/schema.ts, e.g.
+  # {AUTH_PASSWORD_ENABLED: "true", OIDC_ISSUER_URL: "https://accounts.google.com"}. The render
+  # fails for secret keys (packages/config SECRET_KEYS, any *_FILE; use secrets.extra) and for keys
+  # the chart sets itself (use their dedicated values). The managed-host control plane
+  # (tenancyMode multi) is configured here too: CONTROL_PLANE, CELL_ID, PLATFORM_OPERATOR_CIDRS,
+  # SIGNUP_MODE, SIGNUP_DEFAULT_PLAN, SIGNUP_TERMS_VERSION, BILLING_DRIVER, BILLING_GRACE_DAYS,
+  # SANCTIONS_DRIVER, SANCTIONS_OPENSANCTIONS_URL, SANCTIONS_OPENSANCTIONS_API_KEY_HOSTS,
+  # SANCTIONS_MATCH_THRESHOLD, CENTRAL_AUTH, CLOUDFLARE_ZONE_ID, CLOUDFLARE_TRUSTED_PROXY (see README
+  # "Managed host"). The host footer links (any install; admin, signup, setup, operator
+  # console and canonical sign-in, not the investor portal): TERMS_URL, PRIVACY_URL, STATUS_URL
+  # (https://) and SUPPORT_URL (https:// or mailto:). Data residency has its own values
+  # under `residency` and is refused here. AI assist goes here too: AI_PROVIDER, AI_BASE_URL, AI_MODEL, AI_HOSTING, AI_PROVIDER_LABEL,
+  # AI_PROVIDER_LOCATION, AI_PROVIDER_JURISDICTION and the AI_* limits (AI_API_KEY in secrets.extra).
+  # External audit anchoring: AUDIT_ANCHOR_DRIVERS, AUDIT_ANCHOR_TSA_URLS,
+  # AUDIT_ANCHOR_REKOR_URL, AUDIT_ANCHOR_REKOR_ORIGIN, AUDIT_ANCHOR_TIMEOUT_MS here; the PEM bundles
+  # AUDIT_ANCHOR_TSA_CERTS and AUDIT_ANCHOR_REKOR_LOG_KEY as values here too (public material). The OpenFGA engine:
+  # AUTHZ_ENGINE, AUTHZ_OPENFGA_URL, AUTHZ_OPENFGA_MODE, AUTHZ_OPENFGA_SHADOW_SAMPLE,
+  # AUTHZ_OPENFGA_TIMEOUT_MS (AUTHZ_OPENFGA_API_TOKEN in secrets.extra). Edge forwarding
+  # (an edge such as a Cloudflare Worker that passes the customer hostname in a private header):
+  # FORWARDED_HOST_HEADER (e.g. X-Fundroom-Forwarded-Host) and FORWARDED_CLIENT_IP_HEADER (e.g.
+  # X-Fundroom-Client-IP), with EDGE_SHARED_SECRET (and, while rotating,
+  # EDGE_SHARED_SECRET_PREVIOUS) in secrets.extra; not with pathMounts. Behind an ingress
+  # controller you rarely need it: the ingress already sees the real Host.
+  extra: {}
+
+# Secret configuration, rendered into a Secret (unless existingSecret is set) and loaded by every
+# FundRoom container, including the pre-install/pre-upgrade migrate Job.
+secrets:
+  # -- Use a Secret you manage (External Secrets, SOPS, Sealed Secrets …) instead of the chart's.
+  # Every key in it becomes an env var, so name the keys after the env vars: FUNDROOM_SECRET_KEY
+  # (or SECRET_KEY_RING) is required (a Secret from before the rename may still say
+  # SEEDHOST_SECRET_KEY: the app reads it and `fundroom doctor` warns; add FUNDROOM_SECRET_KEY with
+  # the SAME value after upgrading the image, keep both while an older image may run — an older
+  # image reads only the old key and would generate a new one — then drop the old key; different
+  # values refuse to boot); DATABASE_URL (unless postgresql.mode=cnpg or postgresql.external.existingSecret), SMTP_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
+  # SETUP_TOKEN (recommended with more than one server replica), METRICS_TOKEN … as needed.
+  # It must exist before `helm install`: the migrate Job reads it before any chart resource exists.
+  # When set, every other value in this block must stay empty.
+  existingSecret: ""
+  # -- FUNDROOM_SECRET_KEY, the master key (`openssl rand -base64 32`). Required unless secretKeyRing
+  # or existingSecret is set. Losing it makes every encrypted column unreadable: back it up.
+  # For one minor release the chart's Secret also carries it as SEEDHOST_SECRET_KEY (same value),
+  # so a pod of an older image, which reads only that name, never generates a key of its own.
+  secretKey: ""
+  # -- SECRET_KEY_RING, `v2:<new>,v1:<old>` newest first, instead of secretKey once you rotate.
+  secretKeyRing: ""
+  # -- SETUP_TOKEN for the first-run wizard. Empty derives a stable one from the master key, so
+  # every server replica accepts the same token (NOTES.txt shows how to read it).
+  setupToken: ""
+  # -- SMTP_URL, smtps://user:pass@smtp.example.com:465 (or smtp://…:587?requireTLS=true; prod/
+  # staging refuse plain smtp:// to a relay outside the private network). Required for
+  # mail.driver=smtp in prod/staging.
+  smtpUrl: ""
+  # -- METRICS_TOKEN (min 16 chars): /metrics then requires `Authorization: Bearer <token>`.
+  # Required for metrics in prod/staging (`openssl rand -hex 24`).
+  metricsToken: ""
+  # -- Any other secret env keys, e.g. {OIDC_CLIENT_SECRET: "…", RESEND_API_KEY: "re_…"}; for the
+  # control plane STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SANCTIONS_OPENSANCTIONS_API_KEY and
+  # CLOUDFLARE_API_TOKEN; for AI assist AI_API_KEY; for OpenFGA AUTHZ_OPENFGA_API_TOKEN; for edge
+  # forwarding EDGE_SHARED_SECRET (32+ chars, `openssl rand -hex 32`, the edge holds the same value)
+  # and EDGE_SHARED_SECRET_PREVIOUS during a rotation. Keys the chart sets itself are refused (DIRECTORY_DATABASE_URL goes in
+  # residency.directory). The migrate hook never receives these (it gets only the master key,
+  # DATABASE_URL and DIRECTORY_DATABASE_URL).
+  extra: {}
+
+storage:
+  # -- STORAGE_DRIVER: s3 (default, required with more than one FundRoom pod) or fs (a
+  # PersistentVolumeClaim at /data; only for a single server pod with worker.enabled=false).
+  driver: s3
+  s3:
+    # -- S3_BUCKET. Required with driver=s3.
+    bucket: ""
+    # -- S3_REGION (AWS). One of region or endpoint is required.
+    region: ""
+    # -- S3_ENDPOINT for R2, Garage, SeaweedFS, MinIO …, e.g. https://<account>.r2.cloudflarestorage.com.
+    endpoint: ""
+    # -- S3_FORCE_PATH_STYLE: path-style addressing (most self-hosted S3 servers need it).
+    forcePathStyle: false
+    # -- S3_ACCESS_KEY_ID (goes into the Secret). Required unless secrets.existingSecret carries it.
+    accessKeyId: ""
+    # -- S3_SECRET_ACCESS_KEY (goes into the Secret). Required unless secrets.existingSecret carries it.
+    secretAccessKey: ""
+
+# Per-tenant data residency (docs/runbooks/residency.md). Everything here is unset by
+# default, which keeps an install exactly as it was. One release = one cell = one region: its
+# database, bucket, backups and key ring must all live in the region you declare here, because
+# the product cannot check where they physically are.
+residency:
+  # -- DATA_REGION: the region this release's data lives in, as you declare it (`^[a-z][a-z0-9-]{0,31}$`,
+  # e.g. eu). Written onto this database's cells at boot; tenants see it on Settings → Data residency
+  # and in their DPA. Never change it on a database that already holds workspaces: move them instead.
+  region: ""
+  # -- DATA_REGION_LABEL: human text for the region, e.g. "European Union (Frankfurt, Germany)". Needs region.
+  regionLabel: ""
+  # -- DATA_REGION_JURISDICTION: eu | uk | ch | us | ca | au | other. Needs region.
+  jurisdiction: ""
+  # -- BACKUP_LOCATION: where this release's backups live, as you declare it, e.g.
+  # "European Union (Frankfurt, Germany)". Shown to tenants next to the region.
+  backupLocation: ""
+  directory:
+    # -- DIRECTORY_DATABASE_URL (goes into the Secret, and into the migrate hook's Secret: the hook
+    # migrates the directory too). The shared cell directory every cell of a multi-region host
+    # points at: global slug/hostname uniqueness, cross-cell 421 routing, moves between cells.
+    # Needs config.extra.CONTROL_PLANE "on", region, jurisdiction and storage.driver=s3. Use
+    # `?sslmode=verify-full`: the directory carries each cell's export public key and the moves'
+    # bundle links. Empty = local mode (this database alone decides).
+    databaseUrl: ""
+    # -- Or read DIRECTORY_DATABASE_URL from this existing Secret (it may be secrets.existingSecret
+    # itself) — set it whenever the URL lives outside the chart, so the chart knows a directory is on …
+    existingSecret: ""
+    # -- … under this key.
+    existingSecretKey: DIRECTORY_DATABASE_URL
+    # -- DIRECTORY_DATABASE_POOL_MAX: connections per pod to the directory database (1–20).
+    poolMax: 4
+    # -- DIRECTORY_DATABASE_ACCEPT_UNVERIFIED_TLS: in prod/staging the directory URL must point at a
+    # private host or carry sslmode=verify-full (or verify-ca); true accepts it anyway. Leave false.
+    acceptUnverifiedTls: false
+  moves:
+    # -- MOVE_SOURCE_RETENTION_HOURS: hours the source cell keeps its copy of a workspace after the
+    # directory switched it to the target (0–720; 0 purges at once).
+    sourceRetentionHours: 0
+    # -- MOVE_MAX_BUNDLE_BYTES: largest export bundle this cell downloads when a workspace moves in
+    # (default 50 GiB). The worker spools it under /data first: see dataScratchSizeLimit.
+    maxBundleBytes: 53687091200
+
+# Only used with storage.driver=fs: the /data volume (documents under /data/storage).
+persistence:
+  # -- Without it, fs storage lives in an emptyDir and is lost when the pod goes. Only for trials.
+  enabled: true
+  # -- Use an existing PVC instead of creating one.
+  existingClaim: ""
+  # -- StorageClass; empty uses the cluster default.
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 20Gi
+  annotations: {}
+
+postgresql:
+  # -- external: you bring Postgres (16+, 18 recommended). cnpg: the chart creates a CloudNativePG
+  # `Cluster`; the CloudNativePG operator (https://cloudnative-pg.io) must already be installed.
+  mode: external
+  external:
+    # -- DATABASE_URL, postgres://user:pass@host:5432/seedhost. The user must own the database and
+    # be allowed to CREATE ROLE (migration 0000 creates the NOLOGIN `seedhost_app` role). In
+    # prod/staging a host outside the cluster/private network needs `?sslmode=verify-full`; for a
+    # managed database whose CA is not a public one (RDS, Cloud SQL, Azure) also set caSecret below
+    # and add `&sslrootcert=/etc/seed-host/db-ca/ca.crt`.
+    url: ""
+    # -- Or read DATABASE_URL from this existing Secret …
+    existingSecret: ""
+    # -- … under this key.
+    existingSecretKey: DATABASE_URL
+    # -- A Secret (you create it, before `helm install`: the migrate hook mounts it too) holding the
+    # database server's CA certificate. Mounted read-only in every FundRoom pod at
+    # /etc/seed-host/db-ca/ca.crt; put `sslmode=verify-full&sslrootcert=/etc/seed-host/db-ca/ca.crt`
+    # in the URL (the render checks this when the URL is given as postgresql.external.url).
+    caSecret: ""
+    # -- Key of the certificate in caSecret.
+    caSecretKey: ca.crt
+  cnpg:
+    # -- Who applies migrations, since the database does not exist yet while pre-install hooks run.
+    # auto: the server pods migrate on start (under the migration lock) on the first `helm install`
+    # only; later upgrades use the pre-upgrade Job. Decided by .Release.IsInstall, so set it
+    # explicitly with tools that always render as an install (Argo CD, `helm template | kubectl apply`):
+    # true: the pods always migrate on start, and no migrate Job is rendered at all.
+    # false: always the pre-upgrade Job (for installs that already exist).
+    migrateOnStart: auto
+    # -- Postgres instances (1 primary + n-1 streaming replicas).
+    instances: 2
+    # -- Postgres image; empty uses the operator's default. E.g. ghcr.io/cloudnative-pg/postgresql:18.
+    imageName: ""
+    # -- Database and owner created at bootstrap. The app connects with the generated `<cluster>-app`
+    # Secret's `uri` plus `sslmode=verify-full`, verifying the server against the operator's CA
+    # (`<cluster>-ca`, key `ca.crt`, mounted read-only).
+    database: seedhost
+    owner: seedhost
+    # -- Run `ALTER ROLE <owner> CREATEROLE BYPASSRLS` once, as superuser, after initdb: the
+    # migrator creates the NOLOGIN `seedhost_app` role and data migrations must see every tenant's
+    # rows (packages/db/README.md "Database roles"), which the Compose superuser can do too.
+    grantMigratorPrivileges: true
+    # -- Further SQL run once as superuser in the application database after initdb.
+    postInitApplicationSQL: []
+    storage:
+      size: 20Gi
+      # -- StorageClass; empty uses the cluster default.
+      storageClass: ""
+    # -- Postgres parameters (postgresql.conf), e.g. {max_connections: "200"}.
+    parameters: {}
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    # Continuous backup and PITR to object storage through the operator's in-tree
+    # barmanObjectStore (CloudNativePG 1.26+ also offers the Barman Cloud plugin; migrate to it by
+    # editing the Cluster once your operator version recommends it).
+    backup:
+      enabled: false
+      # -- e.g. s3://fundroom-backups/pg
+      destinationPath: ""
+      # -- For non-AWS S3 (R2, Garage, MinIO …).
+      endpointURL: ""
+      # -- Secret (you create it) holding the object-store credentials.
+      existingSecret: ""
+      accessKeyIdKey: access-key-id
+      secretAccessKeyKey: secret-access-key
+      retentionPolicy: 30d
+      # -- Cron (six fields, seconds first) for a ScheduledBackup; empty = WAL archiving only.
+      schedule: "0 0 3 * * *"
+
+server:
+  # -- Pods serving the API and the web app (ROLES=api,web). More than one requires storage.driver=s3.
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 1536Mi
+  # -- PodDisruptionBudget (maxUnavailable 1, safe at any replica count).
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+  # -- Seconds between SIGTERM and SIGKILL; the app drains for SHUTDOWN_TIMEOUT_MS (25 s default).
+  terminationGracePeriodSeconds: 30
+  # -- Extra env entries (full EnvVar objects), e.g. [{name: SHUTDOWN_TIMEOUT_MS, value: "20000"}].
+  extraEnv: []
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
+
+worker:
+  # -- A separate worker Deployment (ROLES=worker). false runs the job worker inside the server
+  # pods instead (WORKER_MODE=embedded).
+  enabled: true
+  replicaCount: 1
+  # -- WORKER_CONCURRENCY per pod (1–64).
+  concurrency: 5
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  # -- CPU-based HorizontalPodAutoscaler for the worker (replaces replicaCount).
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 75
+  terminationGracePeriodSeconds: 30
+  extraEnv: []
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  priorityClassName: ""
+
+# The `fundroom migrate` Job, a Helm pre-install/pre-upgrade hook: the schema is migrated before
+# any new pod starts (the app pods run with MIGRATE_ON_START=false).
+migrate:
+  # -- Retries of a failed migration pod before the release fails.
+  backoffLimit: 1
+  # -- Hard ceiling on the whole Job, including waiting for the database and the migration lock.
+  activeDeadlineSeconds: 900
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
+  extraEnv: []
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  # -- An Ingress for the primary host (the baseUrl host unless host is set).
+  enabled: false
+  # -- ingressClassName, e.g. nginx or traefik.
+  className: ""
+  # -- Sets cert-manager.io/cluster-issuer, e.g. letsencrypt-prod.
+  clusterIssuer: ""
+  # -- Primary host; empty uses the host of config.baseUrl.
+  host: ""
+  tls:
+    # -- TLS for the primary host (only; custom domains are terminated by your own edge).
+    enabled: true
+    # -- Certificate Secret; empty uses <fullname>-tls (cert-manager fills it).
+    secretName: ""
+  # -- Additional hosts routed to the same Service without TLS config here, e.g. verified
+  # workspace custom domains whose certificates you manage elsewhere.
+  extraHosts: []
+  annotations: {}
+
+serviceAccount:
+  # -- Create a ServiceAccount for the server and worker pods. The pods never mount its token.
+  create: true
+  # -- Name to use (or of an existing one when create=false). Empty: <fullname>.
+  name: ""
+  # -- e.g. eks.amazonaws.com/role-arn for IAM-based S3 access.
+  annotations: {}
+
+networkPolicy:
+  # -- NetworkPolicies for the FundRoom pods: ingress to the server only on its HTTP port, no
+  # ingress to the worker except metrics; egress unrestricted unless `egress` is set (the app
+  # sends mail, webhooks and OIDC/DNS-over-HTTPS requests to arbitrary hosts).
+  enabled: false
+  # -- Peers allowed to reach the server (NetworkPolicyPeer list). Empty allows all sources, e.g.
+  # [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}}].
+  ingressFrom: []
+  # -- Peers allowed to scrape the worker's /metrics.
+  metricsFrom: []
+  # -- Egress rules (NetworkPolicyEgressRule list); empty allows all egress.
+  egress: []
+
+# -- Pod-level security context for every FundRoom pod (the image's `nonroot` user is 65532).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Container-level security context for every FundRoom container.
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Size limit of the /data emptyDir the server and worker get with storage.driver=s3 (DATA_DIR
+# scratch). Workspace exports spool their zip here (`<DATA_DIR>/portability/`), and a workspace
+# moving between cells is exported / downloaded here (`<DATA_DIR>/moves/`): keep
+# it above your largest workspace export (and above residency.moves.maxBundleBytes if you expect
+# moves that large), or the pod is evicted mid-job. A limit, not a reservation: the node's
+# ephemeral storage must have the room.
+dataScratchSizeLimit: 4Gi
+
+# -- Size limit of the writable /tmp emptyDir (fontconfig cache, upload spooling).
+tmpSizeLimit: 1Gi

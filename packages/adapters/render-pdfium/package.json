@@ -1,0 +1,35 @@
+{
+  "name": "@fundroom/render-pdfium",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DocumentRenderPort adapter: PDFium (WASM) page rasteriser, pdf-lib sanitise + watermark, sharp encoding and image compositing",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@hyzyla/pdfium": "catalog:",
+    "@fundroom/forensic": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "pdf-lib": "catalog:",
+    "sharp": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

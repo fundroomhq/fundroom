@@ -1,0 +1,44 @@
+{
+  "name": "@fundroom/module-notify",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FundRoom notifications module: per-staff notification preferences, notification inbox, instant email alerts and daily digests for document views, downloads and update replies",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "catalog:",
+    "@fundroom/contracts": "workspace:*",
+    "@fundroom/crypto": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/identity": "workspace:*",
+    "@fundroom/module-kit": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:",
+    "@fundroom/mail": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

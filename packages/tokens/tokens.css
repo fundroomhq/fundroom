@@ -1,0 +1,119 @@
+/* Generated from fundroom.tokens.json by scripts/build-tokens.mjs. Do not edit. */
+:root {
+  --sh-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, sans-serif;
+  --sh-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sh-radius-base: 0.5rem;
+  --sh-density-base: 1;
+  --sh-shadow-sm: 0px 1px 2px 0px #0f172a14;
+  --sh-shadow-md: 0px 4px 12px -2px #0f172a1f;
+  color-scheme: light;
+  --sh-color-bg: #ffffff;
+  --sh-color-fg: #0f172a;
+  --sh-color-card: #ffffff;
+  --sh-color-card-fg: #0f172a;
+  --sh-color-popover: #ffffff;
+  --sh-color-popover-fg: #0f172a;
+  --sh-color-primary: #1d4ed8;
+  --sh-color-primary-fg: #ffffff;
+  --sh-color-secondary: #f1f5f9;
+  --sh-color-secondary-fg: #0f172a;
+  --sh-color-muted: #f1f5f9;
+  --sh-color-muted-fg: #475569;
+  --sh-color-accent: #e0e7ff;
+  --sh-color-accent-fg: #1e1b4b;
+  --sh-color-destructive: #b91c1c;
+  --sh-color-destructive-fg: #ffffff;
+  --sh-color-success: #15803d;
+  --sh-color-success-fg: #ffffff;
+  --sh-color-warning: #b45309;
+  --sh-color-warning-fg: #ffffff;
+  --sh-color-border: #e2e8f0;
+  --sh-color-input: #cbd5e1;
+  --sh-color-ring: #2563eb;
+  --sh-color-sidebar: #f8fafc;
+  --sh-color-sidebar-fg: #0f172a;
+  --sh-color-sidebar-accent: #e2e8f0;
+  --sh-color-sidebar-accent-fg: #0f172a;
+  --sh-color-sidebar-border: #e2e8f0;
+  --sh-color-chart-1: #2563eb;
+  --sh-color-chart-2: #0d9488;
+  --sh-color-chart-3: #d97706;
+  --sh-color-chart-4: #7c3aed;
+  --sh-color-chart-5: #db2777;
+}
+
+.dark {
+  color-scheme: dark;
+  --sh-color-bg: #0b1120;
+  --sh-color-fg: #e2e8f0;
+  --sh-color-card: #111827;
+  --sh-color-card-fg: #e2e8f0;
+  --sh-color-popover: #111827;
+  --sh-color-popover-fg: #e2e8f0;
+  --sh-color-primary: #60a5fa;
+  --sh-color-primary-fg: #0b1120;
+  --sh-color-secondary: #1e293b;
+  --sh-color-secondary-fg: #e2e8f0;
+  --sh-color-muted: #1e293b;
+  --sh-color-muted-fg: #a3b1c6;
+  --sh-color-accent: #312e81;
+  --sh-color-accent-fg: #e0e7ff;
+  --sh-color-destructive: #f87171;
+  --sh-color-destructive-fg: #0b1120;
+  --sh-color-success: #4ade80;
+  --sh-color-success-fg: #0b1120;
+  --sh-color-warning: #fbbf24;
+  --sh-color-warning-fg: #0b1120;
+  --sh-color-border: #1f2937;
+  --sh-color-input: #334155;
+  --sh-color-ring: #93c5fd;
+  --sh-color-sidebar: #0f172a;
+  --sh-color-sidebar-fg: #e2e8f0;
+  --sh-color-sidebar-accent: #1e293b;
+  --sh-color-sidebar-accent-fg: #e2e8f0;
+  --sh-color-sidebar-border: #1f2937;
+  --sh-color-chart-1: #60a5fa;
+  --sh-color-chart-2: #2dd4bf;
+  --sh-color-chart-3: #fbbf24;
+  --sh-color-chart-4: #a78bfa;
+  --sh-color-chart-5: #f472b6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --sh-color-bg: #0b1120;
+    --sh-color-fg: #e2e8f0;
+    --sh-color-card: #111827;
+    --sh-color-card-fg: #e2e8f0;
+    --sh-color-popover: #111827;
+    --sh-color-popover-fg: #e2e8f0;
+    --sh-color-primary: #60a5fa;
+    --sh-color-primary-fg: #0b1120;
+    --sh-color-secondary: #1e293b;
+    --sh-color-secondary-fg: #e2e8f0;
+    --sh-color-muted: #1e293b;
+    --sh-color-muted-fg: #a3b1c6;
+    --sh-color-accent: #312e81;
+    --sh-color-accent-fg: #e0e7ff;
+    --sh-color-destructive: #f87171;
+    --sh-color-destructive-fg: #0b1120;
+    --sh-color-success: #4ade80;
+    --sh-color-success-fg: #0b1120;
+    --sh-color-warning: #fbbf24;
+    --sh-color-warning-fg: #0b1120;
+    --sh-color-border: #1f2937;
+    --sh-color-input: #334155;
+    --sh-color-ring: #93c5fd;
+    --sh-color-sidebar: #0f172a;
+    --sh-color-sidebar-fg: #e2e8f0;
+    --sh-color-sidebar-accent: #1e293b;
+    --sh-color-sidebar-accent-fg: #e2e8f0;
+    --sh-color-sidebar-border: #1f2937;
+    --sh-color-chart-1: #60a5fa;
+    --sh-color-chart-2: #2dd4bf;
+    --sh-color-chart-3: #fbbf24;
+    --sh-color-chart-4: #a78bfa;
+    --sh-color-chart-5: #f472b6;
+  }
+}

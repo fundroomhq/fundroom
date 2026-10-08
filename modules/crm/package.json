@@ -1,0 +1,44 @@
+{
+  "name": "@fundroom/module-crm",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FundRoom CRM-lite module: contacts and organisations that need no login, a per-round pipeline with tenant-editable stages, notes and tasks, kept in step with the round module over outbox events",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "catalog:",
+    "@fundroom/contracts": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/decimal": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/identity": "workspace:*",
+    "@fundroom/module-kit": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "@fundroom/round-terms": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

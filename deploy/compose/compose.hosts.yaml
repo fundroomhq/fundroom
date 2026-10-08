@@ -1,0 +1,87 @@
+# Embed-host e2e overlay. Layers an edge and a static web server on top of compose.ci.yaml
+# so `e2e/tests/20-embed-hosts.test.ts` can frame the portal from *other sites* — the only place
+# the partitioned session cookie, `frame-ancestors` and the postMessage bridge are real.
+#
+#   E2E_APP_PORT=3200 E2E_MAILPIT_PORT=8225 \
+#     docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.hosts.yaml \
+#     up -d --wait --build
+#
+# It is a *separate* stack from the plain CI one, not an addition to it: `BASE_URL` has to be
+# `https://portal.test` for the portal to have an origin a host page can be cross-site to, and
+# `00-setup.test.ts` drives a wizard against `http://localhost:3000`. Run this overlay for
+# `20-embed-hosts` only (`pnpm --filter @fundroom/e2e test:hosts`).
+#
+# Why a second origin at all, and why TLS: cookie partitioning is keyed on the *site*, so
+# `localhost:3000` and `localhost:8081` are the same site and prove nothing — two ports cannot
+# be third-party to each other. And a `SameSite=None; Secure; Partitioned` cookie is only stored
+# in a secure context, which off loopback means https. So: real hostnames, real TLS, one edge.
+#
+# Two services:
+#
+#   hosts   nginx serving `e2e/hosts/` — the customer's site, in five shapes.
+#   caddy   the edge. `portal.test` proxies the app; `host-a/b/c.test` proxy nginx over TLS;
+#           `insecure-host.test` serves the same files over plain http so the loader has
+#           something to refuse. Certificates come from Caddy's internal CA — `.test` is
+#           RFC 6761 special-use and no public CA can ever sign for it — and the browser is
+#           launched with `ignoreHTTPSErrors`. See `e2e/hosts/README.md` for why that is sound
+#           here and what it does *not* weaken.
+#
+# The app's own port stays published by compose.ci.yaml: the fixture configures the workspace
+# over it before any browser opens a page, which keeps that half independent of the edge.
+
+name: seed-host-ci
+
+services:
+  app:
+    environment:
+      # The portal's address as the browser sees it. Everything the server mints from it — the
+      # "open in a new tab" link, the embed document's own origin, `frame-ancestors 'self'` —
+      # has to name this host, or the host pages are not cross-site to it.
+      BASE_URL: https://portal.test
+      # Caddy terminates TLS and forwards the original Host and scheme; without this the app
+      # would call every framed request plaintext http and refuse to set the session cookie.
+      TRUST_PROXY: "true"
+
+  hosts:
+    image: nginx:1.29-alpine
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    volumes:
+      - ../../e2e/hosts:/usr/share/nginx/html:ro
+      - ../../e2e/hosts/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/plain.html"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  caddy:
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    ports:
+      # 443 and 80 by default, because the URL the browser opens carries no port: Chromium's
+      # resolver override can map a name to an address *and* a port, Firefox's can only map the
+      # name. Override both together (E2E_HOSTS_HTTPS_PORT / E2E_HOSTS_HTTP_PORT) when they are
+      # taken locally, and accept that the Firefox project drops out (playwright.config.ts).
+      - "${E2E_HOSTS_HTTPS_PORT:-443}:443"
+      - "${E2E_HOSTS_HTTP_PORT:-80}:80"
+    volumes:
+      - ../../e2e/hosts/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_hosts_data:/data
+      - caddy_hosts_config:/config
+    healthcheck:
+      # The admin API, which only answers once the config has been loaded and provisioned.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 2s
+      timeout: 3s
+      retries: 40
+    depends_on:
+      app:
+        condition: service_healthy
+      hosts:
+        condition: service_healthy
+
+volumes:
+  caddy_hosts_data:
+  caddy_hosts_config:

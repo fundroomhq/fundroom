@@ -1,0 +1,47 @@
+{
+  "name": "@fundroom/audit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Append-only, per-workspace hash-chained audit log for FundRoom: recorder, checkpoints, partition maintenance, verification CLI",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "bin": {
+    "fundroom-audit": "./dist/cli.js",
+    "seedhost-audit": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "verify": "node dist/cli.js verify"
+  },
+  "dependencies": {
+    "@fundroom/config": "workspace:*",
+    "@fundroom/csv": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "fflate": "catalog:",
+    "pg": "catalog:",
+    "vitest": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "@types/pg": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,478 @@
+# FundRoom reference stack.
+#
+#   cp .env.example .env   # set FUNDROOM_DOMAIN, BASE_URL, SMTP_URL, MAIL_FROM, POSTGRES_PASSWORD
+#   docker compose up -d
+#   docker compose logs app | grep -A4 "first-run setup"   # the setup token
+#
+# Three required services (caddy, app, db) plus `migrate`, which runs once before `app`.
+# Everything else is a profile: `--profile worker` (separate worker process; also set
+# WORKER_MODE=external — COMPOSE_PROFILES=worker plus WORKER_MODE=external in .env does both),
+# `--profile objstore` (S3-compatible SeaweedFS instead of the /data volume; see compose.s3.yaml
+# for an external bucket), `--profile av` (ClamAV), `--profile convert` (Gotenberg),
+# `--profile search` (Meilisearch), `--profile openfga` (OpenFGA for AUTHZ_ENGINE=openfga),
+# `--profile backup` (nightly pg_dump to a volume). A commented
+# `--profile ai` (Ollama, for AI assist) is below the others.
+#
+# Secrets: every variable also accepts NAME_FILE=/run/secrets/name. If FUNDROOM_SECRET_KEY is
+# unset the first start generates one into the data volume (loud warning in the logs).
+#
+# Renamed variables (A-2): an .env written before the FundRoom rename keeps working.
+# SEEDHOST_DOMAIN and SEEDHOST_IMAGE are read when FUNDROOM_DOMAIN / FUNDROOM_IMAGE are unset;
+# SEEDHOST_SECRET_KEY is passed through to the app, which reads it and warns (`doctor`, boot log).
+# Rename them in .env at your convenience; never set both spellings of the master key.
+
+name: seed-host
+
+# Only the keys listed here reach the app. Any other key from packages/config/src/schema.ts, and
+# any NAME_FILE=/run/secrets/name variant, goes into a compose.override.yaml next to this file
+# (Compose merges it automatically) under `services.{app,worker,migrate}.environment`, together
+# with the `secrets:` it points at. `env_file: {path: .env, required: false}` would also work, but
+# it forwards *every* line of .env (POSTGRES_PASSWORD, ACME_*, leftovers) into the containers,
+# so it is left to the override rather than made the default.
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-prod}
+  BASE_URL: ${BASE_URL:-https://${FUNDROOM_DOMAIN:-${SEEDHOST_DOMAIN:-localhost}}}
+  INSTANCE_NAME: ${INSTANCE_NAME:-FundRoom}
+  # No fallback password: a stack that forgot POSTGRES_PASSWORD refuses to start
+  # instead of running on a well-known one. Generate it: openssl rand -hex 24. A stack created
+  # before the security-hardening release without the variable was initialised with `seedhost`: set POSTGRES_PASSWORD=seedhost
+  # (Postgres reads it only on first init), then rotate it (docs/runbooks/rotate-keys.md).
+  DATABASE_URL: postgres://seedhost:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env - for a new install generate one with openssl rand -hex 24 - when upgrading an existing stack use the password its pgdata volume was created with, which is seedhost if .env never set one (docs/runbooks/install-and-upgrade.md)}@db:5432/seedhost
+  # single: one workspace, no slug routing. `multi` is what makes <slug>.$FUNDROOM_DOMAIN and
+  # custom domains resolve a workspace; the default keeps a one-workspace install as-is.
+  TENANCY_MODE: ${TENANCY_MODE:-single}
+  TRUST_PROXY: "true"
+  # Caddy replaces X-Forwarded-For for clients outside `trusted_proxies` (EDGE_TRUSTED_PROXIES,
+  # default: nobody), so the one entry that reaches the app is the address Caddy saw.
+  # Raise it only with another appending proxy (a CDN) in front of Caddy that is listed in
+  # EDGE_TRUSTED_PROXIES. Behind Docker Desktop, rootless Docker or Docker's userland proxy
+  # (IPv6 clients on an IPv4 bridge) Caddy sees the gateway, not the client: every visitor then
+  # shares one address for rate limits and audit; publish the ports in host network mode or run
+  # rootful Docker with IPv6 enabled on the bridge to keep real client addresses.
+  TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-}
+  CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
+  # Edge forwarding: only for an edge (a Cloudflare Worker) in front of a platform that
+  # routes by Host and overwrites X-Forwarded-Host; the edge passes the visitor's hostname and IP
+  # in these private headers and proves itself with EDGE_SHARED_SECRET (openssl rand -hex 32, same
+  # value at the edge; EDGE_SHARED_SECRET_PREVIOUS only while rotating). Caddy here already sees
+  # the real Host, so a Compose install leaves all four empty. Not with PATH_MOUNTS.
+  FORWARDED_HOST_HEADER: ${FORWARDED_HOST_HEADER:-}
+  FORWARDED_CLIENT_IP_HEADER: ${FORWARDED_CLIENT_IP_HEADER:-}
+  EDGE_SHARED_SECRET: ${EDGE_SHARED_SECRET:-}
+  EDGE_SHARED_SECRET_FILE: ${EDGE_SHARED_SECRET_FILE:-}
+  EDGE_SHARED_SECRET_PREVIOUS: ${EDGE_SHARED_SECRET_PREVIOUS:-}
+  EDGE_SHARED_SECRET_PREVIOUS_FILE: ${EDGE_SHARED_SECRET_PREVIOUS_FILE:-}
+  FUNDROOM_SECRET_KEY: ${FUNDROOM_SECRET_KEY:-}
+  # The master key's old name, passed through (not folded into the line above) so the app can
+  # tell which one an .env uses and warn. Both set to the same value is accepted (keep both while
+  # an older image may still run: it reads only the old name); different values refuse to start.
+  SEEDHOST_SECRET_KEY: ${SEEDHOST_SECRET_KEY:-}
+  SECRET_KEY_RING: ${SECRET_KEY_RING:-}
+  SETUP_TOKEN: ${SETUP_TOKEN:-}
+  MAILER_DRIVER: ${MAILER_DRIVER:-smtp}
+  SMTP_URL: ${SMTP_URL:-}
+  MAIL_FROM: ${MAIL_FROM:-}
+  MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
+  # ESP drivers: MAILER_DRIVER=resend|postmark|ses sends over the provider's API and turns
+  # its webhook (POST /webhooks/email/<driver>, URL shown on the admin mail screen) into bounces,
+  # complaints and opens/clicks. Only the chosen driver's keys matter; empty means unset.
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  RESEND_WEBHOOK_SECRET: ${RESEND_WEBHOOK_SECRET:-}
+  POSTMARK_SERVER_TOKEN: ${POSTMARK_SERVER_TOKEN:-}
+  POSTMARK_BROADCAST_STREAM: ${POSTMARK_BROADCAST_STREAM:-}
+  POSTMARK_WEBHOOK_USER: ${POSTMARK_WEBHOOK_USER:-}
+  POSTMARK_WEBHOOK_PASSWORD: ${POSTMARK_WEBHOOK_PASSWORD:-}
+  AWS_REGION: ${AWS_REGION:-}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+  AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+  SES_CONFIGURATION_SET: ${SES_CONFIGURATION_SET:-}
+  SES_SNS_TOPIC_ARNS: ${SES_SNS_TOPIC_ARNS:-}
+  # Custom domains. `caddy-ask` is the Caddyfile's on-demand TLS `ask` flow; `manual`
+  # verifies DNS only and leaves TLS to an edge you terminate yourself; `cloudflare-saas`
+  # has Cloudflare for SaaS terminate TLS for custom hostnames (CLOUDFLARE_* below). The CNAME target and the
+  # DoH resolvers fall back to the canonical host and to 1.1.1.1 + 8.8.8.8 when left empty.
+  CUSTOM_DOMAIN_DRIVER: ${CUSTOM_DOMAIN_DRIVER:-caddy-ask}
+  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-}
+  CUSTOM_DOMAIN_EDGE_ADDRESSES: ${CUSTOM_DOMAIN_EDGE_ADDRESSES:-}
+  DOH_ENDPOINTS: ${DOH_ENDPOINTS:-}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-fs}
+  # Data room scanning: `docker compose --profile av up` runs clamd; set AV_DRIVER=clamd.
+  # With AV_DRIVER=noop, APP_ENV=prod refuses to start unless AV_ACCEPT_UNSCANNED=true says so
+  # on purpose; .env.example sets it, so a first run works and the choice is written down.
+  AV_DRIVER: ${AV_DRIVER:-noop}
+  AV_ACCEPT_UNSCANNED: ${AV_ACCEPT_UNSCANNED:-}
+  CLAMD_HOST: ${CLAMD_HOST:-clamav}
+  CLAMD_PORT: ${CLAMD_PORT:-}
+  CLAMD_TIMEOUT_MS: ${CLAMD_TIMEOUT_MS:-}
+  # Jobs processed in parallel by whichever process runs the worker (embedded in `app`, or the
+  # `worker` profile). Empty means unset here: the schema default (5) applies, as it does for
+  # CLAMD_PORT (3310) and CLAMD_TIMEOUT_MS (120000) above.
+  WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-}
+  UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-5368709120}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  MODULES: ${MODULES:-}
+  # /metrics: in prod it is served only when METRICS_TOKEN is set, and Caddy refuses
+  # it from outside either way (scrape http://app:3000/metrics on the Compose network, or set
+  # EDGE_EXPOSE_METRICS=true on caddy). METRICS_ENABLED=false turns it off entirely.
+  METRICS_ENABLED: ${METRICS_ENABLED:-}
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+  # Release check: no identifiers sent, never auto-updates. Empty = schema
+  # defaults (enabled, https://releases.fundroom.com/index.json); UPDATE_CHECK=false turns it off.
+  UPDATE_CHECK: ${UPDATE_CHECK:-}
+  UPDATE_CHECK_URL: ${UPDATE_CHECK_URL:-}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  # Managed-host control plane (docs/runbooks/control-plane.md). Every key is
+  # empty by default = unset = today's behaviour (a self-host sees none of it). CONTROL_PLANE=on
+  # needs TENANCY_MODE=multi; signup, billing and sanctions need CONTROL_PLANE=on. Secrets take
+  # the NAME_FILE=/run/secrets/name form too (mount the secret in compose.override.yaml).
+  CONTROL_PLANE: ${CONTROL_PLANE:-}
+  CELL_ID: ${CELL_ID:-}
+  PLATFORM_OPERATOR_CIDRS: ${PLATFORM_OPERATOR_CIDRS:-}
+  SIGNUP_MODE: ${SIGNUP_MODE:-}
+  SIGNUP_DEFAULT_PLAN: ${SIGNUP_DEFAULT_PLAN:-}
+  SIGNUP_TERMS_VERSION: ${SIGNUP_TERMS_VERSION:-}
+  # Host footer links (any install): admin area, signup, setup, operator console and
+  # canonical-host sign-in, not the investor portal. https:// only; SUPPORT_URL may be mailto:.
+  TERMS_URL: ${TERMS_URL:-}
+  PRIVACY_URL: ${PRIVACY_URL:-}
+  SUPPORT_URL: ${SUPPORT_URL:-}
+  STATUS_URL: ${STATUS_URL:-}
+  BILLING_DRIVER: ${BILLING_DRIVER:-}
+  BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_SECRET_KEY_FILE: ${STRIPE_SECRET_KEY_FILE:-}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  STRIPE_WEBHOOK_SECRET_FILE: ${STRIPE_WEBHOOK_SECRET_FILE:-}
+  SANCTIONS_DRIVER: ${SANCTIONS_DRIVER:-}
+  SANCTIONS_OFAC_URL: ${SANCTIONS_OFAC_URL:-}
+  SANCTIONS_OPENSANCTIONS_URL: ${SANCTIONS_OPENSANCTIONS_URL:-}
+  SANCTIONS_OPENSANCTIONS_API_KEY: ${SANCTIONS_OPENSANCTIONS_API_KEY:-}
+  SANCTIONS_OPENSANCTIONS_API_KEY_FILE: ${SANCTIONS_OPENSANCTIONS_API_KEY_FILE:-}
+  SANCTIONS_OPENSANCTIONS_API_KEY_HOSTS: ${SANCTIONS_OPENSANCTIONS_API_KEY_HOSTS:-}
+  SANCTIONS_MATCH_THRESHOLD: ${SANCTIONS_MATCH_THRESHOLD:-}
+  # Cloudflare for SaaS custom hostnames (CUSTOM_DOMAIN_DRIVER=cloudflare-saas, above) and client
+  # addresses from CF-Connecting-IP when the peer is in Cloudflare's ranges (needs TRUST_PROXY).
+  CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+  CLOUDFLARE_API_TOKEN_FILE: ${CLOUDFLARE_API_TOKEN_FILE:-}
+  CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID:-}
+  CLOUDFLARE_TRUSTED_PROXY: ${CLOUDFLARE_TRUSTED_PROXY:-}
+  # Custom-domain and slug hosts sign in through the canonical host (BASE_URL).
+  CENTRAL_AUTH: ${CENTRAL_AUTH:-}
+  # Per-tenant data residency (docs/runbooks/residency.md). The region this deployment's
+  # data lives in, as the operator declares it; DIRECTORY_DATABASE_URL (a secret) joins a shared
+  # cell directory and needs CONTROL_PLANE=on, DATA_REGION and DATA_REGION_JURISDICTION.
+  DATA_REGION: ${DATA_REGION:-}
+  DATA_REGION_LABEL: ${DATA_REGION_LABEL:-}
+  DATA_REGION_JURISDICTION: ${DATA_REGION_JURISDICTION:-}
+  BACKUP_LOCATION: ${BACKUP_LOCATION:-}
+  DIRECTORY_DATABASE_URL: ${DIRECTORY_DATABASE_URL:-}
+  DIRECTORY_DATABASE_URL_FILE: ${DIRECTORY_DATABASE_URL_FILE:-}
+  DIRECTORY_DATABASE_POOL_MAX: ${DIRECTORY_DATABASE_POOL_MAX:-}
+  DIRECTORY_DATABASE_ACCEPT_UNVERIFIED_TLS: ${DIRECTORY_DATABASE_ACCEPT_UNVERIFIED_TLS:-}
+  MOVE_SOURCE_RETENTION_HOURS: ${MOVE_SOURCE_RETENTION_HOURS:-}
+  MOVE_MAX_BUNDLE_BYTES: ${MOVE_MAX_BUNDLE_BYTES:-}
+  # AI assist (docs/runbooks/ai-assist.md). Off unless AI_PROVIDER is set: none |
+  # openai-compatible (Ollama, vLLM, llama.cpp server, LM Studio, or a hosted OpenAI-compatible
+  # API) | anthropic. Every workspace still opts in on Settings → AI assist.
+  AI_PROVIDER: ${AI_PROVIDER:-}
+  AI_BASE_URL: ${AI_BASE_URL:-}
+  AI_API_KEY: ${AI_API_KEY:-}
+  AI_API_KEY_FILE: ${AI_API_KEY_FILE:-}
+  AI_MODEL: ${AI_MODEL:-}
+  AI_HOSTING: ${AI_HOSTING:-}
+  AI_PROVIDER_LABEL: ${AI_PROVIDER_LABEL:-}
+  AI_PROVIDER_LOCATION: ${AI_PROVIDER_LOCATION:-}
+  AI_PROVIDER_JURISDICTION: ${AI_PROVIDER_JURISDICTION:-}
+  AI_JSON_MODE: ${AI_JSON_MODE:-}
+  AI_TOKEN_PARAM: ${AI_TOKEN_PARAM:-}
+  AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-}
+  AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-}
+  AI_MAX_INPUT_CHARS: ${AI_MAX_INPUT_CHARS:-}
+  AI_CONCURRENCY: ${AI_CONCURRENCY:-}
+  AI_MONTHLY_TOKEN_BUDGET: ${AI_MONTHLY_TOKEN_BUDGET:-}
+  AI_REQUESTS_PER_USER_HOUR: ${AI_REQUESTS_PER_USER_HOUR:-}
+  AI_RESULT_RETENTION_HOURS: ${AI_RESULT_RETENTION_HOURS:-}
+  # External audit anchoring (docs/runbooks/audit-anchoring.md). Off unless
+  # AUDIT_ANCHOR_DRIVERS lists rfc3161 and/or rekor. The PEM files are mounted as secrets.
+  AUDIT_ANCHOR_DRIVERS: ${AUDIT_ANCHOR_DRIVERS:-}
+  AUDIT_ANCHOR_TSA_URLS: ${AUDIT_ANCHOR_TSA_URLS:-}
+  AUDIT_ANCHOR_TSA_CERTS_FILE: ${AUDIT_ANCHOR_TSA_CERTS_FILE:-}
+  AUDIT_ANCHOR_REKOR_URL: ${AUDIT_ANCHOR_REKOR_URL:-}
+  AUDIT_ANCHOR_REKOR_LOG_KEY_FILE: ${AUDIT_ANCHOR_REKOR_LOG_KEY_FILE:-}
+  AUDIT_ANCHOR_REKOR_ORIGIN: ${AUDIT_ANCHOR_REKOR_ORIGIN:-}
+  AUDIT_ANCHOR_TIMEOUT_MS: ${AUDIT_ANCHOR_TIMEOUT_MS:-}
+  # Optional OpenFGA engine behind the authz port (docs/runbooks/openfga.md). Postgres
+  # stays the source of truth; start in shadow mode. With the `openfga` profile below:
+  # COMPOSE_PROFILES=openfga, AUTHZ_ENGINE=openfga, AUTHZ_OPENFGA_URL=http://openfga:8080.
+  AUTHZ_ENGINE: ${AUTHZ_ENGINE:-}
+  AUTHZ_OPENFGA_URL: ${AUTHZ_OPENFGA_URL:-}
+  AUTHZ_OPENFGA_API_TOKEN: ${AUTHZ_OPENFGA_API_TOKEN:-}
+  AUTHZ_OPENFGA_API_TOKEN_FILE: ${AUTHZ_OPENFGA_API_TOKEN_FILE:-}
+  AUTHZ_OPENFGA_MODE: ${AUTHZ_OPENFGA_MODE:-}
+  AUTHZ_OPENFGA_SHADOW_SAMPLE: ${AUTHZ_OPENFGA_SHADOW_SAMPLE:-}
+  AUTHZ_OPENFGA_TIMEOUT_MS: ${AUTHZ_OPENFGA_TIMEOUT_MS:-}
+
+x-app: &app
+  image: ${FUNDROOM_IMAGE:-${SEEDHOST_IMAGE:-ghcr.io/fundroomhq/fundroom:latest}}
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp:size=256m
+  volumes:
+    - data:/data
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: seedhost
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env - for a new install generate one with openssl rand -hex 24 - when upgrading an existing stack use the password its pgdata volume was created with, which is seedhost if .env never set one (docs/runbooks/install-and-upgrade.md)}
+      POSTGRES_DB: seedhost
+      POSTGRES_INITDB_ARGS: --data-checksums
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=100"]
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seedhost -d seedhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      <<: *app-env
+      ROLES: api
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    <<: *app
+    command: ["serve"]
+    environment:
+      <<: *app-env
+      ROLES: ${ROLES:-api,web,worker}
+      WORKER_MODE: ${WORKER_MODE:-embedded}
+      # Migrations already ran in `migrate`; keep this on for single-replica upgrades anyway.
+      MIGRATE_ON_START: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "3000"
+    # Liveness (`/healthz`), not readiness (`/readyz`) — and `migrate` plus `worker` gate on it
+    # with `service_healthy`, which is exactly why. A readiness probe here would take the stack
+    # down on any Postgres, S3 or SMTP blip. The font guard that used to depend on something
+    # polling `/readyz` does not any more: `serve` asserts it at boot and refuses to listen
+    # (deploy/docker/Dockerfile HEALTHCHECK).
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "/app/healthcheck.js"]
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+  worker:
+    # A dedicated job process: ROLES=worker and no WORKER_MODE (config rejects ROLES=worker with
+    # WORKER_MODE=external — "external" means *another* process runs the jobs). Enabling this
+    # profile also needs WORKER_MODE=external for `app`, so the web process stops consuming jobs:
+    # set both lines in .env (see .env.example). Forgetting the second is safe, only wasteful:
+    # two consumers on the same pg-boss queues.
+    <<: *app
+    profiles: ["worker"]
+    command: ["serve"]
+    environment:
+      <<: *app-env
+      ROLES: worker
+      MIGRATE_ON_START: "false"
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
+    depends_on:
+      app:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      FUNDROOM_DOMAIN: ${FUNDROOM_DOMAIN:-${SEEDHOST_DOMAIN:-localhost}}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      # Swap the primary ACME CA (the e2e stack uses a local Pebble); empty keeps Let's Encrypt
+      # with the ZeroSSL fallback. ACME_CA_ROOT is a PEM bundle containing that CA's own root and
+      # reaches Caddy as SSL_CERT_FILE, which Go's crypto/x509 ignores while it is empty.
+      ACME_CA: ${ACME_CA:-}
+      SSL_CERT_FILE: ${ACME_CA_ROOT:-}
+      # `true` lets /metrics through the edge (still bearer-protected by the app). Default: refused.
+      EDGE_EXPOSE_METRICS: ${EDGE_EXPOSE_METRICS:-}
+      # Proxies in front of Caddy whose X-Forwarded-* it keeps (CIDRs, space-separated, or
+      # `private_ranges`). Empty trusts nobody: Caddy writes the client address itself.
+      EDGE_TRUSTED_PROXIES: ${EDGE_TRUSTED_PROXIES:-}
+      # The app's BASE_PATH: the on-demand TLS `ask` URL and the /internal and /metrics
+      # refusals live under it. Empty for a root install.
+      FUNDROOM_BASE_PATH: ${BASE_PATH:-}
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+  # --- optional profiles ---------------------------------------------------------------------
+
+  objstore:
+    # S3-compatible store for installs that outgrow the /data volume. For a managed bucket
+    # (S3, R2, MinIO elsewhere) use compose.s3.yaml instead and skip this profile.
+    image: chrislusf/seaweedfs:3.97
+    profiles: ["objstore"]
+    restart: unless-stopped
+    command: ["server", "-s3", "-s3.port=8333", "-dir=/data", "-master.volumeSizeLimitMB=1024"]
+    volumes:
+      - objstore:/data
+    expose:
+      - "8333"
+    security_opt:
+      - no-new-privileges:true
+
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["av"]
+    restart: unless-stopped
+    volumes:
+      - clamav:/var/lib/clamav
+    expose:
+      - "3310"
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 60s
+      start_period: 300s
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    profiles: ["convert"]
+    restart: unless-stopped
+    command: ["gotenberg", "--api-timeout=120s", "--chromium-disable-javascript=true"]
+    expose:
+      - "3000"
+    security_opt:
+      - no-new-privileges:true
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.15
+    profiles: ["search"]
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meili:/meili_data
+    expose:
+      - "7700"
+    security_opt:
+      - no-new-privileges:true
+
+  # OpenFGA for AUTHZ_ENGINE=openfga (docs/runbooks/openfga.md). Its state is a projection
+  # the app rebuilds at any time, so the in-memory datastore is enough here (a restart triggers a
+  # full re-sync); point OPENFGA_DATASTORE_* at Postgres for a large install. Set
+  # OPENFGA_PRESHARED_KEY (and the same value as AUTHZ_OPENFGA_API_TOKEN) to require a token.
+  # Kept on the Compose network: expose, never ports.
+  openfga:
+    image: openfga/openfga:v1.21.0
+    profiles: ["openfga"]
+    restart: unless-stopped
+    command: ["run"]
+    environment:
+      OPENFGA_DATASTORE_ENGINE: memory
+      OPENFGA_PLAYGROUND_ENABLED: "false"
+      OPENFGA_HTTP_ADDR: 0.0.0.0:8080
+      OPENFGA_LOG_FORMAT: json
+      OPENFGA_AUTHN_METHOD: ${OPENFGA_AUTHN_METHOD:-none}
+      OPENFGA_AUTHN_PRESHARED_KEYS: ${OPENFGA_PRESHARED_KEY:-}
+    expose:
+      - "8080"
+    security_opt:
+      - no-new-privileges:true
+
+  # AI assist on a model you run (docs/runbooks/ai-assist.md). Optional and commented out:
+  # uncomment this service and the `ollama:` volume below, then set COMPOSE_PROFILES=ai,
+  # AI_PROVIDER=openai-compatible, AI_BASE_URL=http://ollama:11434 and AI_MODEL=qwen3.5:9b in .env,
+  # and pull the model once: docker compose exec ollama ollama pull qwen3.5:9b
+  # Ollama has no authentication: keep 11434 on the Compose network (expose, never ports).
+  # ollama:
+  #   image: ollama/ollama:latest   # pin a release tag
+  #   profiles: ["ai"]
+  #   restart: unless-stopped
+  #   environment:
+  #     # Ollama serves 4k tokens by default on smaller GPUs and silently cuts longer prompts.
+  #     OLLAMA_CONTEXT_LENGTH: "32768"
+  #     OLLAMA_KEEP_ALIVE: "30m"
+  #   volumes:
+  #     - ollama:/root/.ollama
+  #   expose:
+  #     - "11434"
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   # NVIDIA GPU (needs the NVIDIA Container Toolkit on the host):
+  #   # deploy:
+  #   #   resources:
+  #   #     reservations:
+  #   #       devices:
+  #   #         - driver: nvidia
+  #   #           count: all
+  #   #           capabilities: [gpu]
+
+  backup:
+    # Nightly logical dumps to a volume; ship that volume off-host. pgBackRest for
+    # point-in-time recovery is the managed-host default and is not part of this file.
+    # Major version must match `db` (postgres:18): pg_dump refuses to dump a newer server, so a
+    # :17 tag here fails every run with "server version mismatch" and writes nothing.
+    image: prodrigestivill/postgres-backup-local:18
+    profiles: ["backup"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: seedhost
+      POSTGRES_USER: seedhost
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env - for a new install generate one with openssl rand -hex 24 - when upgrading an existing stack use the password its pgdata volume was created with, which is seedhost if .env never set one (docs/runbooks/install-and-upgrade.md)}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: "14"
+      BACKUP_KEEP_WEEKS: "8"
+      BACKUP_KEEP_MONTHS: "6"
+      HEALTHCHECK_PORT: "8080"
+    volumes:
+      - backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  pgdata:
+  data:
+  caddy_data:
+  caddy_config:
+  objstore:
+  clamav:
+  meili:
+  backups:
+  # ollama:

@@ -1,0 +1,96 @@
+{
+  "unusedKeys": {
+    "admin_todo_access": "read dynamically: routes/admin/index.tsx CHECKLIST → m[item.key]()",
+    "admin_todo_branding": "read dynamically: routes/admin/index.tsx CHECKLIST → m[item.key]()",
+    "admin_todo_content": "read dynamically: routes/admin/index.tsx CHECKLIST → m[item.key]()",
+    "admin_todo_data_room": "read dynamically: routes/admin/index.tsx CHECKLIST → m[item.key]()",
+    "admin_todo_updates": "read dynamically: routes/admin/index.tsx CHECKLIST → m[item.key]()"
+  },
+  "jsx": [
+    {
+      "file": "apps/web/src/components/branding/brand-controls.tsx",
+      "text": "https://example.com",
+      "reason": "example URL, not prose"
+    },
+    {
+      "file": "apps/web/src/components/content/page-renderer.tsx",
+      "text": "LinkedIn",
+      "reason": "brand name"
+    },
+    {
+      "file": "apps/web/src/modules/content/admin.tsx",
+      "text": "LinkedIn",
+      "reason": "brand name"
+    },
+    {
+      "file": "apps/web/src/modules/notify/channels.tsx",
+      "text": "https://hooks.slack.com/services/…",
+      "reason": "example URL, not prose"
+    },
+    {
+      "file": "apps/web/src/modules/updates/admin.tsx",
+      "text": "mail.example.com",
+      "reason": "example hostname, not prose"
+    },
+    {
+      "file": "apps/web/src/routes/admin/audit/index.tsx",
+      "text": "access.",
+      "reason": "audit action prefix (a code identifier)"
+    },
+    {
+      "file": "apps/web/src/routes/admin/audit/index.tsx",
+      "text": "membership",
+      "reason": "audit resource kind (a code identifier)"
+    },
+    {
+      "file": "apps/web/src/routes/admin/audit/index.tsx",
+      "text": "fundroom audit verify-export audit-export.zip --public-key ${…}",
+      "reason": "a shell command the owner copies, not prose"
+    },
+    {
+      "file": "apps/web/src/routes/admin/domains/index.tsx",
+      "text": "investors.example.com",
+      "reason": "example hostname, not prose"
+    },
+    {
+      "file": "apps/web/src/routes/admin/embed/index.tsx",
+      "text": "Content-Security-Policy: frame-ancestors ${…}",
+      "reason": "an HTTP header to paste into server config, not prose"
+    },
+    {
+      "file": "apps/web/src/routes/admin/embed/index.tsx",
+      "text": "acme-wp-1",
+      "reason": "example key id, not prose"
+    },
+    {
+      "file": "apps/web/src/routes/admin/embed/index.tsx",
+      "text": "acme.com WordPress",
+      "reason": "example key label (product name), not prose"
+    },
+    {
+      "file": "apps/web/src/routes/admin/embed/index.tsx",
+      "text": "https://acme.com",
+      "reason": "example URL, not prose"
+    },
+    {
+      "file": "apps/web/src/routes/admin/settings/danger.tsx",
+      "text": "fundroom workspace restore",
+      "reason": "a CLI command the operator types"
+    },
+    {
+      "file": "apps/web/src/routes/admin/settings/export.tsx",
+      "text": "fundroom workspace verify-export workspace-export.zip --public-key ${…}",
+      "reason": "a shell command the owner copies, not prose"
+    },
+    {
+      "file": "apps/web/src/routes/admin/share-links/index.tsx",
+      "text": "acme.com",
+      "reason": "example domain, not prose"
+    },
+    {
+      "file": "apps/web/src/routes/setup.tsx",
+      "text": "investors.example.com",
+      "reason": "example hostname, not prose"
+    }
+  ]
+}

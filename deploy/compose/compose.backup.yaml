@@ -1,0 +1,188 @@
+# Override: point-in-time recovery with pgBackRest (Tier 1: RPO 5 min, RTO 1 h).
+#
+#   docker compose -f compose.yaml -f compose.backup.yaml up -d
+#
+# What changes:
+#   - `db` runs a locally built image (postgres:18 alpine + pgBackRest, see
+#     deploy/docker/postgres-pgbackrest.Dockerfile) with WAL archiving on: every WAL segment is
+#     pushed to the repository by `archive_command`, and `archive_timeout` forces a segment switch
+#     at least every PG_ARCHIVE_TIMEOUT seconds (default 60) so an idle-ish database still meets
+#     the 5-minute RPO.
+#   - `pgbackrest` is a scheduler sidecar that shares the db's data volume (read-only) and unix
+#     socket: stanza-create + check on start, an initial full backup when the repo is empty, then
+#     a full backup weekly and a differential daily (BACKUP_FULL_WEEKDAY, BACKUP_TIME, UTC). It also
+#     watches WAL archiving (pg_stat_archiver + a repository probe every
+#     BACKUP_ARCHIVE_CHECK_INTERVAL s) and turns unhealthy once archiving has been failing for
+#     BACKUP_ARCHIVE_GRACE s (default 300 = the RPO); it turns healthy again once archiving recovers.
+#   - `pgbackrest-restore` / `pg-drill` (profile `restore`) are one-shot helpers for an in-place
+#     restore and for the monthly restore drill into the scratch `pgrestore` volume.
+# The Tier-0 `backup` profile (nightly pg_dump) in compose.yaml still works alongside this.
+#
+# Repository: the `pgbackrest` named volume by default — ship it off-host, or better, use S3:
+#   PGBACKREST_REPO1_TYPE=s3  PGBACKREST_REPO1_S3_BUCKET=…  PGBACKREST_REPO1_S3_ENDPOINT=s3.eu-west-1.amazonaws.com
+#   PGBACKREST_REPO1_S3_REGION=eu-west-1  PGBACKREST_REPO1_S3_KEY=…  PGBACKREST_REPO1_S3_KEY_SECRET=…
+#   (MinIO/SeaweedFS/R2: also PGBACKREST_REPO1_S3_URI_STYLE=path; PGBACKREST_REPO1_PATH is the
+#   key prefix inside the bucket.)
+# Encryption at rest: PGBACKREST_REPO1_CIPHER_TYPE=aes-256-cbc + PGBACKREST_REPO1_CIPHER_PASS
+# (or PGBACKREST_REPO1_CIPHER_PASS_FILE). Decide before the first start: the cipher settings are
+# fixed when the stanza is created, and losing the passphrase loses every backup.
+# Retention: PGBACKREST_REPO1_RETENTION_FULL full backups (default 4 = four weeks) plus the WAL
+# needed to recover to any point since the oldest one.
+#
+# Operator commands (add `-p <project>` if you use one):
+#   docker compose -f compose.yaml -f compose.backup.yaml exec pgbackrest pgbackrest info
+#   docker compose -f compose.yaml -f compose.backup.yaml exec pgbackrest pgbackrest check
+#   docker compose -f compose.yaml -f compose.backup.yaml exec pgbackrest pgbackrest --type=full backup
+# Restore procedures: docs/runbooks/backup-and-restore.md.
+#
+# Every PGBACKREST_* variable is a pgBackRest option (https://pgbackrest.org/configuration.html);
+# empty ones are dropped by the image's wrapper, so unset in .env means pgBackRest's default.
+
+x-pgbackrest-image: &pgbackrest-image
+  image: fundroom-local/postgres-pgbackrest:18-2.59.1
+
+x-pgbackrest-env: &pgbackrest-env
+  PGBACKREST_STANZA: seedhost
+  # restore_command written by `restore` must call the wrapper, not the raw binary.
+  PGBACKREST_CMD: /usr/local/bin/pgbackrest
+  # PGDATA of the postgres:18 image; the same path in every container that mounts `pgdata`.
+  PGBACKREST_PG1_PATH: /var/lib/postgresql/18/docker
+  PGBACKREST_PG1_SOCKET_PATH: /var/run/postgresql
+  PGBACKREST_PG1_USER: seedhost
+  PGBACKREST_PG1_DATABASE: seedhost
+  PGBACKREST_REPO1_TYPE: ${PGBACKREST_REPO1_TYPE:-posix}
+  PGBACKREST_REPO1_PATH: ${PGBACKREST_REPO1_PATH:-/var/lib/pgbackrest}
+  PGBACKREST_REPO1_RETENTION_FULL: ${PGBACKREST_REPO1_RETENTION_FULL:-4}
+  PGBACKREST_REPO1_CIPHER_TYPE: ${PGBACKREST_REPO1_CIPHER_TYPE:-none}
+  PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_REPO1_CIPHER_PASS:-}
+  PGBACKREST_REPO1_CIPHER_PASS_FILE: ${PGBACKREST_REPO1_CIPHER_PASS_FILE:-}
+  PGBACKREST_REPO1_S3_BUCKET: ${PGBACKREST_REPO1_S3_BUCKET:-}
+  PGBACKREST_REPO1_S3_ENDPOINT: ${PGBACKREST_REPO1_S3_ENDPOINT:-}
+  PGBACKREST_REPO1_S3_REGION: ${PGBACKREST_REPO1_S3_REGION:-}
+  PGBACKREST_REPO1_S3_KEY: ${PGBACKREST_REPO1_S3_KEY:-}
+  PGBACKREST_REPO1_S3_KEY_FILE: ${PGBACKREST_REPO1_S3_KEY_FILE:-}
+  PGBACKREST_REPO1_S3_KEY_SECRET: ${PGBACKREST_REPO1_S3_KEY_SECRET:-}
+  PGBACKREST_REPO1_S3_KEY_SECRET_FILE: ${PGBACKREST_REPO1_S3_KEY_SECRET_FILE:-}
+  PGBACKREST_REPO1_S3_URI_STYLE: ${PGBACKREST_REPO1_S3_URI_STYLE:-}
+  # Off (unset) by default. When set (e.g. 4GiB) and the repository stays unreachable until that
+  # much WAL is queued in pg_wal, archive-push reports the WAL archived and DROPS it: the db disk
+  # survives, but point-in-time recovery has a gap from that point until the next full backup.
+  PGBACKREST_ARCHIVE_PUSH_QUEUE_MAX: ${PGBACKREST_ARCHIVE_PUSH_QUEUE_MAX:-}
+  PGBACKREST_COMPRESS_TYPE: ${PGBACKREST_COMPRESS_TYPE:-zst}
+  PGBACKREST_PROCESS_MAX: ${PGBACKREST_PROCESS_MAX:-2}
+  PGBACKREST_START_FAST: "y"
+  PGBACKREST_LOG_LEVEL_CONSOLE: ${PGBACKREST_LOG_LEVEL_CONSOLE:-info}
+  # Logs go to the container's stdout (docker compose logs), not to files in the container.
+  PGBACKREST_LOG_LEVEL_FILE: "off"
+
+services:
+  db:
+    <<: *pgbackrest-image
+    build:
+      context: ..
+      dockerfile: docker/postgres-pgbackrest.Dockerfile
+    # Local-only image: never try to pull it (`docker compose pull` skips it); rebuilds are cached.
+    pull_policy: build
+    # Replaces compose.yaml's command, so its two settings are repeated here.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_connections=100
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=/usr/local/bin/pgbackrest archive-push %p
+      - -c
+      - archive_timeout=${PG_ARCHIVE_TIMEOUT:-60}
+    environment:
+      <<: *pgbackrest-env
+    volumes:
+      - pgbackrest:/var/lib/pgbackrest
+      - pgsocket:/var/run/postgresql
+
+  pgbackrest:
+    <<: *pgbackrest-image
+    pull_policy: never
+    restart: unless-stopped
+    user: postgres
+    entrypoint: ["/usr/local/bin/pgbackrest-scheduler"]
+    environment:
+      <<: *pgbackrest-env
+      BACKUP_FULL_WEEKDAY: ${BACKUP_FULL_WEEKDAY:-7}
+      BACKUP_TIME: ${BACKUP_TIME:-02:30}
+      BACKUP_INITIAL_FULL: ${BACKUP_INITIAL_FULL:-true}
+      BACKUP_ARCHIVE_CHECK_INTERVAL: ${BACKUP_ARCHIVE_CHECK_INTERVAL:-60}
+      BACKUP_ARCHIVE_GRACE: ${BACKUP_ARCHIVE_GRACE:-300}
+    volumes:
+      - pgdata:/var/lib/postgresql:ro
+      - pgsocket:/var/run/postgresql
+      - pgbackrest:/var/lib/pgbackrest
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # Unhealthy while the last scheduled backup failed or WAL archiving has been failing for
+      # longer than BACKUP_ARCHIVE_GRACE (see deploy/pgbackrest/scheduler.sh).
+      test: ["CMD-SHELL", "test -f /tmp/pgbackrest-ready && test ! -f /tmp/pgbackrest-failed && test ! -f /tmp/pgbackrest-archive-failed"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10m
+      retries: 2
+    security_opt:
+      - no-new-privileges:true
+
+  # --- profile `restore`: one-shot helpers, never started by a plain `up` ---------------------
+
+  pgbackrest-restore:
+    # `docker compose … run --rm pgbackrest-restore restore …` — pgBackRest refuses to restore
+    # into a data directory whose Postgres is running, so stop `db` first for an in-place restore.
+    # For a drill, restore into the scratch volume instead: --pg1-path=/var/lib/pgrestore/18/docker.
+    <<: *pgbackrest-image
+    pull_policy: never
+    profiles: ["restore"]
+    restart: "no"
+    user: postgres
+    entrypoint: ["/usr/local/bin/pgbackrest"]
+    command: ["info"]
+    environment:
+      <<: *pgbackrest-env
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - pgrestore:/var/lib/pgrestore
+      - pgbackrest:/var/lib/pgbackrest
+    security_opt:
+      - no-new-privileges:true
+
+  pg-drill:
+    # Throwaway Postgres on the scratch `pgrestore` volume, for the restore drill. It replays WAL
+    # from the repository (restore_command) but never archives (archive_mode stays off), so it
+    # cannot write a second timeline into the production repository.
+    <<: *pgbackrest-image
+    pull_policy: never
+    profiles: ["restore"]
+    restart: "no"
+    command: ["postgres", "-c", "archive_mode=off"]
+    environment:
+      <<: *pgbackrest-env
+      # Same path as in pgbackrest-restore: the restore_command pgBackRest writes names it.
+      PGDATA: /var/lib/pgrestore/18/docker
+      PGBACKREST_PG1_PATH: /var/lib/pgrestore/18/docker
+    volumes:
+      - pgrestore:/var/lib/pgrestore
+      - pgbackrest:/var/lib/pgbackrest:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seedhost -d seedhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  pgbackrest:
+  pgsocket:
+  pgrestore:

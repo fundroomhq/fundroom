@@ -1,0 +1,33 @@
+{
+  "name": "@fundroom/authz-openfga",
+  "version": "0.0.0",
+  "private": true,
+  "description": "RelationshipEnginePort over OpenFGA: a generated authorization model encoding the access-rule ordering, per-workspace stores, paged full-diff sync and Check/BatchCheck over plain fetch",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@fundroom/authz": "workspace:*",
+    "@types/node": "^24.13.4",
+    "testcontainers": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

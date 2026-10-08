@@ -1,0 +1,34 @@
+# CI render fixture (not a deployment example): `helm lint`/`helm template` + kubeconform + Trivy
+# run against each ci/*-values.yaml. The key below is the throwaway one .github/workflows/ci.yml uses.
+config:
+  av:
+    acceptUnscanned: true
+  baseUrl: https://investors.example.com
+  mail:
+    from: investors@example.com
+secrets:
+  secretKey: Y2ktb25seS1rZXktbm90LWEtc2VjcmV0LTAwMDAwMDAwMDA=
+  smtpUrl: smtps://ci:hunter2@smtp.example.com:465
+storage:
+  s3:
+    bucket: fundroom-docs
+    region: eu-west-1
+    accessKeyId: ci-access-key-id
+    secretAccessKey: ci-not-a-secret
+postgresql:
+  mode: cnpg
+  cnpg:
+    imageName: ghcr.io/cloudnative-pg/postgresql:18
+    backup:
+      enabled: true
+      destinationPath: s3://fundroom-backups/pg
+      existingSecret: pg-backup-creds
+worker:
+  autoscaling:
+    enabled: true
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx

@@ -1,0 +1,126 @@
+{
+  "$schema": "https://tr.designtokens.org/format/",
+  "$description": "FundRoom default theme in W3C Design Tokens (DTCG) format. `color.light` and `color.dark` are the two palettes; every other group is mode-independent. scripts/build-tokens.mjs renders this file to tokens.css (both published as @fundroomhq/tokens) as `--sh-*` custom properties; workspace themes (E1.7) override the same names at runtime.",
+  "color": {
+    "$type": "color",
+    "light": {
+      "bg": { "$value": "#ffffff" },
+      "fg": { "$value": "#0f172a" },
+      "card": { "$value": "#ffffff" },
+      "card-fg": { "$value": "#0f172a" },
+      "popover": { "$value": "#ffffff" },
+      "popover-fg": { "$value": "#0f172a" },
+      "primary": { "$value": "#1d4ed8" },
+      "primary-fg": { "$value": "#ffffff" },
+      "secondary": { "$value": "#f1f5f9" },
+      "secondary-fg": { "$value": "#0f172a" },
+      "muted": { "$value": "#f1f5f9" },
+      "muted-fg": { "$value": "#475569" },
+      "accent": { "$value": "#e0e7ff" },
+      "accent-fg": { "$value": "#1e1b4b" },
+      "destructive": { "$value": "#b91c1c" },
+      "destructive-fg": { "$value": "#ffffff" },
+      "success": { "$value": "#15803d" },
+      "success-fg": { "$value": "#ffffff" },
+      "warning": { "$value": "#b45309" },
+      "warning-fg": { "$value": "#ffffff" },
+      "border": { "$value": "#e2e8f0" },
+      "input": { "$value": "#cbd5e1" },
+      "ring": { "$value": "#2563eb" },
+      "sidebar": { "$value": "#f8fafc" },
+      "sidebar-fg": { "$value": "#0f172a" },
+      "sidebar-accent": { "$value": "#e2e8f0" },
+      "sidebar-accent-fg": { "$value": "#0f172a" },
+      "sidebar-border": { "$value": "#e2e8f0" },
+      "chart-1": { "$value": "#2563eb" },
+      "chart-2": { "$value": "#0d9488" },
+      "chart-3": { "$value": "#d97706" },
+      "chart-4": { "$value": "#7c3aed" },
+      "chart-5": { "$value": "#db2777" }
+    },
+    "dark": {
+      "bg": { "$value": "#0b1120" },
+      "fg": { "$value": "#e2e8f0" },
+      "card": { "$value": "#111827" },
+      "card-fg": { "$value": "#e2e8f0" },
+      "popover": { "$value": "#111827" },
+      "popover-fg": { "$value": "#e2e8f0" },
+      "primary": { "$value": "#60a5fa" },
+      "primary-fg": { "$value": "#0b1120" },
+      "secondary": { "$value": "#1e293b" },
+      "secondary-fg": { "$value": "#e2e8f0" },
+      "muted": { "$value": "#1e293b" },
+      "muted-fg": { "$value": "#a3b1c6" },
+      "accent": { "$value": "#312e81" },
+      "accent-fg": { "$value": "#e0e7ff" },
+      "destructive": { "$value": "#f87171" },
+      "destructive-fg": { "$value": "#0b1120" },
+      "success": { "$value": "#4ade80" },
+      "success-fg": { "$value": "#0b1120" },
+      "warning": { "$value": "#fbbf24" },
+      "warning-fg": { "$value": "#0b1120" },
+      "border": { "$value": "#1f2937" },
+      "input": { "$value": "#334155" },
+      "ring": { "$value": "#93c5fd" },
+      "sidebar": { "$value": "#0f172a" },
+      "sidebar-fg": { "$value": "#e2e8f0" },
+      "sidebar-accent": { "$value": "#1e293b" },
+      "sidebar-accent-fg": { "$value": "#e2e8f0" },
+      "sidebar-border": { "$value": "#1f2937" },
+      "chart-1": { "$value": "#60a5fa" },
+      "chart-2": { "$value": "#2dd4bf" },
+      "chart-3": { "$value": "#fbbf24" },
+      "chart-4": { "$value": "#a78bfa" },
+      "chart-5": { "$value": "#f472b6" }
+    }
+  },
+  "font": {
+    "$type": "fontFamily",
+    "sans": {
+      "$value": [
+        "ui-sans-serif",
+        "system-ui",
+        "-apple-system",
+        "Segoe UI",
+        "Roboto",
+        "Inter",
+        "sans-serif"
+      ]
+    },
+    "mono": {
+      "$value": ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"]
+    }
+  },
+  "radius": {
+    "$type": "dimension",
+    "base": { "$value": { "value": 0.5, "unit": "rem" } }
+  },
+  "density": {
+    "$type": "number",
+    "base": {
+      "$value": 1,
+      "$description": "Multiplier for control heights and vertical rhythm; 0.875 = compact (embed), 1 = comfortable."
+    }
+  },
+  "shadow": {
+    "$type": "shadow",
+    "sm": {
+      "$value": {
+        "color": "#0f172a14",
+        "offsetX": "0px",
+        "offsetY": "1px",
+        "blur": "2px",
+        "spread": "0px"
+      }
+    },
+    "md": {
+      "$value": {
+        "color": "#0f172a1f",
+        "offsetX": "0px",
+        "offsetY": "4px",
+        "blur": "12px",
+        "spread": "-2px"
+      }
+    }
+  }
+}

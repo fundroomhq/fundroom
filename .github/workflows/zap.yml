@@ -1,0 +1,126 @@
+name: ZAP
+
+# DAST against a seeded preview stack: ZAP baseline plus
+# passive API scans as anonymous, owner and investor, a Playwright crawl of the admin and investor
+# SPA through a ZAP proxy; the ACTIVE anonymous API scan weekly or on request. Its own workflow so that labelling a PR `security-scan` does not re-run security.yml.
+on:
+  schedule:
+    - cron: "41 4 * * 1" # weekly, Monday 04:41 UTC (after security.yml)
+  pull_request:
+    types: [labeled, synchronize]
+  workflow_dispatch:
+    inputs:
+      active:
+        description: "Also run the ACTIVE anonymous API scan (about 11 min)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zap-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  zap:
+    name: ZAP baseline (seeded stack)
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'security-scan') &&
+        (github.event.action != 'labeled' || github.event.label.name == 'security-scan'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      E2E_APP_PORT: "3400"
+      E2E_MAILPIT_PORT: "8425"
+      ZAP_APP_URL: http://localhost:3400
+      ZAP_MAILPIT_URL: http://localhost:8425
+      ZAP_PROXY_PORT: "8090"
+      RUN_ACTIVE: ${{ github.event_name == 'schedule' || inputs.active == true }}
+      COMPOSE: docker compose -p seedhost-zap -f deploy/compose/compose.ci.yaml -f .zap/compose.zap.yaml
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      # pnpm + a frozen install: the crawl pass needs @playwright/test (the other helpers are plain node).
+      - uses: ./.github/actions/setup
+      - name: Build and boot the stack (ZAP overlay)
+        run: $COMPOSE up -d --wait --build
+      - name: Seed (seed-demo) and sign in (owner at level 2, one investor)
+        run: |
+          $COMPOSE run --rm --no-deps app seed-demo --investors 20
+          mkdir -p .zap/reports && chmod 0777 .zap .zap/reports
+          node e2e/security/session.mjs --populate > "$RUNNER_TEMP/cookies.env"
+          while IFS='=' read -r key value; do
+            case "$key" in *_COOKIE|*_SECRET) echo "::add-mask::$value" ;; esac
+            echo "$key=$value" >> "$GITHUB_ENV"
+          done < "$RUNNER_TEMP/cookies.env"
+          node e2e/security/openapi-get.mjs --out .zap/reports/openapi-get.json
+      - name: ZAP passes (baseline + passive API, anonymous / owner / investor)
+        run: |
+          z() {
+            local rc=0
+            $COMPOSE --profile zap run --rm --no-deps zap "$@" || rc=$?
+            if [ "$rc" -gt 2 ]; then echo "::error::ZAP exited $rc"; exit "$rc"; fi
+          }
+          auth() {
+            printf '%s' "-config replacer.full_list(0).description=auth -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Cookie -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=$1"
+          }
+          z zap-baseline.py -t http://localhost:3000/ -c rules.tsv -I -m 2 \
+            -J reports/unauth-baseline.json -r reports/unauth-baseline.html
+          z zap-api-scan.py -t http://localhost:3000/api/v1/openapi.json -f openapi -S -c rules.tsv -I \
+            -J reports/unauth-api.json -r reports/unauth-api.html
+          z zap-api-scan.py -t /zap/wrk/reports/openapi-get.json -f openapi -S -c rules.tsv -I \
+            -z "$(auth "$OWNER_COOKIE")" -J reports/owner-api.json -r reports/owner-api.html
+          z zap-api-scan.py -t /zap/wrk/reports/openapi-get.json -f openapi -S -c rules.tsv -I \
+            -z "$(auth "$INVESTOR_COOKIE")" -J reports/investor-api.json -r reports/investor-api.html
+      # Pass 6: ZAP 2.17's own spiders stall after the SPA's first API call, so a real Chromium
+      # walks the admin and investor navigation through a ZAP daemon proxy in the app's network
+      # namespace (service `zap-proxy`); the spec waits for the passive scan to drain and writes
+      # .zap/reports/{owner,investor}-crawl.json for the gate. The daemon listens on 8090; the
+      # one-shot scans pick their own free port, so the two share the namespace without a clash.
+      # The daemon's API needs a key: a random one per run, masked, handed to the daemon
+      # (compose interpolation) and to the spec in the same variable.
+      - name: ZAP browser crawl (Playwright through the ZAP proxy, owner / investor)
+        env:
+          ZAP_PROXY: http://127.0.0.1:8090
+        run: |
+          ZAP_API_KEY="$(openssl rand -hex 32)"
+          echo "::add-mask::$ZAP_API_KEY"
+          export ZAP_API_KEY
+          $COMPOSE --profile zap-proxy up -d --wait --no-deps zap-proxy
+          pnpm --filter @fundroom/e2e exec playwright install --with-deps chromium
+          pnpm --filter @fundroom/e2e exec playwright test --project=zap-crawl
+      - name: Sessions survived the authenticated passes
+        run: |
+          node e2e/security/session.mjs --check "$OWNER_COOKIE"
+          node e2e/security/session.mjs --check "$INVESTOR_COOKIE"
+      - name: ZAP active API scan (anonymous; weekly / on request)
+        if: env.RUN_ACTIVE == 'true'
+        run: |
+          rc=0
+          $COMPOSE --profile zap run --rm --no-deps zap zap-api-scan.py \
+            -t http://localhost:3000/api/v1/openapi.json -f openapi -c rules.tsv -I \
+            -J reports/active-api.json -r reports/active-api.html || rc=$?
+          if [ "$rc" -gt 2 ]; then echo "::error::ZAP exited $rc"; exit "$rc"; fi
+      - name: Gate (rules.tsv; untriaged Medium+ fails)
+        run: node e2e/security/zap-gate.mjs --rules .zap/rules.tsv .zap/reports/*-baseline.json .zap/reports/*-api.json .zap/reports/*-crawl.json
+      - name: App log on failure
+        if: ${{ failure() }}
+        run: |
+          $COMPOSE logs app --tail 300
+          $COMPOSE --profile zap-proxy logs zap-proxy --tail 100
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: zap-reports
+          path: |
+            .zap/reports/*.html
+            .zap/reports/*.json
+            e2e/test-results
+          retention-days: 30
+      - name: Tear down
+        if: ${{ always() }}
+        run: $COMPOSE --profile zap --profile zap-proxy down -v

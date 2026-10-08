@@ -1,0 +1,23 @@
+# Build context for deploy/docker/Dockerfile (context = repo root). Sources only.
+.git
+.github
+**/node_modules
+**/dist
+**/build
+**/.turbo
+**/*.tsbuildinfo
+**/coverage
+**/storybook-static
+**/test-results
+**/playwright-report
+apps/web/src/paraglide
+deploy
+docs
+e2e
+data
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.zap

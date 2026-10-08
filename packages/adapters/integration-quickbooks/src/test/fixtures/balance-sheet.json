@@ -1,0 +1,347 @@
+{
+  "Header": {
+    "Time": "2026-04-02T06:14:41-07:00",
+    "ReportName": "BalanceSheet",
+    "DateMacro": "",
+    "ReportBasis": "Accrual",
+    "StartPeriod": "2026-01-01",
+    "EndPeriod": "2026-03-31",
+    "SummarizeColumnsBy": "Month",
+    "Currency": "USD",
+    "Option": [
+      {
+        "Name": "AccountingStandard",
+        "Value": "GAAP"
+      },
+      {
+        "Name": "NoReportData",
+        "Value": "false"
+      }
+    ]
+  },
+  "Columns": {
+    "Column": [
+      {
+        "ColTitle": "",
+        "ColType": "Account",
+        "MetaData": [
+          {
+            "Name": "ColKey",
+            "Value": "account"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Jan 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "StartDate",
+            "Value": "2026-01-01"
+          },
+          {
+            "Name": "EndDate",
+            "Value": "2026-01-31"
+          },
+          {
+            "Name": "ColKey",
+            "Value": "Jan 2026"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Feb 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "StartDate",
+            "Value": "2026-02-01"
+          },
+          {
+            "Name": "EndDate",
+            "Value": "2026-02-28"
+          },
+          {
+            "Name": "ColKey",
+            "Value": "Feb 2026"
+          }
+        ]
+      },
+      {
+        "ColTitle": "Mar 2026",
+        "ColType": "Money",
+        "MetaData": [
+          {
+            "Name": "StartDate",
+            "Value": "2026-03-01"
+          },
+          {
+            "Name": "EndDate",
+            "Value": "2026-03-31"
+          },
+          {
+            "Name": "ColKey",
+            "Value": "Mar 2026"
+          }
+        ]
+      }
+    ]
+  },
+  "Rows": {
+    "Row": [
+      {
+        "Header": {
+          "ColData": [
+            {
+              "value": "ASSETS"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": [
+            {
+              "Header": {
+                "ColData": [
+                  {
+                    "value": "Current Assets"
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  },
+                  {
+                    "value": ""
+                  }
+                ]
+              },
+              "Rows": {
+                "Row": [
+                  {
+                    "Header": {
+                      "ColData": [
+                        {
+                          "value": "Bank Accounts"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        }
+                      ]
+                    },
+                    "Rows": {
+                      "Row": [
+                        {
+                          "ColData": [
+                            {
+                              "value": "Checking",
+                              "id": "35"
+                            },
+                            {
+                              "value": "250000.00"
+                            },
+                            {
+                              "value": "231250.75"
+                            },
+                            {
+                              "value": "205000.10"
+                            }
+                          ],
+                          "type": "Data"
+                        },
+                        {
+                          "ColData": [
+                            {
+                              "value": "Savings",
+                              "id": "36"
+                            },
+                            {
+                              "value": "100000.00"
+                            },
+                            {
+                              "value": "100010.00"
+                            },
+                            {
+                              "value": "-1500.00"
+                            }
+                          ],
+                          "type": "Data"
+                        }
+                      ]
+                    },
+                    "Summary": {
+                      "ColData": [
+                        {
+                          "value": "Total Bank Accounts"
+                        },
+                        {
+                          "value": "350000.00"
+                        },
+                        {
+                          "value": "331260.75"
+                        },
+                        {
+                          "value": "203500.10"
+                        }
+                      ]
+                    },
+                    "type": "Section",
+                    "group": "BankAccounts"
+                  },
+                  {
+                    "Header": {
+                      "ColData": [
+                        {
+                          "value": "Accounts Receivable"
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        },
+                        {
+                          "value": ""
+                        }
+                      ]
+                    },
+                    "Rows": {
+                      "Row": [
+                        {
+                          "ColData": [
+                            {
+                              "value": "Accounts Receivable (A/R)",
+                              "id": "84"
+                            },
+                            {
+                              "value": "4000.00"
+                            },
+                            {
+                              "value": "5200.00"
+                            },
+                            {
+                              "value": "6100.00"
+                            }
+                          ],
+                          "type": "Data"
+                        }
+                      ]
+                    },
+                    "Summary": {
+                      "ColData": [
+                        {
+                          "value": "Total Accounts Receivable"
+                        },
+                        {
+                          "value": "4000.00"
+                        },
+                        {
+                          "value": "5200.00"
+                        },
+                        {
+                          "value": "6100.00"
+                        }
+                      ]
+                    },
+                    "type": "Section",
+                    "group": "AR"
+                  }
+                ]
+              },
+              "Summary": {
+                "ColData": [
+                  {
+                    "value": "Total Current Assets"
+                  },
+                  {
+                    "value": "354000.00"
+                  },
+                  {
+                    "value": "336460.75"
+                  },
+                  {
+                    "value": "209600.10"
+                  }
+                ]
+              },
+              "type": "Section",
+              "group": "CurrentAssets"
+            }
+          ]
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "TOTAL ASSETS"
+            },
+            {
+              "value": "354000.00"
+            },
+            {
+              "value": "336460.75"
+            },
+            {
+              "value": "209600.10"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "TotalAssets"
+      },
+      {
+        "Header": {
+          "ColData": [
+            {
+              "value": "LIABILITIES AND EQUITY"
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            },
+            {
+              "value": ""
+            }
+          ]
+        },
+        "Rows": {
+          "Row": []
+        },
+        "Summary": {
+          "ColData": [
+            {
+              "value": "TOTAL LIABILITIES AND EQUITY"
+            },
+            {
+              "value": "354000.00"
+            },
+            {
+              "value": "336460.75"
+            },
+            {
+              "value": "209600.10"
+            }
+          ]
+        },
+        "type": "Section",
+        "group": "TotalLiabilitiesAndEquity"
+      }
+    ]
+  }
+}

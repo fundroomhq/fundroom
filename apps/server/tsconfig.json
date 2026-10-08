@@ -1,0 +1,271 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "dist"],
+  "references": [
+    {
+      "path": "../../packages/audit"
+    },
+    {
+      "path": "../../packages/authz"
+    },
+    {
+      "path": "../../packages/branding"
+    },
+    {
+      "path": "../../packages/clickwrap"
+    },
+    {
+      "path": "../../packages/compliance"
+    },
+    {
+      "path": "../../packages/config"
+    },
+    {
+      "path": "../../packages/contracts"
+    },
+    {
+      "path": "../../packages/crypto"
+    },
+    {
+      "path": "../../packages/adapters/accred-manual"
+    },
+    {
+      "path": "../../packages/adapters/avscan-noop"
+    },
+    {
+      "path": "../../packages/adapters/avscan-clamd"
+    },
+    {
+      "path": "../../packages/adapters/render-pdfium"
+    },
+    {
+      "path": "../../modules/data-room"
+    },
+    {
+      "path": "../../modules/updates"
+    },
+    {
+      "path": "../../modules/analytics"
+    },
+    {
+      "path": "../../modules/notify"
+    },
+    {
+      "path": "../../modules/metrics"
+    },
+    {
+      "path": "../../packages/db"
+    },
+    {
+      "path": "../../packages/adapters/dns-doh"
+    },
+    {
+      "path": "../../packages/adapters/sheets-google"
+    },
+    {
+      "path": "../../packages/adapters/chat-slack"
+    },
+    {
+      "path": "../../packages/domain"
+    },
+    {
+      "path": "../../packages/adapters/email-smtp"
+    },
+    {
+      "path": "../../packages/adapters/email-resend"
+    },
+    {
+      "path": "../../packages/adapters/email-postmark"
+    },
+    {
+      "path": "../../packages/adapters/email-ses"
+    },
+    {
+      "path": "../../packages/events"
+    },
+    {
+      "path": "../../packages/http"
+    },
+    {
+      "path": "../../packages/identity"
+    },
+    {
+      "path": "../../packages/adapters/kms-local"
+    },
+    {
+      "path": "../../packages/mail"
+    },
+    {
+      "path": "../../modules/content"
+    },
+    {
+      "path": "../../packages/module-kit"
+    },
+    {
+      "path": "../../modules/crm"
+    },
+    {
+      "path": "../../modules/round"
+    },
+    {
+      "path": "../../packages/outbound-http"
+    },
+    {
+      "path": "../../packages/ports"
+    },
+    {
+      "path": "../../packages/adapters/queue-pgboss"
+    },
+    {
+      "path": "../../packages/share-links"
+    },
+    {
+      "path": "../../packages/api-keys"
+    },
+    {
+      "path": "../../packages/webhooks"
+    },
+    {
+      "path": "../../packages/search"
+    },
+    {
+      "path": "../../packages/portability"
+    },
+    {
+      "path": "../../packages/i18n"
+    },
+    {
+      "path": "../../packages/storage"
+    },
+    {
+      "path": "../../packages/adapters/storage-fs"
+    },
+    {
+      "path": "../../packages/adapters/storage-s3"
+    },
+    {
+      "path": "../../packages/custom-domains"
+    },
+    {
+      "path": "../../packages/adapters/domain-caddy-ask"
+    },
+    {
+      "path": "../../packages/adapters/domain-manual"
+    },
+    {
+      "path": "../../packages/embed"
+    },
+    {
+      "path": "../../packages/update-check"
+    },
+    {
+      "path": "../../packages/esign"
+    },
+    {
+      "path": "../../packages/adapters/esign-documenso"
+    },
+    {
+      "path": "../../packages/adapters/esign-docuseal"
+    },
+    {
+      "path": "../../packages/adapters/esign-docusign"
+    },
+    {
+      "path": "../../packages/adapters/esign-dropbox-sign"
+    },
+    {
+      "path": "../../packages/integrations"
+    },
+    {
+      "path": "../../packages/accreditation"
+    },
+    {
+      "path": "../../packages/sso"
+    },
+    {
+      "path": "../../packages/scim"
+    },
+    {
+      "path": "../../packages/adapters/accred-parallel-markets"
+    },
+    {
+      "path": "../../packages/adapters/accred-verifyinvestor"
+    },
+    {
+      "path": "../../packages/adapters/integration-quickbooks"
+    },
+    {
+      "path": "../../packages/adapters/integration-xero"
+    },
+    {
+      "path": "../../packages/adapters/integration-stripe"
+    },
+    {
+      "path": "../../packages/adapters/integration-slack"
+    },
+    {
+      "path": "../../packages/adapters/integration-calendly"
+    },
+    {
+      "path": "../../packages/adapters/integration-calcom"
+    },
+    {
+      "path": "../../modules/captable"
+    },
+    {
+      "path": "../../packages/control-plane"
+    },
+    {
+      "path": "../../packages/billing"
+    },
+    {
+      "path": "../../packages/sanctions"
+    },
+    {
+      "path": "../../packages/directory"
+    },
+    {
+      "path": "../../packages/adapters/billing-stripe"
+    },
+    {
+      "path": "../../packages/adapters/billing-manual"
+    },
+    {
+      "path": "../../packages/adapters/sanctions-ofac"
+    },
+    {
+      "path": "../../packages/adapters/sanctions-opensanctions"
+    },
+    {
+      "path": "../../packages/forensic"
+    },
+    {
+      "path": "../../packages/adapters/anchor-rfc3161"
+    },
+    {
+      "path": "../../packages/adapters/anchor-rekor"
+    },
+    {
+      "path": "../../packages/adapters/authz-openfga"
+    },
+    {
+      "path": "../../packages/adapters/domain-cloudflare-saas"
+    },
+    {
+      "path": "../../packages/ai"
+    },
+    {
+      "path": "../../packages/adapters/ai-openai-compatible"
+    },
+    {
+      "path": "../../packages/adapters/ai-anthropic"
+    }
+  ]
+}

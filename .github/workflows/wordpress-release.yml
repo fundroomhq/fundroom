@@ -1,0 +1,43 @@
+# The WordPress plugin releases on its own tag, not with the core.
+#
+# `release.yml` is Changesets-driven and the plugin is deliberately outside Changesets: it is
+# versioned by `readme.txt`'s `Stable tag`, which is also what wp.org's SVN publishes from
+# (.changeset/README.md). Tagging `wp-v0.1.0` is therefore the whole release gesture, and
+# the check below exists because SVN ships whatever `Stable tag` says — a tag that disagrees with it
+# publishes the wrong version silently.
+name: WordPress plugin release
+
+on:
+  push:
+    tags: ["wp-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Publish to wordpress.org
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @fundroom/embed build
+      - run: node scripts/build-wordpress-plugin.mjs
+      - name: The tag and readme.txt's Stable tag agree
+        run: |
+          tag="${GITHUB_REF_NAME#wp-v}"
+          stable=$(sed -n 's/^Stable tag:[[:space:]]*//p' plugins/wordpress/readme.txt | tr -d '[:space:]')
+          [ "$tag" = "$stable" ] || { echo "tag $tag != Stable tag $stable"; exit 1; }
+      - name: Assemble the release tree
+        # The zip already excludes composer.json, phpcs.xml.dist and README.md.
+        run: unzip -q plugins/wordpress/dist/seed-host.zip -d build
+      - uses: 10up/action-wordpress-plugin-deploy@v2
+        with:
+          generate-zip: true
+        env:
+          SVN_USERNAME: ${{ secrets.WPORG_SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.WPORG_SVN_PASSWORD }}
+          SLUG: seed-host
+          BUILD_DIR: build/seed-host

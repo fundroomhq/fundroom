@@ -1,0 +1,75 @@
+# CI / e2e stack: the image built from this checkout, Postgres and Mailpit, nothing else.
+# Boots to a fresh, un-set-up install with a known SETUP_TOKEN so Playwright can drive the
+# first-run wizard, then sign in through Mailpit's API.
+#
+#   docker compose -f deploy/compose/compose.ci.yaml up -d --wait
+#   pnpm --filter @fundroom/e2e test
+#
+# Host ports default to 3000 / 8025; set E2E_APP_PORT / E2E_MAILPIT_PORT (and E2E_BASE_URL /
+# E2E_MAILPIT_URL for the suite) when they are taken locally.
+# The token and key below are CI fixtures, not secrets (see .gitleaks.toml).
+
+name: seed-host-ci
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: seedhost
+      POSTGRES_PASSWORD: seedhost
+      POSTGRES_DB: seedhost
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seedhost -d seedhost"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    ports:
+      - "${E2E_MAILPIT_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: fundroom:ci
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - data:/data
+    ports:
+      - "${E2E_APP_PORT:-3000}:3000"
+    environment:
+      APP_ENV: test
+      LOG_LEVEL: info
+      BASE_URL: http://localhost:${E2E_APP_PORT:-3000}
+      DATABASE_URL: postgres://seedhost:seedhost@db:5432/seedhost
+      FUNDROOM_SECRET_KEY: Y2ktb25seS1rZXktbm90LWEtc2VjcmV0LTAwMDAwMDAwMDA=
+      SETUP_TOKEN: e2e-setup-token-0123456789
+      SMTP_URL: smtp://mailpit:1025
+      MAIL_FROM: portal@example.com
+      TRUST_PROXY: "false"
+      OUTBOUND_HTTP_ALLOW_PRIVATE: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "/app/healthcheck.js"]
+      interval: 3s
+      timeout: 5s
+      start_period: 60s
+      retries: 30
+
+volumes:
+  data:

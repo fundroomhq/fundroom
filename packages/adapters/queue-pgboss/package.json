@@ -1,0 +1,36 @@
+{
+  "name": "@fundroom/queue-pgboss",
+  "version": "0.0.0",
+  "private": true,
+  "description": "JobQueuePort adapter over pg-boss: transactional enqueue, cron, retries, dead-letter queue",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/ports": "workspace:*",
+    "pg-boss": "catalog:",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@fundroom/db": "workspace:*",
+    "@types/node": "^24.13.4",
+    "@types/pg": "catalog:",
+    "pg": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "@fundroom/anchor-rfc3161",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AuditAnchorPort over RFC 3161 trusted timestamping: SHA-256 TimeStampReq to the operator's TSAs, tokens verified offline against pinned certificates with pkijs",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/ports": "workspace:*",
+    "asn1js": "catalog:",
+    "pkijs": "catalog:"
+  },
+  "devDependencies": {
+    "@fundroom/audit": "workspace:*",
+    "@fundroom/outbound-http": "workspace:*",
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

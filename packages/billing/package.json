@@ -1,0 +1,35 @@
+{
+  "name": "@fundroom/billing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kernel billing service for FundRoom: core.subscription, the provider webhook ingest (re-read, dedupe, ordered upsert), grace and suspension, and usage reporting",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/audit": "workspace:*",
+    "@fundroom/control-plane": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

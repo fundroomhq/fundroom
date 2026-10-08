@@ -1,0 +1,24 @@
+# CI render fixture (not a deployment example): `helm lint`/`helm template` + kubeconform + Trivy
+# run against each ci/*-values.yaml. The key below is the throwaway one .github/workflows/ci.yml uses.
+config:
+  av:
+    acceptUnscanned: true
+  baseUrl: https://acme.example.com/investors
+  basePath: /investors
+  # A second public mount of the same portal (rendered into PATH_MOUNTS).
+  pathMounts:
+    - https://www.acme.example.com/investors
+  mail:
+    from: investors@example.com
+secrets:
+  secretKey: Y2ktb25seS1rZXktbm90LWEtc2VjcmV0LTAwMDAwMDAwMDA=
+  smtpUrl: smtps://ci:hunter2@smtp.example.com:465
+storage:
+  driver: fs
+server:
+  replicaCount: 1
+worker:
+  enabled: false
+postgresql:
+  external:
+    url: postgres://seedhost:secret@db.example.com:5432/seedhost?sslmode=verify-full

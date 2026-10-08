@@ -1,0 +1,970 @@
+# Authorization matrix.
+#
+# The single source for two things:
+#   permissions: which staff roles hold each `<module>.<verb>` permission (RBAC layer 2).
+#                External kinds (investor, delegate) never hold a permission: everything they
+#                see comes from grants (layer 3) and gates (layer 4).
+#   routes:      what every `/api/v1` route requires. `requires` vocabulary:
+#                  public            no session needed (anti-enumeration start endpoints, landing pages)
+#                  session           any signed-in user, member or not
+#                  member            a live membership in the resolved workspace
+#                  <permission>      a live *staff* membership holding the permission
+#                  owner-or-admin    staff owner/admin anywhere (setup probes; no workspace context)
+#                  platform-operator the operator cookie session of a live platform operator on the
+#                                    canonical host; no membership involved, 404 otherwise
+#                `stepUp: true` adds the 10-minute freshness check.
+#                `apiKey: true` lets a workspace API key call the route; only on a
+#                <permission> row without `stepUp`. `x-requires` then reads `<permission>+apikey`.
+#
+# `scripts/render-authz-matrix.mjs` renders docs/authz-matrix.md from this file;
+# `packages/authz/src/matrix.test.ts` checks the RBAC table against it, and
+# `apps/server/src/authz-matrix.test.ts` checks every OpenAPI route's `x-requires` against it.
+# Adding a route without a row here, or a permission without an entry, fails CI.
+version: 1
+
+roles:
+  staff: [owner, admin, editor, viewer, finance, legal]
+  external: [investor, delegate]
+
+permissions:
+  access.read:
+    roles: [owner, admin, legal]
+    description: People, groups, invitations, "who has access" and explain.
+  access.manage:
+    roles: [owner, admin]
+    description: Invite and revoke external members, manage groups, grants and policies.
+  access.manage_staff:
+    roles: [owner, admin]
+    description: Invite, re-role and revoke staff. Admins may not touch owners (enforced in the handler).
+  access.transfer:
+    roles: [owner]
+    description: Transfer ownership, revoke an owner.
+  access.settings:
+    roles: [owner, admin]
+    description: Workspace access settings (MFA requirements, invite expiry).
+  # E2.7 danger zone. Owner only, like `access.transfer`, and narrower than anything else here:
+  # deleting the workspace starts a 30-day clock that ends in crypto-shredding every document
+  # key, so it is the one decision that cannot be undone by anybody once the clock runs out.
+  # The route also demands step-up and the workspace slug typed back.
+  access.delete_workspace:
+    roles: [owner]
+    description: Delete the workspace (soft delete, purged after 30 days unless restored by an operator).
+  # offering mode + legal documents. `legal` is the role counsel-facing staff get, so it
+  # reads and manages the texts; changing the offering status is an owner/admin decision because
+  # it is the company's own reliance on an exemption, not a document-management task.
+  compliance.read:
+    roles: [owner, admin, legal]
+    description: Offering mode and its history, the template library, legal documents and versions, the acceptance register, legal settings.
+  compliance.manage:
+    roles: [owner, admin, legal]
+    description: Create, edit, publish and remove legal documents, and change the workspace's legal settings.
+  compliance.offering:
+    roles: [owner, admin]
+    description: Change the offering status. Switching to 506(c) is irrevocable and needs an explicit confirmation.
+  # branding. Owner/admin only: the brand is the company's identity to every investor
+  # who opens the portal or an email, not a document-management task, so the `legal` and
+  # `editor` roles that manage texts and pages do not get to repaint the portal.
+  branding.read:
+    roles: [owner, admin]
+    description: The workspace brand, its derived theme tokens and the contrast report.
+  branding.manage:
+    roles: [owner, admin]
+    description: Change the brand, upload or import the logo, remove it.
+  # custom domains. Owner/admin only, on branding's reasoning and a sharper edge: the
+  # hostname the portal answers on decides where every investor's session cookie lives and where
+  # every emailed link points, so it is an ownership decision, not a content one. Mutations also
+  # need step-up: a stolen session that could
+  # repoint a portal would be a phishing primitive.
+  domains.read:
+    roles: [owner, admin]
+    description: The workspace's custom portal domains, the DNS records to publish and the last resolver answer.
+  domains.manage:
+    roles: [owner, admin]
+    description: Add a custom portal domain, re-check its DNS, remove it.
+  # embed. Owner/admin only, on the same reasoning as domains and the same sharper edge:
+  # the origin allow-list becomes `frame-ancestors`, so it decides which sites may wrap the
+  # portal in their own chrome, and the handoff keys decide whose server may assert who an
+  # investor is. Mutations need step-up (as E2.1 followed for custom domains): a
+  # stolen session that could add an origin would be a clickjacking and phishing primitive.
+  embed.read:
+    roles: [owner, admin]
+    description: The embed settings, the derived frame-ancestors list and the snippet URLs.
+  embed.manage:
+    roles: [owner, admin]
+    description: Change the embed origin allow-list, the builder-preview toggle, host-identity trust and the handoff keys.
+  # share links & NDA. Owner/admin/legal read, owner/admin manage — the same split
+  # `compliance.*` uses and for the same reason: a share link is a decision about who may see the
+  # room and on what terms, which counsel reviews and the founders make. `editor` publishes
+  # material; it does not decide who is let in. Minting and revoking need step-up,
+  # because a link is a standing invitation to a data room and a stolen session that could mint
+  # one would be an exfiltration primitive.
+  share-links.read:
+    roles: [owner, admin, legal]
+    description: The workspace's share links, their policies and caps, and who came in through each one.
+  share-links.manage:
+    roles: [owner, admin]
+    description: Mint, pause, resume and revoke share links, and choose whether revoking also cuts off the memberships a link created.
+  # audit log. Read is owner/admin/legal — the roles that already read "who has access"
+  # (`access.read`) and the acceptance register (`compliance.read`), because the log is the
+  # history of exactly those facts. Export is owner/legal only and needs step-up: a signed,
+  # portable copy of the whole trail is what a regulator or a court asks for, it carries every
+  # member's IP and user agent, and an admin who could export it could also be its subject.
+  audit.read:
+    roles: [owner, admin, legal]
+    description: Search and read the workspace audit log, verify its hash chain, read the export signing keys.
+  audit.export:
+    roles: [owner, legal]
+    description: Download a signed export of the audit log for a time range.
+  # jobs, dead letters and health. Owner/admin: the page is operational plumbing, not
+  # content, and a retried dead letter re-runs a side effect (an email, a webhook) on the
+  # workspace's behalf. Discarding one needs step-up because it is the last copy of that work.
+  ops.read:
+    roles: [owner, admin]
+    description: The workspace's dead letters, instance queue stats, health checks and update status (single-tenant mode), custom-domain certificate status.
+  ops.manage:
+    roles: [owner, admin]
+    description: Retry or discard the workspace's dead-lettered jobs.
+  # workspace export. Owner only, like `access.transfer` and `access.delete_workspace`: an
+  # export is the whole company's data — every document, every investor's contact details and
+  # engagement, the audit trail — leaving the instance in one file, which is narrower than the
+  # audit export `legal` may take. Starting and downloading an export also need step-up.
+  portability.export:
+    roles: [owner]
+    description: Export the whole workspace (tables, files and audit trail) as a signed zip, download and delete exports.
+  # API keys and outbound webhooks. Owner/admin: a key is a standing credential
+  # that acts as its creator, and a webhook endpoint sends the workspace's events to a URL outside
+  # the instance — both are integration decisions of the same weight as the embed origin list.
+  # Minting, rotating and revoking a key, and creating, deleting and re-pointing an endpoint, need
+  # step-up. A key itself can never call these routes (keys cannot see or mint keys).
+  api-keys.read:
+    roles: [owner, admin]
+    description: The workspace's API keys (never their tokens), their scopes, expiry and last use.
+  api-keys.manage:
+    roles: [owner, admin]
+    description: Create, rename, rotate and revoke API keys.
+  webhooks.read:
+    roles: [owner, admin]
+    description: The workspace's webhook endpoints (never their URLs or secrets), the topics on offer, and the delivery log with payloads.
+  webhooks.manage:
+    roles: [owner, admin]
+    description: Add, change, test, re-key and remove webhook endpoints, and redeliver deliveries.
+  # e-signature. `legal` reads the envelope register and downloads signed copies
+  # (counsel-facing, like compliance.read); connecting a vendor, rotating its callback secret,
+  # voiding an envelope and disconnecting are owner/admin integration decisions, the last three
+  # (and saving a connection) with step-up.
+  esign.read:
+    roles: [owner, admin, legal]
+    description: The e-sign vendor connection (never its credentials), the drivers on offer, and the envelope register with signed copies.
+  esign.manage:
+    roles: [owner, admin]
+    description: Connect, verify, re-key and disconnect the e-sign vendor, and void or resync envelopes.
+  # integrations hub. `finance` reads the connections because the KPI sources
+  # (QuickBooks, Xero, Stripe) are its numbers; connecting, choosing an account, re-keying and
+  # disconnecting hand vendor credentials to the server and stay owner/admin (the credential-
+  # bearing ones with step-up). Booking links are portal content an admin curates.
+  integrations.read:
+    roles: [owner, admin, finance]
+    description: Connected integrations (never their credentials), the providers on offer, booking links and the recorded bookings register.
+  integrations.manage:
+    roles: [owner, admin]
+    description: Connect, verify, choose the account of, re-key and disconnect integrations, and manage booking links.
+  # accreditation vendors. `legal` reads the connection (the 506(c) verification
+  # provider is counsel's concern, like esign.read); connecting, re-verifying and disconnecting hand
+  # vendor credentials to the server and stay owner/admin, all three with step-up.
+  accreditation.read:
+    roles: [owner, admin, legal]
+    description: The accreditation vendor connection (never its credentials) and the vendors on offer.
+  accreditation.manage:
+    roles: [owner, admin]
+    description: Connect, re-verify and disconnect the accreditation vendor.
+  # AI assist. Every staff role that reads updates sees whether AI is available
+  # and reads its own suggestions (a request is only ever readable by the member who started it,
+  # while they still hold the task's permission). Turning AI on, choosing features and the budget,
+  # and acknowledging the model provider (documents may leave the host) is owner/admin + step-up.
+  ai.read:
+    roles: [owner, admin, editor, viewer, finance, legal]
+    description: AI assist availability, the workspace's AI settings and usage, and one's own AI suggestions.
+  ai.manage:
+    roles: [owner, admin]
+    description: Turn AI assist and its features on or off, set the token budget, acknowledge the model provider.
+  # staff SSO + SCIM. The connection decides who can sign in as staff, a verified
+  # domain lets the IdP link and provision accounts, and a SCIM token can create, suspend and
+  # re-role staff. Admins read; only the owner changes any of it — an admin who could point the
+  # workspace at an IdP they control could sign in as the owner. Every write that changes who gets
+  # in is step-up.
+  sso.read:
+    roles: [owner, admin]
+    description: The workspace's SSO connection, verified domains and SCIM provisioning (never secrets or tokens).
+  sso.manage:
+    roles: [owner]
+    description: Configure, test, enable, enforce and delete the SSO connection; add, verify and remove domains; mint and revoke SCIM tokens; map SCIM groups to roles.
+  # billing (only meaningful with CONTROL_PLANE=on and a BILLING_DRIVER). Reading
+  # the plan, subscription and usage is for the people who pay or run the workspace; starting a
+  # checkout or opening the provider's portal commits the company to a price and hands over its
+  # payment details, so it is the owner's alone, with step-up.
+  billing.read:
+    roles: [owner, admin, finance]
+    description: The workspace's plan, subscription status, grace period and usage against the plan's limits.
+  billing.manage:
+    roles: [owner]
+    description: Start a checkout for a plan and open the billing provider's customer portal.
+
+  content.read:
+    roles: [owner, admin, editor, viewer, finance, legal]
+    description: Read pages, drafts, revisions and the block registry; preview as an audience.
+  content.manage:
+    roles: [owner, admin, editor]
+    description: Create pages, edit drafts, set section visibility, restore revisions, delete custom pages.
+  content.publish:
+    roles: [owner, admin, editor]
+    description: Publish a draft as a new revision.
+  content.settings:
+    roles: [owner, admin]
+    description: Content settings (allow public sections).
+  data-room.read:
+    roles: [owner, admin, editor, viewer, finance, legal]
+    description: Browse the whole tree, open any document, list versions and templates.
+  data-room.manage:
+    roles: [owner, admin, editor]
+    description: Create/move/delete folders and documents, upload, change protection, recycle bin.
+  data-room.download:
+    roles: [owner, admin, editor, finance, legal]
+    description: Download the original file (investors only ever get a watermarked copy).
+  data-room.legal_hold:
+    roles: [owner, admin, legal]
+    description: Set or clear a legal hold on a document.
+  data-room.settings:
+    roles: [owner, admin]
+    description: Data room settings (defaults, unscanned policy, recycle bin retention).
+  # forensic watermark detection. Owner/admin/legal — the audience of
+  # `data-room.legal_hold` and `audit.read`: tracing a leak names a recipient, which is an
+  # investigation, not content work. Running a detection also needs step-up.
+  data-room.forensics:
+    roles: [owner, admin, legal]
+    description: Trace a leaked page image to its recipient (forensic watermark detection) and list who was served a forensically marked version.
+  # data-room Q&A. Reading the staff inbox is `data-room.read`; these three split the
+  # work: the expert drafts, the coordinator routes and releases, the approver signs off
+  # (four-eyes when the workspace requires approval — never on an answer they wrote).
+  data-room.qa_answer:
+    roles: [owner, admin, editor, finance, legal]
+    description: Q&A expert — write, edit and submit a draft answer to a data-room question.
+  data-room.qa_manage:
+    roles: [owner, admin]
+    description: Q&A coordinator — assign, set due dates, release/publish/unpublish, close/reopen, edit public text, CSV import/export.
+  data-room.qa_approve:
+    roles: [owner, admin, legal]
+    description: Q&A approver — approve or reject a submitted answer.
+  updates.read:
+    roles: [owner, admin, editor, viewer, finance, legal]
+    description: List updates, read drafts, sends, recipient status and every reply thread.
+  updates.manage:
+    roles: [owner, admin, editor]
+    description: Create and edit drafts, set audiences and section rules, archive, delete.
+  updates.send:
+    roles: [owner, admin, editor]
+    description: Test send, schedule, send now, publish to the archive.
+  updates.settings:
+    roles: [owner, admin]
+    description: Update email settings (sender, reply-to, footer) and the sending domain.
+
+  # KPIs. `metrics.read` is every staff role, like `updates.read` and `analytics.read`:
+  # the numbers a company publishes to its investors are the numbers its own staff work from,
+  # and a viewer who cannot see them cannot check an update before it goes out. `manage` adds
+  # `finance` to the editor set, because entering the month's figures is a finance task rather
+  # than an editorial one. `settings` is owner/admin/finance: connecting a Google Sheet hands a
+  # service-account credential to the server and decides which spreadsheet the published
+  # numbers come from, which is the same class of decision as the sending domain.
+  metrics.read:
+    roles: [owner, admin, editor, viewer, finance, legal]
+    description: Metric definitions, the period grid, restatement history and CSV import results.
+  metrics.manage:
+    roles: [owner, admin, editor, finance]
+    description: Define and remove metrics, save the grid, restate a point, run a CSV import, pull the sheet now.
+  metrics.settings:
+    roles: [owner, admin, finance]
+    description: Metric defaults (reporting currency, period) and the Google Sheets connection.
+
+  # round, interest and commitments. `round.read` matches `metrics.read` — every staff
+  # role, because the numbers and the terms a company is raising on are what its own staff work
+  # from, and `legal`/`finance` are precisely the roles asked to check them. `manage` adds
+  # `finance` and `legal` to the editor set: deciding an interest submission is a finance
+  # judgement and settling an accreditation verification is a legal one, and neither is an
+  # editorial task. `publish` is owner/admin alone and step-up throughout, because opening a
+  # round, closing it and exporting the commitment list are the company's own securities
+  # decisions — the same class as changing the offering status.
+  round.read:
+    roles: [owner, admin, editor, viewer, finance, legal]
+    description: Rounds, terms, interest submissions, verifications and allocation.
+  round.manage:
+    roles: [owner, admin, editor, finance, legal]
+    description: Edit rounds and terms, decide interest submissions and verifications, manage commitments.
+  round.publish:
+    roles: [owner, admin]
+    description: Open and close a round, export commitments.
+  round.settings:
+    roles: [owner, admin]
+    description: Round module settings (evidence retention, default currency).
+
+  # CRM-lite. No `finance` or `legal`: the pipeline is the fundraising team's working
+  # notes about people, and the roles that exist to check figures and texts have no reason to
+  # read a founder's private assessment of an investor. `viewer` reads and cannot write, which
+  # is what the role means everywhere else.
+  crm.read:
+    roles: [owner, admin, editor, viewer]
+    description: Contacts, organisations, pipeline, notes and tasks.
+  crm.manage:
+    roles: [owner, admin, editor]
+    description: Create and edit CRM records and move pipeline items.
+
+  # engagement analytics + notifications
+  analytics.read:
+    roles: [owner, admin, editor, viewer, finance, legal]
+    description: Engagement overview, who viewed a document, page dwell, a contact's timeline and the tracking settings.
+  analytics.settings:
+    roles: [owner, admin]
+    description: Change the tracking mode and retention, and erase one member's engagement history (DSAR).
+  notify.read:
+    roles: [owner, admin, editor, viewer, finance, legal]
+    description: Manage my own notification preferences and read my own notification inbox.
+  # E2.6: workspace chat channels post into a room the whole team reads, so they are workspace
+  # configuration (owner/admin), not a personal preference — and a webhook URL is a credential.
+  notify.manage:
+    roles: [owner, admin]
+    description: Add, change, test and remove the workspace's Slack channels for notifications.
+
+  # cap table (optional module). `legal` reads (counsel checks the ledger); importing and
+  # publishing a snapshot is a finance task, publishing with step-up because investors see it.
+  captable.read:
+    roles: [owner, admin, finance, legal]
+    description: Cap-table snapshots (drafts and published), their summary and holders.
+  captable.manage:
+    roles: [owner, admin, finance]
+    description: Import, publish and delete cap-table snapshots, and the module's settings.
+routes:
+  # kernel
+  - { method: GET, path: /modules, requires: public }
+  - { method: GET, path: /me, requires: session }
+  - { method: GET, path: "/invites/{token}", requires: public }
+  # auth
+  - { method: POST, path: /auth/otp/start, requires: public }
+  - { method: POST, path: /auth/otp/verify, requires: public }
+  - { method: POST, path: /auth/magic-link/start, requires: public }
+  - { method: GET, path: /auth/magic-link/peek, requires: public }
+  - { method: POST, path: /auth/magic-link/confirm, requires: public }
+  - { method: POST, path: /auth/passkeys/login/begin, requires: public }
+  - { method: POST, path: /auth/passkeys/login/finish, requires: public }
+  - { method: POST, path: /auth/passkeys/step-up/finish, requires: session }
+  # P2-01: every route below that adds, removes or replaces a sign-in factor also needs auth
+  # level 2 once the user holds a second factor (TOTP or a passkey); enforced by the auth routes'
+  # `requireFactorProof`, which the `requires` vocabulary cannot express (it depends on the user).
+  - { method: POST, path: /auth/passkeys/register/begin, requires: session, stepUp: true }
+  - { method: POST, path: /auth/passkeys/register/finish, requires: session }
+  - { method: GET, path: /auth/passkeys, requires: session }
+  - { method: PATCH, path: "/auth/passkeys/{id}", requires: session }
+  - { method: DELETE, path: "/auth/passkeys/{id}", requires: session, stepUp: true }
+  - { method: GET, path: /auth/totp, requires: session }
+  - { method: DELETE, path: /auth/totp, requires: session, stepUp: true }
+  - { method: POST, path: /auth/totp/enrol, requires: session, stepUp: true }
+  - { method: POST, path: /auth/totp/enrol/confirm, requires: session }
+  - { method: POST, path: /auth/totp/verify, requires: session }
+  - { method: POST, path: /auth/totp/recovery, requires: session }
+  - { method: POST, path: /auth/totp/recovery-codes, requires: session, stepUp: true }
+  - { method: GET, path: /auth/password, requires: session }
+  - { method: PUT, path: /auth/password, requires: session, stepUp: true }
+  - { method: DELETE, path: /auth/password, requires: session, stepUp: true }
+  - { method: POST, path: /auth/password/login, requires: public }
+  - { method: POST, path: /auth/password/reverify, requires: session }
+  - { method: GET, path: /auth/oidc/providers, requires: public }
+  - { method: POST, path: /auth/oidc/begin, requires: public }
+  - { method: GET, path: /auth/oidc/callback, requires: public }
+  - { method: POST, path: /auth/logout, requires: session }
+  # F-26 (ASVS 7.5.2): ending sessions other than the caller's own needs a fresh proof.
+  # DELETE /me/sessions/{id} exempts the caller's current session (that is signing out).
+  - { method: POST, path: /auth/logout-everywhere, requires: session, stepUp: true }
+  - { method: POST, path: /auth/sessions/revoke-by-token, requires: public }
+  - { method: GET, path: /me/sessions, requires: session }
+  - { method: DELETE, path: "/me/sessions/{id}", requires: session, stepUp: true }
+  - { method: GET, path: /me/devices, requires: session }
+  - { method: PATCH, path: "/me/devices/{id}", requires: session }
+  - { method: DELETE, path: "/me/devices/{id}", requires: session, stepUp: true }
+  # first-run setup
+  - { method: GET, path: /setup/status, requires: public }
+  - { method: POST, path: /setup/token/verify, requires: public }
+  - { method: POST, path: /setup/owner, requires: public }
+  - { method: POST, path: /setup/probes/mail, requires: owner-or-admin }
+  - { method: POST, path: /setup/probes/storage, requires: owner-or-admin }
+  # access management
+  - { method: GET, path: /access/people, requires: access.read, apiKey: true }
+  - { method: GET, path: "/access/people/{id}", requires: access.read, apiKey: true }
+  - { method: PATCH, path: "/access/people/{id}", requires: access.manage, stepUp: true }
+  - { method: POST, path: "/access/people/{id}/revoke", requires: access.manage, stepUp: true }
+  - { method: PUT, path: "/access/people/{id}/groups", requires: access.manage }
+  - { method: GET, path: /access/invites, requires: access.read }
+  - { method: POST, path: /access/invites, requires: access.manage }
+  - { method: POST, path: "/access/invites/{id}/resend", requires: access.manage }
+  - { method: DELETE, path: "/access/invites/{id}", requires: access.manage }
+  - { method: POST, path: /access/invites/csv/dry-run, requires: access.manage }
+  - { method: POST, path: /access/invites/csv/import, requires: access.manage }
+  - { method: GET, path: "/access/invites/csv/imports/{id}", requires: access.read }
+  - { method: GET, path: /access/groups, requires: access.read, apiKey: true }
+  - { method: POST, path: /access/groups, requires: access.manage }
+  - { method: GET, path: "/access/groups/{id}", requires: access.read }
+  - { method: PATCH, path: "/access/groups/{id}", requires: access.manage }
+  - { method: DELETE, path: "/access/groups/{id}", requires: access.manage, stepUp: true }
+  - { method: POST, path: "/access/groups/{id}/members", requires: access.manage }
+  - { method: DELETE, path: "/access/groups/{id}/members/{membershipId}", requires: access.manage }
+  - { method: GET, path: /access/grants, requires: access.read }
+  - { method: POST, path: /access/grants, requires: access.manage, stepUp: true }
+  - { method: DELETE, path: "/access/grants/{id}", requires: access.manage, stepUp: true }
+  - { method: GET, path: /access/policies, requires: access.read }
+  - { method: POST, path: /access/policies, requires: access.manage, stepUp: true }
+  - { method: DELETE, path: "/access/policies/{id}", requires: access.manage, stepUp: true }
+  - { method: GET, path: "/access/resources/{kind}/{id}/who", requires: access.read }
+  - { method: GET, path: "/access/resources/{kind}/{id}/explain", requires: access.read }
+  - { method: GET, path: /access/settings, requires: access.read }
+  - { method: PATCH, path: /access/settings, requires: access.settings, stepUp: true }
+  - { method: GET, path: /access/my, requires: member }
+  # delegates: the investor's own, and any investor's from the People screen
+  - { method: GET, path: /access/my/delegates, requires: member }
+  - { method: POST, path: /access/my/delegates, requires: member, stepUp: true }
+  - { method: DELETE, path: "/access/my/delegates/{id}", requires: member, stepUp: true }
+  - { method: GET, path: "/access/people/{id}/delegates", requires: access.read }
+  - { method: POST, path: "/access/people/{id}/delegates", requires: access.manage, stepUp: true }
+  - { method: DELETE, path: "/access/people/{id}/delegates/{delegateId}", requires: access.manage, stepUp: true }
+  # access review, sessions admin, ownership and the danger zone
+  - { method: GET, path: /access/review, requires: access.read }
+  - { method: GET, path: /access/reviews, requires: access.read }
+  - { method: POST, path: /access/reviews, requires: access.manage, stepUp: true }
+  - { method: GET, path: "/access/reviews/{id}/report", requires: access.read }
+  - { method: GET, path: "/access/people/{id}/sessions", requires: access.read }
+  - { method: DELETE, path: "/access/people/{id}/sessions/{sessionId}", requires: access.manage, stepUp: true }
+  - { method: POST, path: "/access/people/{id}/sessions/revoke", requires: access.manage, stepUp: true }
+  - { method: POST, path: /access/ownership/transfer, requires: access.transfer, stepUp: true }
+  - { method: POST, path: /access/sessions/revoke-all, requires: access.transfer, stepUp: true }
+  - { method: DELETE, path: /workspace, requires: access.delete_workspace, stepUp: true }
+  # access requests. The two public rows are the whole unauthenticated surface: they 404
+  # unless `access.requests.enabled`, and every "no" a stranger can provoke answers exactly like a
+  # "yes" (decoy challenge ids, a neutral "received"). Approving creates an ordinary invite, so it
+  # needs what POST /access/invites needs.
+  - { method: POST, path: /access-requests/start, requires: public }
+  - { method: POST, path: /access-requests/verify, requires: public }
+  - { method: GET, path: /access/requests, requires: access.read }
+  - { method: GET, path: "/access/requests/{id}", requires: access.read }
+  - { method: POST, path: "/access/requests/{id}/approve", requires: access.manage }
+  - { method: POST, path: "/access/requests/{id}/deny", requires: access.manage }
+  # view as investor
+  - { method: POST, path: "/access/people/{id}/view-as", requires: access.manage, stepUp: true }
+  - { method: GET, path: /me/view-as, requires: session }
+  - { method: DELETE, path: /me/view-as, requires: session }
+  # offering mode + legal documents
+  - { method: GET, path: /compliance/offering, requires: compliance.read }
+  - { method: PATCH, path: /compliance/offering, requires: compliance.offering, stepUp: true }
+  - { method: GET, path: /compliance/settings, requires: compliance.read }
+  - { method: PATCH, path: /compliance/settings, requires: compliance.manage, stepUp: true }
+  - { method: GET, path: /compliance/templates, requires: compliance.read }
+  - { method: GET, path: "/compliance/templates/{templateId}", requires: compliance.read }
+  - { method: GET, path: /compliance/documents, requires: compliance.read }
+  - { method: POST, path: /compliance/documents, requires: compliance.manage }
+  - { method: GET, path: "/compliance/documents/{id}", requires: compliance.read }
+  - { method: PATCH, path: "/compliance/documents/{id}", requires: compliance.manage }
+  - { method: DELETE, path: "/compliance/documents/{id}", requires: compliance.manage, stepUp: true }
+  - { method: GET, path: "/compliance/documents/{id}/versions", requires: compliance.read }
+  - { method: POST, path: "/compliance/documents/{id}/versions", requires: compliance.manage, stepUp: true }
+  - { method: GET, path: /compliance/acceptances, requires: compliance.read }
+  # The register export. `member` on the certificate row is the floor, not the whole rule:
+  # the signer may fetch their own and anybody else needs `compliance.read`, which the handler
+  # checks — a caller who is neither gets the 404 an unknown certificate gives, because "you may
+  # not see Ada's certificate" and "Ada has no certificate" must read the same from outside.
+  - { method: GET, path: /compliance/acceptances/export, requires: compliance.read }
+  - { method: GET, path: "/compliance/acceptances/{membershipId}/certificate", requires: member }
+  - { method: GET, path: /compliance/gates, requires: member }
+  - { method: POST, path: /compliance/acceptances, requires: member }
+  - { method: GET, path: /compliance/consent, requires: member }
+  - { method: PUT, path: /compliance/consent, requires: member }
+  # DSAR erasure requests. Recording and cancelling ride on the permission that guards the
+  # legal settings, with step-up: starting a statutory clock and erasing a person across every
+  # module is at least as consequential as changing a consent mode.
+  - { method: POST, path: /compliance/erasure-requests, requires: compliance.manage, stepUp: true }
+  - { method: GET, path: /compliance/erasure-requests, requires: compliance.read }
+  - { method: GET, path: "/compliance/erasure-requests/{id}", requires: compliance.read }
+  - { method: POST, path: "/compliance/erasure-requests/{id}/cancel", requires: compliance.manage, stepUp: true }
+  # data subject requests of every kind, and the subject export
+  - { method: GET, path: /compliance/data-requests, requires: compliance.read }
+  - { method: POST, path: /compliance/data-requests, requires: compliance.manage, stepUp: true }
+  - { method: POST, path: "/compliance/data-requests/{id}/complete", requires: compliance.manage, stepUp: true }
+  - { method: GET, path: "/compliance/subjects/{membershipId}/export", requires: compliance.manage, stepUp: true }
+  # audit log
+  - { method: GET, path: /audit/events, requires: audit.read, apiKey: true }
+  - { method: GET, path: /audit/verify, requires: audit.read }
+  - { method: GET, path: /audit/export-key, requires: audit.read }
+  - { method: POST, path: /audit/exports, requires: audit.export, stepUp: true }
+  # external anchoring: the workspace's checkpoints and their anchors; one proof download
+  - { method: GET, path: /audit/anchors, requires: audit.read }
+  - { method: GET, path: "/audit/anchors/{checkpointId}/proof", requires: audit.export }
+  # jobs, dead letters and health
+  - { method: GET, path: /ops/jobs, requires: ops.read }
+  - { method: POST, path: "/ops/jobs/dead-letters/{id}/retry", requires: ops.manage }
+  - { method: DELETE, path: "/ops/jobs/dead-letters/{id}", requires: ops.manage, stepUp: true }
+  - { method: GET, path: /ops/health, requires: ops.read }
+  # update check: the running version against the release index; an instance fact, so a
+  # multi-tenant host answers `disabled` without fetching. Same audience as the health page.
+  - { method: GET, path: /ops/update, requires: ops.read }
+  # search. Any member: RLS and the evaluator narrow the hits to what the caller could open.
+  - { method: GET, path: /search, requires: member }
+  # workspace export
+  - { method: GET, path: /portability/exports, requires: portability.export }
+  - { method: POST, path: /portability/exports, requires: portability.export, stepUp: true }
+  - { method: GET, path: "/portability/exports/{id}", requires: portability.export }
+  - { method: GET, path: "/portability/exports/{id}/download", requires: portability.export, stepUp: true }
+  - { method: DELETE, path: "/portability/exports/{id}", requires: portability.export }
+  - { method: GET, path: /portability/export-key, requires: portability.export }
+  # accessibility statement: public, like the privacy texts it sits beside in the footer.
+  - { method: GET, path: /compliance/accessibility-statement, requires: public }
+  # language. The user's own choice is global (like the user); the workspace default rides
+  # on the permission that guards the other workspace-wide settings.
+  - { method: PUT, path: /me/locale, requires: session }
+  - { method: PUT, path: /workspace/locale, requires: access.settings }
+  # branding
+  - { method: GET, path: /branding, requires: branding.read }
+  - { method: PATCH, path: /branding, requires: branding.manage }
+  - { method: POST, path: /branding/logo, requires: branding.manage }
+  - { method: POST, path: /branding/logo/fetch, requires: branding.manage }
+  - { method: DELETE, path: /branding/logo, requires: branding.manage }
+  - { method: GET, path: /branding/logo, requires: public }
+  - { method: GET, path: /branding/theme, requires: public }
+  # custom domains
+  - { method: GET, path: /domains, requires: domains.read }
+  - { method: POST, path: /domains, requires: domains.manage, stepUp: true }
+  - { method: POST, path: "/domains/{id}/verify", requires: domains.manage, stepUp: true }
+  - { method: DELETE, path: "/domains/{id}", requires: domains.manage, stepUp: true }
+  # mail delivery feedback. Kernel routes on the kernel `access.settings` permission
+  # (owner/admin): the suppression list decides whether investors receive the company's mail at
+  # all and lists (masked) people. Removing an entry re-opens mail to an address that bounced or
+  # complained, so it needs step-up. The ESP webhook (`POST /webhooks/email/{driver}`) is an ops
+  # route outside `/api/v1`, authenticated by the provider's signature, and has no row here.
+  - { method: GET, path: /mail/status, requires: access.settings }
+  - { method: GET, path: /mail/suppressions, requires: access.settings }
+  - { method: DELETE, path: "/mail/suppressions/{id}", requires: access.settings, stepUp: true }
+  # embed. The loader, the public theme document and the embed page itself are not API
+  # operations and so have no row here; they are covered by apps/server/src/embed.integration.test.ts.
+  - { method: GET, path: /embed/settings, requires: embed.read }
+  - { method: PUT, path: /embed/settings, requires: embed.manage, stepUp: true }
+  - { method: POST, path: /embed/handoff, requires: public }
+  # share links & NDA. The three public rows are the whole unauthenticated surface, and
+  # they are keyed on the link's TOKEN; every admin row is keyed on its ID. The two vocabularies
+  # never meet: if possession of the id bought eligibility, the passcode would be bypassable, and
+  # an id — unlike its token — ends up in URLs, logs and admin screens (contract C4).
+  - { method: GET, path: "/links/{token}", requires: public }
+  - { method: POST, path: "/links/{token}/start", requires: public }
+  - { method: POST, path: "/links/{token}/verify", requires: public }
+  - { method: GET, path: /links, requires: share-links.read }
+  - { method: POST, path: /links, requires: share-links.manage, stepUp: true }
+  - { method: GET, path: "/links/{id}/visits", requires: share-links.read }
+  - { method: POST, path: "/links/{id}/pause", requires: share-links.manage }
+  - { method: POST, path: "/links/{id}/resume", requires: share-links.manage }
+  - { method: POST, path: "/links/{id}/revoke", requires: share-links.manage, stepUp: true }
+  # API keys. No row here is `apiKey: true`: a key never sees or mints keys.
+  - { method: GET, path: /api-keys, requires: api-keys.read }
+  - { method: GET, path: /api-keys/scopes, requires: api-keys.read }
+  - { method: POST, path: /api-keys, requires: api-keys.manage, stepUp: true }
+  - { method: PATCH, path: "/api-keys/{id}", requires: api-keys.manage, stepUp: true }
+  - { method: POST, path: "/api-keys/{id}/rotate", requires: api-keys.manage, stepUp: true }
+  - { method: POST, path: "/api-keys/{id}/revoke", requires: api-keys.manage, stepUp: true }
+  # outbound webhooks
+  - { method: GET, path: /webhooks/topics, requires: webhooks.read }
+  - { method: GET, path: /webhooks/endpoints, requires: webhooks.read }
+  - { method: POST, path: /webhooks/endpoints, requires: webhooks.manage, stepUp: true }
+  - { method: GET, path: "/webhooks/endpoints/{id}", requires: webhooks.read }
+  # PATCH also runs the step-up check when the body carries `url` (enforced in the handler).
+  - { method: PATCH, path: "/webhooks/endpoints/{id}", requires: webhooks.manage }
+  - { method: DELETE, path: "/webhooks/endpoints/{id}", requires: webhooks.manage, stepUp: true }
+  - { method: POST, path: "/webhooks/endpoints/{id}/rotate-secret", requires: webhooks.manage, stepUp: true }
+  - { method: POST, path: "/webhooks/endpoints/{id}/test", requires: webhooks.manage }
+  - { method: GET, path: /webhooks/deliveries, requires: webhooks.read, apiKey: true }
+  - { method: GET, path: "/webhooks/deliveries/{id}", requires: webhooks.read, apiKey: true }
+  - { method: POST, path: "/webhooks/deliveries/{id}/redeliver", requires: webhooks.manage }
+  # e-signature. The two envelope reads are key-callable (an integration reconciles what
+  # was signed). The member rows are gate-exempt like the compliance acceptance routes: an e-sign
+  # NDA ceremony is how a member clears the NDA gate. The vendor callback
+  # (`POST /webhooks/esign/{connectionId}`) is an ops route outside `/api/v1`, authenticated by
+  # the vendor's signature, and has no row here.
+  - { method: GET, path: /esign/drivers, requires: esign.read }
+  - { method: GET, path: /esign/connection, requires: esign.read }
+  - { method: PUT, path: /esign/connection, requires: esign.manage, stepUp: true }
+  - { method: POST, path: /esign/connection/verify, requires: esign.manage }
+  - { method: POST, path: /esign/connection/rotate-callback-secret, requires: esign.manage, stepUp: true }
+  - { method: DELETE, path: /esign/connection, requires: esign.manage, stepUp: true }
+  - { method: GET, path: /esign/envelopes, requires: esign.read, apiKey: true }
+  - { method: GET, path: "/esign/envelopes/{id}", requires: esign.read, apiKey: true }
+  - { method: GET, path: "/esign/envelopes/{id}/signed.pdf", requires: esign.read }
+  - { method: GET, path: "/esign/envelopes/{id}/certificate.pdf", requires: esign.read }
+  - { method: POST, path: "/esign/envelopes/{id}/void", requires: esign.manage, stepUp: true }
+  - { method: POST, path: "/esign/envelopes/{id}/sync", requires: esign.manage }
+  - { method: GET, path: /esign/me/envelopes, requires: member }
+  - { method: GET, path: "/esign/me/envelopes/{id}/signed.pdf", requires: member }
+  - { method: POST, path: /esign/nda/start, requires: member }
+  - { method: GET, path: /esign/nda/status, requires: member }
+  # accreditation vendors. The vendor callback (`POST /webhooks/accreditation/{connectionId}`)
+  # is an ops route outside `/api/v1`, authenticated by the vendor's signature, and has no row here.
+  - { method: GET, path: /accreditation/providers, requires: accreditation.read }
+  - { method: GET, path: /accreditation/connection, requires: accreditation.read }
+  - { method: PUT, path: /accreditation/connection, requires: accreditation.manage, stepUp: true }
+  - { method: POST, path: /accreditation/connection/verify, requires: accreditation.manage, stepUp: true }
+  - { method: DELETE, path: /accreditation/connection, requires: accreditation.manage, stepUp: true }
+  # integrations hub. The bookings register is key-callable (a CRM sync reads it). The OAuth
+  # handshake (`GET /oauth/integrations/start`, `GET /oauth/integrations/callback`) and the booking
+  # webhook (`POST /webhooks/integrations/{connectionId}`) are ops routes outside `/api/v1`
+  # (a one-time ticket / the OAuth state bound to the browser / the vendor's signature) and have
+  # no row here.
+  - { method: GET, path: /integrations/providers, requires: integrations.read }
+  - { method: GET, path: /integrations/connections, requires: integrations.read }
+  - { method: POST, path: "/integrations/{provider}/connect", requires: integrations.manage, stepUp: true }
+  - { method: POST, path: "/integrations/{provider}/oauth/begin", requires: integrations.manage, stepUp: true }
+  - { method: POST, path: "/integrations/{provider}/oauth/complete", requires: integrations.manage, stepUp: true }
+  - { method: POST, path: "/integrations/{provider}/verify", requires: integrations.manage }
+  - { method: PUT, path: "/integrations/{provider}/account", requires: integrations.manage, stepUp: true }
+  - { method: POST, path: "/integrations/{provider}/rotate-webhook-secret", requires: integrations.manage, stepUp: true }
+  - { method: DELETE, path: "/integrations/{provider}", requires: integrations.manage, stepUp: true }
+  - { method: GET, path: /integrations/bookings, requires: integrations.read, apiKey: true }
+  - { method: GET, path: /integrations/booking-links, requires: integrations.read }
+  - { method: POST, path: /integrations/booking-links, requires: integrations.manage }
+  - { method: PATCH, path: "/integrations/booking-links/{id}", requires: integrations.manage }
+  - { method: DELETE, path: "/integrations/booking-links/{id}", requires: integrations.manage }
+  - { method: GET, path: /integrations/me/booking-links, requires: member }
+  # module enablement: the wizard's modules checklist and the admin modules page
+  - { method: GET, path: /modules/enablement, requires: owner-or-admin }
+  - { method: PATCH, path: "/modules/{id}", requires: owner-or-admin }
+  # content page
+  - { method: GET, path: "/content/render/{slug}", requires: public }
+  - { method: GET, path: /content/pages, requires: content.read }
+  - { method: POST, path: /content/pages, requires: content.manage }
+  - { method: GET, path: "/content/pages/{id}", requires: content.read }
+  - { method: PATCH, path: "/content/pages/{id}", requires: content.manage }
+  - { method: DELETE, path: "/content/pages/{id}", requires: content.manage, stepUp: true }
+  - { method: PUT, path: "/content/pages/{id}/draft", requires: content.manage }
+  - { method: PUT, path: "/content/pages/{id}/visibility", requires: content.manage }
+  - { method: POST, path: "/content/pages/{id}/publish", requires: content.publish }
+  - { method: GET, path: "/content/pages/{id}/preview", requires: content.read }
+  - { method: GET, path: "/content/pages/{id}/revisions", requires: content.read }
+  - { method: GET, path: "/content/pages/{id}/revisions/{revisionId}", requires: content.read }
+  - { method: POST, path: "/content/pages/{id}/revisions/{revisionId}/restore", requires: content.manage }
+  - { method: GET, path: /content/blocks, requires: content.read }
+  - { method: GET, path: /content/settings, requires: content.read }
+  - { method: PATCH, path: /content/settings, requires: content.settings, stepUp: true }
+  # data room
+  - { method: GET, path: /data-room/tree, requires: member }
+  - { method: POST, path: /data-room/folders, requires: data-room.manage }
+  - { method: PATCH, path: "/data-room/folders/{id}", requires: data-room.manage }
+  - { method: DELETE, path: "/data-room/folders/{id}", requires: data-room.manage }
+  - { method: POST, path: "/data-room/folders/{id}/restore", requires: data-room.manage }
+  - { method: GET, path: /data-room/templates, requires: data-room.read }
+  - { method: POST, path: "/data-room/templates/{id}/apply", requires: data-room.manage }
+  - { method: GET, path: "/data-room/documents/{id}", requires: member }
+  - { method: PATCH, path: "/data-room/documents/{id}", requires: data-room.manage }
+  - { method: DELETE, path: "/data-room/documents/{id}", requires: data-room.manage }
+  - { method: POST, path: "/data-room/documents/{id}/restore", requires: data-room.manage }
+  - { method: DELETE, path: "/data-room/documents/{id}/purge", requires: data-room.manage, stepUp: true }
+  - { method: PUT, path: "/data-room/documents/{id}/legal-hold", requires: data-room.legal_hold, stepUp: true }
+  - { method: GET, path: "/data-room/documents/{id}/versions", requires: data-room.read, apiKey: true }
+  - { method: GET, path: "/data-room/documents/{id}/thumbnail", requires: member }
+  - { method: GET, path: "/data-room/documents/{id}/pages/{n}", requires: member }
+  - { method: GET, path: "/data-room/documents/{id}/pages/{n}/text", requires: member }
+  - { method: GET, path: "/data-room/documents/{id}/search", requires: member }
+  - { method: GET, path: "/data-room/documents/{id}/download", requires: member }
+  - { method: POST, path: "/data-room/documents/{id}/viewed", requires: member }
+  - { method: POST, path: /data-room/uploads, requires: data-room.manage }
+  - { method: POST, path: "/data-room/uploads/{id}/complete", requires: data-room.manage }
+  - { method: GET, path: "/data-room/uploads/{id}", requires: data-room.manage }
+  - { method: DELETE, path: "/data-room/uploads/{id}", requires: data-room.manage }
+  - { method: GET, path: /data-room/trash, requires: data-room.manage }
+  - { method: GET, path: /data-room/settings, requires: data-room.read }
+  - { method: PATCH, path: /data-room/settings, requires: data-room.settings, stepUp: true }
+  # forensic watermarking: detection (multipart image upload) and the recipients list
+  - { method: POST, path: "/data-room/documents/{id}/forensic/detect", requires: data-room.forensics, stepUp: true }
+  - { method: GET, path: "/data-room/documents/{id}/forensic/recipients", requires: data-room.forensics }
+  # data-room Q&A: investor side (404 while `dataRoom.qa.enabled` is off, except status)
+  - { method: GET, path: /data-room/qa/status, requires: member }
+  - { method: GET, path: /data-room/qa/questions, requires: member }
+  - { method: POST, path: /data-room/qa/questions, requires: member }
+  - { method: GET, path: "/data-room/qa/questions/{id}", requires: member }
+  - { method: POST, path: "/data-room/qa/questions/{id}/withdraw", requires: member }
+  # data-room Q&A: staff inbox
+  - { method: GET, path: /data-room/qa/inbox, requires: data-room.read, apiKey: true }
+  - { method: POST, path: /data-room/qa/inbox, requires: data-room.qa_manage, apiKey: true }
+  - { method: GET, path: "/data-room/qa/inbox/{id}", requires: data-room.read, apiKey: true }
+  - { method: PATCH, path: "/data-room/qa/inbox/{id}", requires: data-room.qa_manage }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/assign", requires: data-room.qa_manage }
+  - { method: PUT, path: "/data-room/qa/inbox/{id}/answer", requires: data-room.qa_answer }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/ai-suggestion", requires: data-room.qa_answer }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/submit", requires: data-room.qa_answer }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/approve", requires: data-room.qa_approve }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/reject", requires: data-room.qa_approve }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/release", requires: data-room.qa_manage }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/unpublish", requires: data-room.qa_manage }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/close", requires: data-room.qa_manage }
+  - { method: POST, path: "/data-room/qa/inbox/{id}/reopen", requires: data-room.qa_manage }
+  - { method: GET, path: /data-room/qa/export, requires: data-room.qa_manage, stepUp: true }
+  - { method: POST, path: /data-room/qa/import, requires: data-room.qa_manage, stepUp: true }
+  # investor updates
+  - { method: GET, path: /updates/templates, requires: updates.read }
+  - { method: GET, path: /updates/posts, requires: updates.read, apiKey: true }
+  - { method: POST, path: /updates/posts, requires: updates.manage }
+  - { method: POST, path: /updates/ai/draft, requires: updates.manage }
+  - { method: GET, path: "/updates/posts/{id}", requires: updates.read, apiKey: true }
+  - { method: PUT, path: "/updates/posts/{id}/draft", requires: updates.manage }
+  - { method: DELETE, path: "/updates/posts/{id}", requires: updates.manage, stepUp: true }
+  - { method: POST, path: "/updates/posts/{id}/schedule", requires: updates.send }
+  - { method: POST, path: "/updates/posts/{id}/unschedule", requires: updates.send }
+  - { method: POST, path: "/updates/posts/{id}/send", requires: updates.send, stepUp: true }
+  - { method: POST, path: "/updates/posts/{id}/test-send", requires: updates.send }
+  - { method: POST, path: "/updates/posts/{id}/publish", requires: updates.send }
+  - { method: PUT, path: "/updates/posts/{id}/archived", requires: updates.manage }
+  - { method: GET, path: "/updates/posts/{id}/sends", requires: updates.read }
+  - { method: GET, path: "/updates/sends/{sendId}/recipients", requires: updates.read }
+  - { method: GET, path: /updates/archive, requires: member }
+  - { method: GET, path: "/updates/archive/{slug}", requires: member }
+  - { method: GET, path: "/updates/posts/{id}/replies", requires: member }
+  - { method: POST, path: "/updates/posts/{id}/replies", requires: member }
+  - { method: GET, path: /updates/subscription, requires: member }
+  - { method: PUT, path: /updates/subscription, requires: member }
+  - { method: POST, path: /updates/unsubscribe, requires: public }
+  - { method: GET, path: /updates/settings, requires: updates.settings }
+  - { method: PATCH, path: /updates/settings, requires: updates.settings, stepUp: true }
+  - { method: GET, path: /updates/sending-domain, requires: updates.settings }
+  - { method: PUT, path: /updates/sending-domain, requires: updates.settings, stepUp: true }
+  - { method: POST, path: /updates/sending-domain/verify, requires: updates.settings }
+  - { method: DELETE, path: /updates/sending-domain, requires: updates.settings, stepUp: true }
+  # engagement analytics
+  - { method: POST, path: /analytics/heartbeat, requires: member }
+  - { method: POST, path: /analytics/close, requires: member }
+  - { method: GET, path: /analytics/notice, requires: member }
+  - { method: GET, path: /analytics/overview, requires: analytics.read }
+  - { method: GET, path: "/analytics/{kind}/{id}/viewers", requires: analytics.read }
+  - { method: GET, path: "/analytics/{kind}/{id}/viewers/{membershipId}/pages", requires: analytics.read }
+  - { method: GET, path: "/analytics/members/{membershipId}/timeline", requires: analytics.read }
+  # E2.6: page heatmap, hot list (+ audited CSV), per-update email opens/clicks
+  - { method: GET, path: "/analytics/{kind}/{id}/heatmap", requires: analytics.read }
+  - { method: GET, path: /analytics/hot-list, requires: analytics.read }
+  - { method: GET, path: /analytics/hot-list.csv, requires: analytics.read }
+  - { method: GET, path: "/analytics/posts/{id}/email", requires: analytics.read }
+  - { method: GET, path: /analytics/settings, requires: analytics.read }
+  - { method: PATCH, path: /analytics/settings, requires: analytics.settings, stepUp: true }
+  - { method: POST, path: "/analytics/members/{membershipId}/anonymise", requires: analytics.settings, stepUp: true }
+  # metrics
+  - { method: GET, path: /metrics/definitions, requires: metrics.read, apiKey: true }
+  - { method: POST, path: /metrics/definitions, requires: metrics.manage }
+  - { method: GET, path: "/metrics/definitions/{id}", requires: metrics.read }
+  - { method: PATCH, path: "/metrics/definitions/{id}", requires: metrics.manage }
+  - { method: DELETE, path: "/metrics/definitions/{id}", requires: metrics.manage, stepUp: true }
+  - { method: GET, path: "/metrics/definitions/{id}/points", requires: metrics.read, apiKey: true }
+  - { method: PUT, path: "/metrics/definitions/{id}/points", requires: metrics.manage, apiKey: true }
+  - { method: GET, path: /metrics/grid, requires: metrics.read, apiKey: true }
+  - { method: PUT, path: /metrics/grid, requires: metrics.manage, apiKey: true }
+  - { method: GET, path: /metrics/series, requires: member }
+  - { method: POST, path: /metrics/import/dry-run, requires: metrics.manage, apiKey: true }
+  - { method: POST, path: /metrics/import, requires: metrics.manage, apiKey: true }
+  - { method: GET, path: "/metrics/import/{id}", requires: metrics.read, apiKey: true }
+  - { method: GET, path: /metrics/sheets, requires: metrics.settings }
+  - { method: PUT, path: /metrics/sheets, requires: metrics.settings, stepUp: true }
+  - { method: DELETE, path: /metrics/sheets, requires: metrics.settings, stepUp: true }
+  - { method: POST, path: /metrics/sheets/sync, requires: metrics.manage }
+  # KPI sources: QuickBooks / Xero / Stripe bindings through the integrations hub.
+  - { method: GET, path: /metrics/sources, requires: metrics.settings }
+  - { method: POST, path: /metrics/sources/sync, requires: metrics.manage }
+  - { method: PUT, path: "/metrics/definitions/{id}/binding", requires: metrics.settings, stepUp: true }
+  - { method: DELETE, path: "/metrics/definitions/{id}/binding", requires: metrics.settings, stepUp: true }
+  - { method: GET, path: /metrics/settings, requires: metrics.settings }
+  - { method: PATCH, path: /metrics/settings, requires: metrics.settings, stepUp: true }
+  - { method: GET, path: "/metrics/chart/{token}.png", requires: public }
+  # round, interest and commitments
+  - { method: GET, path: /round/current, requires: member }
+  - { method: GET, path: /round/current/calculate, requires: member }
+  - { method: GET, path: /round/current/eligibility, requires: member }
+  - { method: POST, path: /round/current/interest, requires: member }
+  - { method: GET, path: /round/current/interest, requires: member }
+  - { method: POST, path: "/round/current/interest/{id}/withdraw", requires: member }
+  - { method: PUT, path: "/round/verifications/{id}/evidence", requires: member }
+  - { method: GET, path: /round/rounds, requires: round.read, apiKey: true }
+  - { method: POST, path: /round/rounds, requires: round.manage }
+  - { method: GET, path: "/round/rounds/{id}", requires: round.read }
+  - { method: PATCH, path: "/round/rounds/{id}", requires: round.manage }
+  - { method: DELETE, path: "/round/rounds/{id}", requires: round.manage, stepUp: true }
+  - { method: POST, path: "/round/rounds/{id}/open", requires: round.publish, stepUp: true }
+  - { method: POST, path: "/round/rounds/{id}/close", requires: round.publish, stepUp: true }
+  - { method: PUT, path: "/round/rounds/{id}/terms", requires: round.manage }
+  - { method: GET, path: "/round/rounds/{id}/terms", requires: round.read }
+  - { method: GET, path: "/round/rounds/{id}/allocation", requires: round.read }
+  - { method: GET, path: "/round/rounds/{id}/export.csv", requires: round.publish, stepUp: true }
+  - { method: GET, path: "/round/rounds/{id}/commitments", requires: round.read, apiKey: true }
+  - { method: POST, path: "/round/rounds/{id}/commitments", requires: round.manage }
+  - { method: PATCH, path: "/round/commitments/{id}", requires: round.manage }
+  - { method: GET, path: "/round/rounds/{id}/interest", requires: round.read, apiKey: true }
+  - { method: POST, path: "/round/interest/{id}/accept", requires: round.manage }
+  - { method: POST, path: "/round/interest/{id}/decline", requires: round.manage }
+  - { method: GET, path: /round/verifications, requires: round.read }
+  - { method: GET, path: "/round/verifications/{id}", requires: round.read }
+  - { method: GET, path: "/round/verifications/{id}/evidence", requires: round.manage }
+  - { method: POST, path: "/round/verifications/{id}/decide", requires: round.manage }
+  # E3.7 vendor verification. The handoff page is HTML (the vendor's JS SDK), still a member route.
+  - { method: GET, path: /round/current/verification, requires: member }
+  - { method: POST, path: /round/current/verification, requires: member }
+  - { method: GET, path: /round/current/verification/handoff, requires: member }
+  - { method: POST, path: "/round/verifications/{id}/check", requires: round.manage }
+  - { method: GET, path: "/round/rounds/{id}/closing-tasks", requires: round.read }
+  - { method: PUT, path: "/round/rounds/{id}/closing-tasks", requires: round.manage }
+  # closing workflow: subscription agreements sent for e-signature, confirmation of wired
+  # money, and the per-commitment closing checklist (staff: key-callable; investor: their own).
+  - { method: POST, path: "/round/commitments/{id}/signature-request", requires: round.manage, stepUp: true }
+  - { method: POST, path: "/round/signature-requests/{id}/void", requires: round.manage, stepUp: true }
+  - { method: POST, path: "/round/commitments/{id}/confirm", requires: round.manage, stepUp: true }
+  - { method: GET, path: "/round/rounds/{id}/closing", requires: round.read, apiKey: true }
+  - { method: GET, path: /round/current/closing, requires: member }
+  - { method: GET, path: /round/settings, requires: round.settings }
+  - { method: PATCH, path: /round/settings, requires: round.settings, stepUp: true }
+  # CRM-lite
+  - { method: GET, path: /crm/stages, requires: crm.read }
+  - { method: PUT, path: /crm/stages, requires: crm.manage }
+  - { method: GET, path: /crm/organizations, requires: crm.read }
+  - { method: POST, path: /crm/organizations, requires: crm.manage }
+  - { method: GET, path: "/crm/organizations/{id}", requires: crm.read }
+  - { method: PATCH, path: "/crm/organizations/{id}", requires: crm.manage }
+  - { method: DELETE, path: "/crm/organizations/{id}", requires: crm.manage }
+  - { method: GET, path: /crm/contacts, requires: crm.read, apiKey: true }
+  - { method: POST, path: /crm/contacts, requires: crm.manage, apiKey: true }
+  - { method: GET, path: "/crm/contacts/{id}", requires: crm.read, apiKey: true }
+  - { method: PATCH, path: "/crm/contacts/{id}", requires: crm.manage, apiKey: true }
+  - { method: DELETE, path: "/crm/contacts/{id}", requires: crm.manage }
+  - { method: GET, path: "/crm/contacts/{id}/activity", requires: crm.read }
+  - { method: GET, path: /crm/pipeline, requires: crm.read }
+  - { method: POST, path: /crm/pipeline, requires: crm.manage }
+  - { method: PATCH, path: "/crm/pipeline/{id}", requires: crm.manage }
+  - { method: DELETE, path: "/crm/pipeline/{id}", requires: crm.manage }
+  - { method: POST, path: /crm/notes, requires: crm.manage }
+  - { method: DELETE, path: "/crm/notes/{id}", requires: crm.manage }
+  - { method: POST, path: /crm/tasks, requires: crm.manage }
+  - { method: PATCH, path: "/crm/tasks/{id}", requires: crm.manage }
+  - { method: DELETE, path: "/crm/tasks/{id}", requires: crm.manage }
+  # notifications
+  - { method: GET, path: /notify/preferences, requires: notify.read }
+  - { method: PUT, path: /notify/preferences, requires: notify.read }
+  - { method: GET, path: /notify/inbox, requires: notify.read }
+  - { method: POST, path: /notify/inbox/read, requires: notify.read }
+  - { method: POST, path: /notify/inbox/read-all, requires: notify.read }
+  - { method: POST, path: /notify/inbox/archive, requires: notify.read }
+  - { method: GET, path: /notify/channels, requires: notify.manage }
+  - { method: POST, path: /notify/channels, requires: notify.manage, stepUp: true }
+  # PATCH also runs the step-up check when the body carries `url` (enforced in the handler).
+  - { method: PATCH, path: "/notify/channels/{id}", requires: notify.manage }
+  - { method: DELETE, path: "/notify/channels/{id}", requires: notify.manage, stepUp: true }
+  - { method: POST, path: "/notify/channels/{id}/test", requires: notify.manage }
+  # Slack app channels: the channel picker, proxied through the integrations hub.
+  - { method: GET, path: /notify/slack/channels, requires: notify.manage }
+  # cap table (optional module)
+  - { method: GET, path: /captable/snapshots, requires: captable.read }
+  - { method: GET, path: "/captable/snapshots/{id}", requires: captable.read }
+  - { method: POST, path: /captable/import/dry-run, requires: captable.manage }
+  - { method: POST, path: /captable/import, requires: captable.manage }
+  - { method: POST, path: "/captable/snapshots/{id}/publish", requires: captable.manage, stepUp: true }
+  - { method: DELETE, path: "/captable/snapshots/{id}", requires: captable.manage }
+  - { method: GET, path: /captable/me, requires: member }
+  - { method: GET, path: /captable/settings, requires: captable.manage }
+  - { method: PUT, path: /captable/settings, requires: captable.manage, stepUp: true }
+  # --- E3.8 staff SSO + SCIM: PENDING ROWS -----------------------------------------------------
+  # Commented out until their operations exist: `apps/server/src/authz-matrix.test.ts` fails on a
+  # row with no OpenAPI operation. Uncomment each block in the same change that registers its
+  # routes. The IdP-facing ops routes (`/sso/oidc/{connectionId}/callback`,
+  # `/sso/saml/{connectionId}/acs`, `/sso/saml/{connectionId}/metadata`) and SCIM (`/scim/v2/*`)
+  # are outside `/api/v1` and have no row here (like the accreditation callback).
+  #
+  # staff SSO admin (apps/server/src/routes/sso.ts): admins read, only the owner writes; writes that change who gets in are step-up.
+  - { method: GET, path: /sso/connection, requires: sso.read }
+  - { method: PUT, path: /sso/connection, requires: sso.manage, stepUp: true }
+  - { method: DELETE, path: /sso/connection, requires: sso.manage, stepUp: true }
+  - { method: PUT, path: /sso/connection/state, requires: sso.manage, stepUp: true }
+  - { method: GET, path: /sso/domains, requires: sso.read }
+  - { method: POST, path: /sso/domains, requires: sso.manage, stepUp: true }
+  - { method: POST, path: "/sso/domains/{id}/verify", requires: sso.manage }
+  - { method: DELETE, path: "/sso/domains/{id}", requires: sso.manage, stepUp: true }
+  - { method: GET, path: /sso/scim, requires: sso.read }
+  - { method: POST, path: /sso/scim/tokens, requires: sso.manage, stepUp: true }
+  - { method: DELETE, path: "/sso/scim/tokens/{id}", requires: sso.manage, stepUp: true }
+  - { method: GET, path: /sso/scim/users, requires: sso.read }
+  - { method: GET, path: /sso/scim/groups, requires: sso.read }
+  - { method: PUT, path: "/sso/scim/groups/{id}/role", requires: sso.manage, stepUp: true }
+  #
+  # E3.8 staff SSO login (apps/server/src/routes/sso-flow.ts) — public, like `/auth/oidc/*`. The
+  # IdP-facing callback / ACS / SP metadata are ops-tree routes on the canonical host (no rows).
+  - { method: GET, path: /auth/sso, requires: public }
+  - { method: POST, path: /auth/sso/discover, requires: public }
+  - { method: POST, path: /auth/sso/begin, requires: public }
+  - { method: GET, path: /auth/sso/finish, requires: public }
+  # --- E3.10 managed-host control plane ----------------------------------------------
+  # Operator API (apps/server/src/routes/platform*.ts, billing.ts): `platform-operator` — an
+  # operator cookie session on the canonical host, a live operator row, PLATFORM_OPERATOR_CIDRS and
+  # CSRF, checked by `requirePlatformOperator()`; anybody else gets a plain 404. Minting the
+  # operator session needs a fresh level-2 user session on the canonical host (checked in the
+  # handler, so a non-operator learns nothing but "sign in"). The Stripe webhook and central auth
+  # (`/webhooks/billing/stripe`, `/auth/central/*`) are outside `/api/v1` and have no row here.
+  - { method: POST, path: /platform/session, requires: session }
+  - { method: DELETE, path: /platform/session, requires: platform-operator }
+  - { method: GET, path: /platform/me, requires: platform-operator }
+  - { method: GET, path: /platform/workspaces, requires: platform-operator }
+  - { method: POST, path: /platform/workspaces, requires: platform-operator }
+  - { method: GET, path: "/platform/workspaces/{id}", requires: platform-operator }
+  - { method: PATCH, path: "/platform/workspaces/{id}", requires: platform-operator }
+  - { method: POST, path: "/platform/workspaces/{id}/suspend", requires: platform-operator }
+  - { method: POST, path: "/platform/workspaces/{id}/unsuspend", requires: platform-operator }
+  - { method: GET, path: /platform/cells, requires: platform-operator }
+  - { method: GET, path: /platform/operators, requires: platform-operator }
+  - { method: GET, path: /platform/audit, requires: platform-operator }
+  - { method: GET, path: /platform/health, requires: platform-operator }
+  # plans and usage (apps/server/src/routes/platform-plans.ts)
+  - { method: GET, path: /platform/plans, requires: platform-operator }
+  - { method: POST, path: /platform/plans, requires: platform-operator }
+  - { method: PATCH, path: "/platform/plans/{id}", requires: platform-operator }
+  - { method: POST, path: "/platform/plans/{id}/archive", requires: platform-operator }
+  - { method: GET, path: "/platform/workspaces/{id}/usage", requires: platform-operator }
+  - { method: GET, path: /usage, requires: billing.read }
+  # billing (apps/server/src/routes/billing.ts); the manual-driver subscription write is an operator route
+  - { method: GET, path: /billing, requires: billing.read }
+  - { method: POST, path: /billing/checkout, requires: billing.manage, stepUp: true }
+  - { method: POST, path: /billing/portal, requires: billing.manage, stepUp: true }
+  - { method: POST, path: "/platform/workspaces/{id}/subscription", requires: platform-operator }
+  # sanctions review (apps/server/src/routes/platform-sanctions.ts)
+  - { method: GET, path: /platform/sanctions, requires: platform-operator }
+  - { method: GET, path: "/platform/sanctions/{id}", requires: platform-operator }
+  - { method: POST, path: "/platform/sanctions/{id}/decision", requires: platform-operator }
+  - { method: POST, path: "/platform/workspaces/{id}/rescreen", requires: platform-operator }
+  # a new operator's enrolment (apps/server/src/routes/platform-enrol.ts, fix round 2): canonical
+  # host, CONTROL_PLANE=on, PLATFORM_OPERATOR_CIDRS; the enrol-link token + emailed code, then the
+  # enrolment-only cookie `__Host-op_enrol` (checked in the handlers; no user session exists yet)
+  - { method: POST, path: /platform/enrol/start, requires: public }
+  - { method: POST, path: /platform/enrol/verify, requires: public }
+  - { method: GET, path: /platform/enrol/session, requires: public }
+  - { method: DELETE, path: /platform/enrol/session, requires: public }
+  - { method: POST, path: /platform/enrol/totp, requires: public }
+  - { method: POST, path: /platform/enrol/totp/confirm, requires: public }
+  - { method: POST, path: /platform/enrol/passkey/begin, requires: public }
+  - { method: POST, path: /platform/enrol/passkey/finish, requires: public }
+  # self-service signup (apps/server/src/routes/signup.ts), canonical host, SIGNUP_MODE=open only
+  # (A-5: `GET /signup/plans` is the public plan catalogue)
+  - { method: GET, path: /signup/slug, requires: public }
+  - { method: GET, path: /signup/plans, requires: public }
+  - { method: POST, path: /signup/start, requires: public }
+  - { method: POST, path: /signup/verify, requires: public }
+  # --- E3.11 per-tenant data residency -----------------------------------------------
+  # The tenant's residency facts (apps/server/src/routes/residency.ts; kernel manifest `residency`)
+  - { method: GET, path: /residency, requires: compliance.read }
+  # moves between cells (apps/server/src/routes/platform-moves.ts), operator API like E3.10's
+  - { method: POST, path: "/platform/workspaces/{id}/move", requires: platform-operator }
+  - { method: GET, path: /platform/moves, requires: platform-operator }
+  - { method: POST, path: "/platform/moves/{id}/cancel", requires: platform-operator }
+  # signup region picker (apps/server/src/routes/signup-regions.ts), canonical host, SIGNUP_MODE=open only
+  - { method: GET, path: /signup/regions, requires: public }
+  # --- E3.12 AI assist ---------------------------------------------------------------
+  # kernel routes (apps/server/src/routes/ai.ts; kernel manifest `ai`). Module routes that start a
+  # request sit with their module: POST /updates/ai/draft, POST /data-room/qa/inbox/{id}/ai-suggestion.
+  - { method: GET, path: /ai/status, requires: ai.read }
+  - { method: PUT, path: /ai/settings, requires: ai.manage, stepUp: true }
+  - { method: GET, path: "/ai/requests/{id}", requires: ai.read }
+  - { method: DELETE, path: "/ai/requests/{id}", requires: ai.read }

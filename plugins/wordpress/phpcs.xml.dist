@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<ruleset name="FundRoom WordPress plugin">
+	<description>WordPress Coding Standards for the FundRoom plugin (GPLv2+, WP 6.4+, PHP 8.1+).</description>
+
+	<file>.</file>
+
+	<!--
+		Nothing here is ours to lint: `vendor/` is composer's, `dist/` is the build output, and
+		`assets/js/embed.js` is a compiled bundle copied in from `packages/embed`.
+	-->
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/dist/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/assets/js/embed.js</exclude-pattern>
+
+	<arg name="basepath" value="."/>
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg name="parallel" value="8"/>
+	<arg value="sp"/>
+
+	<!-- The floor stated in the plugin header and readme.txt. -->
+	<config name="testVersion" value="8.1-"/>
+	<config name="minimum_wp_version" value="6.4"/>
+
+	<rule ref="WordPress">
+		<!--
+			Class files here are named for what they hold (`class-settings.php` holding
+			`Seed_Host_Settings`) rather than for the fully prefixed class name
+			(`class-seed-host-settings.php`). The directory is already the plugin's, so repeating
+			the prefix in four file names buys nothing; the class names themselves stay prefixed,
+			which is the part that matters in PHP's single global namespace.
+		-->
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+	</rule>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="seed-host"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="seed_host"/>
+				<element value="Seed_Host"/>
+				<element value="SEED_HOST"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Mirrors `.editorconfig`: tabs, and the same 100-column soft limit the TypeScript uses. -->
+	<rule ref="Generic.Files.LineLength">
+		<properties>
+			<property name="lineLimit" value="120"/>
+			<property name="absoluteLineLimit" value="0"/>
+		</properties>
+	</rule>
+
+	<rule ref="PHPCompatibilityWP"/>
+
+	<!-- WordPress requires this name: `register_block_type()` looks for `<script>.asset.php`. -->
+	<rule ref="WordPress.Files.FileName.NotHyphenatedLowercase">
+		<exclude-pattern>*/blocks/*/index.asset.php</exclude-pattern>
+	</rule>
+
+	<!--
+		`tests/` runs on a bare `php` binary, not inside WordPress: it defines `ABSPATH` itself to
+		load the classes under test, and its assertion tables read better unwrapped.
+	-->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="Generic.Files.LineLength.TooLong">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+</ruleset>

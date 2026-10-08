@@ -1,0 +1,36 @@
+{
+  "name": "@fundroom/esign-documenso",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ESignPort over the Documenso HTTP API: envelopes, status pull, signed-artifact download, void and authenticated callbacks",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@fundroom/esign": "workspace:*",
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "cus_Q00001Acme",
+      "object": "customer",
+      "address": null,
+      "balance": 0,
+      "created": 1775088000,
+      "currency": "usd",
+      "default_source": null,
+      "delinquent": false,
+      "description": null,
+      "email": "buyer1@example.com",
+      "invoice_prefix": "A0001",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+      },
+      "livemode": false,
+      "metadata": {},
+      "name": "Buyer 1",
+      "preferred_locales": [],
+      "shipping": null,
+      "tax_exempt": "none",
+      "test_clock": null
+    },
+    {
+      "id": "cus_Q00002Acme",
+      "object": "customer",
+      "address": null,
+      "balance": 0,
+      "created": 1775001599,
+      "currency": "usd",
+      "default_source": null,
+      "delinquent": false,
+      "description": null,
+      "email": "buyer2@example.com",
+      "invoice_prefix": "A0002",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+      },
+      "livemode": false,
+      "metadata": {},
+      "name": "Buyer 2",
+      "preferred_locales": [],
+      "shipping": null,
+      "tax_exempt": "none",
+      "test_clock": null
+    },
+    {
+      "id": "cus_Q00003Acme",
+      "object": "customer",
+      "address": null,
+      "balance": 0,
+      "created": 1772323200,
+      "currency": "usd",
+      "default_source": null,
+      "delinquent": false,
+      "description": null,
+      "email": "buyer3@example.com",
+      "invoice_prefix": "A0003",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+      },
+      "livemode": false,
+      "metadata": {},
+      "name": "Buyer 3",
+      "preferred_locales": [],
+      "shipping": null,
+      "tax_exempt": "none",
+      "test_clock": null
+    },
+    {
+      "id": "cus_Q00004Acme",
+      "object": "customer",
+      "address": null,
+      "balance": 0,
+      "created": 1771027200,
+      "currency": "usd",
+      "default_source": null,
+      "delinquent": false,
+      "description": null,
+      "email": "buyer4@example.com",
+      "invoice_prefix": "A0004",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+      },
+      "livemode": false,
+      "metadata": {},
+      "name": "Buyer 4",
+      "preferred_locales": [],
+      "shipping": null,
+      "tax_exempt": "none",
+      "test_clock": null
+    }
+  ],
+  "has_more": false,
+  "url": "/v1/customers"
+}

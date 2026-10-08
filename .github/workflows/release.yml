@@ -1,0 +1,170 @@
+name: Release
+# KEEP the name `Release`, the `push` trigger and the `uses: ./.github/workflows/image.yml` call:
+# fundroom-web's `pnpm release:verify` checks a release image's signature for
+# workflow name `Release`, trigger `push`, SAN image.yml@refs/heads/main, and provenance
+# workflow path .github/workflows/release.yml. Renaming any of them breaks every promotion.
+#
+# Flow: `version-pr` is independent; the release jobs chain tag → image →
+# pack-packages → publish-packages:
+#  - `version-pr`: changesets/action keeps the "version packages" PR open while changesets are
+#    pending. Nothing else needs it, so its failure never blocks a release, and a release
+#    failure never blocks it.
+#  - `tag`: when apps/server's version (read from the commit) has no tag yet, tags `v<version>`
+#    on this commit and creates a DRAFT GitHub release (or resumes an unfinished one).
+#  - `image`: builds, scans, signs and attests the image, then tags it (X.Y.Z; X.Y, X, `latest`
+#    only for a stable release that is the highest in its line) and publishes the release.
+#  - `pack-packages`: only after `image` succeeded, so no npm package exists for a
+#    version whose image failed. Installs, builds and packs @fundroomhq/tokens and @fundroomhq/ui
+#    from the commit (versions must equal the release's) with no id-token and no secrets, and
+#    uploads the tarballs.
+#  - `publish-packages`: no install, no build. Publishes the two tarballs (tokens, then ui) with
+#    npm provenance via trusted publishing (OIDC); `next` for a prerelease. Skips a version
+#    already on npm. Every other package is private.
+#    After a pack or publish failure use "Re-run failed jobs" only: "Re-run all jobs" re-runs
+#    `tag`, which finds the release published and releases (and publishes) nothing.
+# docs/runbooks/releasing.md.
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency: release-${{ github.ref }}
+
+jobs:
+  version-pr:
+    name: Version PR
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # Forks: no. Re-runs: no, so re-running an older commit's run can never reset
+    # changeset-release/main backwards; the next push to main updates the PR anyway.
+    if: github.repository == 'fundroomhq/fundroom' && github.run_attempt == 1
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Create or update the version PR
+        uses: changesets/action@v1
+        with:
+          version: pnpm version-packages
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  tag:
+    name: Tag release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    if: github.repository == 'fundroomhq/fundroom'
+    permissions:
+      contents: write
+    outputs:
+      released: ${{ steps.tag.outputs.released }}
+      version: ${{ steps.tag.outputs.version }}
+      floating: ${{ steps.tag.outputs.floating }}
+    steps:
+      - uses: actions/checkout@v5
+      # Reads the version and changelog from the commit (never a working tree). Not gated on
+      # pending changesets: it releases apps/server's version whenever that version has no tag
+      # yet, or its tag is on this commit and the release is still a draft (resume), so a
+      # cancelled run or a failed step never strands a version. Runs on the runner's stock Node.
+      - name: Tag v<version> and create the draft GitHub release
+        id: tag
+        run: node scripts/release/release-version.mjs tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  image:
+    name: Build, sign, and attest image
+    needs: tag
+    # No `hashFiles(...)` guard: it is not available in a job-level `if` (GitHub rejects the whole
+    # workflow). deploy/docker/Dockerfile exists; a missing Dockerfile should fail loudly.
+    if: needs.tag.outputs.released == 'true'
+    # A called workflow gets at most the caller's permissions.
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/image.yml
+    with:
+      version: ${{ needs.tag.outputs.version }}
+      floating: ${{ needs.tag.outputs.floating }}
+    secrets: inherit
+
+
+  # npm, in two jobs so the npm credentials never meet the install or the build:
+  # `pack-packages` installs and builds with no id-token and no secrets; `publish-packages` gets
+  # the OIDC token (and NPM_TOKEN for a first publish) and runs only `npm view` / `npm publish`.
+  pack-packages:
+    name: Pack npm packages
+    needs: [tag, image]
+    # After the image: no package ever exists for a version whose image failed.
+    if: needs.tag.outputs.released == 'true' && needs.image.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # Versions from the commit (must equal the tag job's), checkout identical to the commit,
+      # pack-check's tarball checks; then the two tarballs as an artifact.
+      - name: Pack @fundroomhq/tokens and @fundroomhq/ui
+        run: node scripts/release/publish-packages.mjs pack --version "$VERSION" --out "$RUNNER_TEMP/npm-packages"
+        env:
+          VERSION: ${{ needs.tag.outputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-packages-${{ needs.tag.outputs.version }}
+          path: ${{ runner.temp }}/npm-packages/*.tgz
+          if-no-files-found: error
+          # A "Re-run job" of a pack that already succeeded uploads the same commit's tarballs again.
+          overwrite: true
+          retention-days: 90
+
+  publish-packages:
+    name: Publish npm packages
+    needs: [tag, pack-packages]
+    if: needs.tag.outputs.released == 'true' && needs.pack-packages.result == 'success'
+    # GitHub-hosted only: npm trusted publishing does not accept self-hosted runners.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing (OIDC) and provenance
+    steps:
+      # Only for the script; nothing is installed or built in this job.
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      # A known npm rather than whatever the cached Node 24 bundles: trusted publishing needs
+      # >= 11.5.1 (the script refuses anything older). Pinned exactly; bump deliberately.
+      - name: npm 11.20.0
+        working-directory: ${{ runner.temp }}
+        run: npm install -g npm@11.20.0 && npm --version
+      - uses: actions/download-artifact@v5
+        with:
+          name: npm-packages-${{ needs.tag.outputs.version }}
+          path: ${{ runner.temp }}/npm-packages
+      # Skips any version already on npm, so "Re-run failed jobs" finishes a partial publish.
+      # NODE_AUTH_TOKEN is only for the very first publish (runbook); unset, npm uses OIDC.
+      - name: Publish @fundroomhq/tokens, then @fundroomhq/ui
+        run: node scripts/release/publish-packages.mjs publish --version "$VERSION" --floating "$FLOATING" --dir "$RUNNER_TEMP/npm-packages"
+        env:
+          VERSION: ${{ needs.tag.outputs.version }}
+          FLOATING: ${{ needs.tag.outputs.floating }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

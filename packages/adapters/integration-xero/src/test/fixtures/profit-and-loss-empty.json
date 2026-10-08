@@ -1,0 +1,40 @@
+{
+  "Id": "x",
+  "Status": "OK",
+  "Reports": [
+    {
+      "ReportID": "ProfitAndLoss",
+      "ReportName": "Profit and Loss",
+      "ReportType": "ProfitAndLoss",
+      "Rows": [
+        {
+          "RowType": "Header",
+          "Cells": [
+            {
+              "Value": ""
+            },
+            {
+              "Value": "31 Mar 2026"
+            },
+            {
+              "Value": "28 Feb 2026"
+            },
+            {
+              "Value": "31 Jan 2026"
+            }
+          ]
+        },
+        {
+          "RowType": "Section",
+          "Title": "Income",
+          "Rows": []
+        },
+        {
+          "RowType": "Section",
+          "Title": "Less Operating Expenses",
+          "Rows": []
+        }
+      ]
+    }
+  ]
+}

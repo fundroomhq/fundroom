@@ -1,0 +1,39 @@
+{
+  "name": "@fundroom/control-plane",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kernel managed-host control plane for FundRoom: platform operators, workspace provisioning and status (hold / suspend), cells, self-service signup, plans, the daily usage rollup and plan quotas",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/audit": "workspace:*",
+    "@fundroom/crypto": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/identity": "workspace:*",
+    "@fundroom/module-kit": "workspace:*",
+    "@fundroom/portability": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

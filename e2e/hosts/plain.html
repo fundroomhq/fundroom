@@ -1,0 +1,36 @@
+<!doctype html>
+<!--
+  The documented loader snippet (docs/embed/quickstart.md §1), on a page shaped like the one a
+  customer actually has: a heading, some copy, the portal, and more copy underneath. The
+  paragraph below the frame is what makes a layout shift visible.
+
+  The snippet is the documented one character for character apart from the workspace slug and
+  the base URL, which this rig pins. `instrument.js` observes it by wrapping `SeedHost.init`
+  rather than by being called from the snippet, so the snippet stays the thing under test.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Acme Inc — Investors</title>
+    <link rel="stylesheet" href="host.css" />
+  </head>
+  <body>
+    <h1>Acme Inc</h1>
+    <p id="above">We build the boring parts. Investors, your portal is below.</p>
+
+    <div id="investors"></div>
+
+    <p id="below">Questions? Email investors@example.com.</p>
+
+    <script src="https://portal.test/embed/v1/embed.js"></script>
+    <script src="instrument.js"></script>
+    <script>
+      SeedHost.init({
+        workspace: "acme-inc",
+        baseUrl: "https://portal.test",
+        el: "#investors",
+      });
+    </script>
+  </body>
+</html>

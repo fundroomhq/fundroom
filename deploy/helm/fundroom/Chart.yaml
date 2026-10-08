@@ -1,0 +1,36 @@
+# FundRoom Helm chart.
+#
+# The chart has its own SemVer (a major bump only for values-schema breaks) and is
+# released by pushing the tag `chart-v<version>`: .github/workflows/chart-release.yml refuses a tag
+# that disagrees with `version` below, pushes to oci://ghcr.io/fundroomhq/charts and signs it with
+# cosign (keyless). `appVersion` is the FundRoom image tag the chart deploys by default; keep it
+# equal to apps/server/package.json's `version` of the release you point it at.
+apiVersion: v2
+name: fundroom
+description: Self-hostable, embeddable, gated investor-relations portal (server, worker, migrate job, optional CloudNativePG database)
+type: application
+version: 0.1.0
+appVersion: "0.0.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/fundroomhq/fundroom
+sources:
+  - https://github.com/fundroomhq/fundroom/tree/main/deploy/helm/fundroom
+  - https://github.com/fundroomhq/fundroom/blob/main/deploy/docker/Dockerfile
+keywords:
+  - investor-relations
+  - portal
+  - data-room
+  - self-hosted
+maintainers:
+  - name: FundRoom maintainers
+    url: https://github.com/fundroomhq/fundroom
+annotations:
+  # Artifact Hub reads these from the OCI manifest as well as from an index.
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: Install runbook
+      url: https://github.com/fundroomhq/fundroom/blob/main/docs/runbooks/install-and-upgrade.md
+    - name: Image
+      url: https://github.com/fundroomhq/fundroom/pkgs/container/fundroom
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/prerelease: "true"

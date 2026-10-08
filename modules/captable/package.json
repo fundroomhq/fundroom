@@ -1,0 +1,44 @@
+{
+  "name": "@fundroom/module-captable",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FundRoom cap-table module: read-only snapshots imported from our CSV template, a Carta export or a Pulley export; fully diluted summary by class, option pool and SAFEs outstanding; an investor's own holdings; immutable published snapshots",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "catalog:",
+    "@fundroom/contracts": "workspace:*",
+    "@fundroom/csv": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/decimal": "workspace:*",
+    "@fundroom/domain": "workspace:*",
+    "@fundroom/events": "workspace:*",
+    "@fundroom/identity": "workspace:*",
+    "@fundroom/module-kit": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    /*
+     * `DOM` alongside `node`, because the embed-host suite runs code *in the browser* through
+     * `page.evaluate` — `window.__probe`, `document.cookie`, `location.ancestorOrigins` — and
+     * those callbacks are type-checked here even though they never execute here. No test runs in
+     * a DOM; this only teaches tsc what the page's globals are.
+     */
+    "lib": ["ES2024", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["playwright.config.ts", "tests/**/*.ts", "fixtures/**/*.ts", "support/**/*.ts"],
+  "exclude": ["dist", "test-results", "playwright-report"]
+}

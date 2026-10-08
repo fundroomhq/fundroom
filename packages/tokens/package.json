@@ -1,0 +1,42 @@
+{
+  "name": "@fundroomhq/tokens",
+  "version": "0.0.0",
+  "private": false,
+  "description": "FundRoom design tokens: the W3C Design Tokens (DTCG) source and the generated --sh-* CSS custom properties",
+  "keywords": [
+    "design-tokens",
+    "dtcg",
+    "css-variables",
+    "fundroom"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/fundroomhq/fundroom/tree/main/packages/tokens#readme",
+  "bugs": "https://github.com/fundroomhq/fundroom/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fundroomhq/fundroom.git",
+    "directory": "packages/tokens"
+  },
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./tokens.json": "./fundroom.tokens.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "tokens.css",
+    "fundroom.tokens.json"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "codegen": "node scripts/build-tokens.mjs",
+    "codegen:check": "node scripts/build-tokens.mjs --check",
+    "prepack": "node scripts/build-tokens.mjs --check"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    {
+      "repo": "fundroomhq/fundroom"
+    }
+  ],
+  "commit": false,
+  "fixed": [
+    [
+      "@fundroom/config",
+      "@fundroom/db",
+      "@fundroom/ports",
+      "@fundroom/identity",
+      "@fundroom/domain",
+      "@fundroom/events",
+      "@fundroom/audit",
+      "@fundroom/authz",
+      "@fundroom/queue-pgboss",
+      "@fundroom/storage",
+      "@fundroom/storage-fs",
+      "@fundroom/storage-s3",
+      "@fundroom/kms-local",
+      "@fundroom/email-smtp",
+      "@fundroom/render-pdfium",
+      "@fundroom/avscan-clamd",
+      "@fundroom/avscan-noop",
+      "@fundroom/crypto",
+      "@fundroom/mail",
+      "@fundroom/outbound-http",
+      "@fundroom/http",
+      "@fundroom/contracts",
+      "@fundroom/module-kit",
+      "@fundroom/sdk",
+      "@fundroom/server",
+      "@fundroomhq/tokens",
+      "@fundroomhq/ui",
+      "@fundroom/web"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [],
+  "privatePackages": {
+    "version": true,
+    "tag": false
+  }
+}

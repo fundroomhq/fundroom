@@ -1,0 +1,19 @@
+-- 0003_portable_supersede_fk — let a workspace import (E2.8) insert a restated series as it was
+-- exported.
+--
+-- Hand-written (ADR-0004). Runs inside one transaction. Altering a constraint on a table this
+-- module already owns needs no new grants or policy.
+--
+-- The import inserts every row of a workspace in one transaction, table by table in primary-key
+-- order. `point.superseded_by` names the *next* revision of the same cell — a later uuidv7, so a
+-- row the import has not inserted yet when it inserts the superseded one. With an immediate
+-- foreign key the first restated point of any series makes the import impossible.
+-- `DEFERRABLE INITIALLY DEFERRED` checks it at COMMIT instead, beside `point_one_live_per_period`,
+-- which has been deferred since 0001 for the same reason (a restatement is two statements).
+--
+-- Nothing else moves: the append-only trigger fires on UPDATE and DELETE only, so an INSERT
+-- carrying `superseded_by` is legal, and 0002's "a superseding point is a higher revision of the
+-- same cell" rule — checked in that UPDATE trigger — is exactly what the exported rows already
+-- satisfy. The application always supersedes with a row it has just inserted, so for it the FK
+-- still holds at every statement; only the moment a (never-seen) violation would surface changes.
+ALTER TABLE metrics.point ALTER CONSTRAINT point_superseded_by_fkey DEFERRABLE INITIALLY DEFERRED;

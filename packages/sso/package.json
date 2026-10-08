@@ -1,0 +1,46 @@
+{
+  "name": "@fundroom/sso",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kernel staff SSO service for FundRoom: the per-workspace OIDC or SAML connection (sealed client secret, IdP metadata), DNS-verified email domains, the SP-initiated login flow with its canonical-host handoff, identity linking and JIT, and SSO enforcement",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@node-saml/node-saml": "5.1.0",
+    "@fundroom/audit": "workspace:*",
+    "@fundroom/crypto": "workspace:*",
+    "@fundroom/custom-domains": "workspace:*",
+    "@fundroom/db": "workspace:*",
+    "@fundroom/identity": "workspace:*",
+    "@fundroom/ports": "workspace:*",
+    "@xmldom/xmldom": "^0.8.15",
+    "drizzle-orm": "catalog:",
+    "openid-client": "catalog:",
+    "xml-crypto": "^6.3.0",
+    "xpath": "0.0.34"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "acct_1NqRoboticsAcme",
+  "object": "account",
+  "business_profile": {
+    "mcc": "5734",
+    "name": "Acme Robotics",
+    "support_email": null,
+    "url": "https://acme.example"
+  },
+  "business_type": "company",
+  "capabilities": {
+    "card_payments": "active",
+    "transfers": "active"
+  },
+  "charges_enabled": true,
+  "country": "US",
+  "created": 1690000000,
+  "default_currency": "usd",
+  "details_submitted": true,
+  "email": "founders@acme.example",
+  "payouts_enabled": true,
+  "settings": {
+    "branding": {},
+    "dashboard": {
+      "display_name": "Acme Robotics Inc.",
+      "timezone": "America/Los_Angeles"
+    },
+    "payments": {
+      "statement_descriptor": "ACME ROBOTICS"
+    }
+  },
+  "type": "standard"
+}

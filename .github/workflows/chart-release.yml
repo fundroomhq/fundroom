@@ -1,0 +1,102 @@
+# The Helm chart releases on its own tag, not with the core (the chart has its own SemVer;
+# `appVersion` pins the image it deploys by default).
+#
+# Tagging `chart-v0.1.0` is the whole release gesture. The checks below exist because a tag that
+# disagrees with Chart.yaml would publish a different version than the one the tag names, and a
+# chart whose appVersion has no published image installs a pod that can never pull.
+#
+# Output: oci://ghcr.io/<owner>/charts/fundroom:<version>, keyless-signed with cosign and with a
+# SLSA build-provenance attestation pushed next to it. Verify with the commands in
+# deploy/helm/fundroom/README.md.
+name: Chart release
+
+on:
+  push:
+    tags: ["chart-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chart-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CHART_DIR: deploy/helm/fundroom
+  HELM_VERSION: v3.19.0
+
+jobs:
+  publish:
+    name: Lint, package, push, sign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+      # Two logins: cosign and the attestation push read Docker's credential store, helm its own.
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: The tag and Chart.yaml's version agree
+        id: chart
+        run: |
+          tag="${GITHUB_REF_NAME#chart-v}"
+          version=$(sed -n 's/^version:[[:space:]]*//p' "$CHART_DIR/Chart.yaml" | tr -d '"[:space:]')
+          app=$(sed -n 's/^appVersion:[[:space:]]*//p' "$CHART_DIR/Chart.yaml" | tr -d '"[:space:]')
+          [ "$tag" = "$version" ] || { echo "::error::tag $tag != Chart.yaml version $version"; exit 1; }
+          [ "$app" != "0.0.0" ] || { echo "::error::Chart.yaml appVersion is 0.0.0: point it at a released FundRoom image first"; exit 1; }
+          owner=$(tr '[:upper:]' '[:lower:]' <<<"$GITHUB_REPOSITORY_OWNER")
+          {
+            echo "version=$version"
+            echo "app=$app"
+            echo "registry=ghcr.io/$owner/charts"
+            echo "image=ghcr.io/$owner/fundroom"
+          } >> "$GITHUB_OUTPUT"
+      - name: The appVersion image is published
+        env:
+          IMAGE: ${{ steps.chart.outputs.image }}
+          APP_VERSION: ${{ steps.chart.outputs.app }}
+        run: docker buildx imagetools inspect "$IMAGE:$APP_VERSION" > /dev/null
+      - name: Lint (every CI fixture, strict)
+        run: |
+          for f in "$CHART_DIR"/ci/*-values.yaml; do
+            helm lint "$CHART_DIR" --strict -f "$f"
+          done
+      - name: Package
+        run: helm package "$CHART_DIR" --destination dist
+      - name: Log in to GHCR (helm)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin <<<"$GH_TOKEN"
+      - name: Push
+        id: push
+        env:
+          REGISTRY: ${{ steps.chart.outputs.registry }}
+          VERSION: ${{ steps.chart.outputs.version }}
+        run: |
+          helm push "dist/fundroom-${VERSION}.tgz" "oci://${REGISTRY}" 2>&1 | tee push.log
+          digest=$(sed -n 's/^Digest:[[:space:]]*//p' push.log)
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "::error::no digest in helm push output"; exit 1; }
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign (keyless, OIDC)
+        env:
+          REF: ${{ steps.chart.outputs.registry }}/fundroom@${{ steps.push.outputs.digest }}
+        run: cosign sign --yes "$REF"
+      - name: Build provenance (SLSA)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ steps.chart.outputs.registry }}/fundroom
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

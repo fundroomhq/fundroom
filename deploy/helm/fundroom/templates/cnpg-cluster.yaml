@@ -1,0 +1,80 @@
+{{- if eq .Values.postgresql.mode "cnpg" }}
+{{- $pg := .Values.postgresql.cnpg -}}
+{{- $sql := $pg.postInitApplicationSQL -}}
+{{- if $pg.grantMigratorPrivileges }}
+{{- $sql = prepend $sql (printf "ALTER ROLE %s CREATEROLE BYPASSRLS" $pg.owner) }}
+{{- end }}
+# Requires the CloudNativePG operator (https://cloudnative-pg.io/documentation/current/installation_upgrade/).
+# The operator creates the Secret `<name>-app` (key `uri`) that FundRoom reads DATABASE_URL from.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "fundroom.cnpgClusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.componentLabels" (list . "database") | nindent 4 }}
+  annotations:
+    # The database outlives the release: `helm uninstall` leaves it (delete it by hand).
+    helm.sh/resource-policy: keep
+spec:
+  instances: {{ $pg.instances }}
+  {{- with $pg.imageName }}
+  imageName: {{ . }}
+  {{- end }}
+  bootstrap:
+    initdb:
+      database: {{ $pg.database }}
+      owner: {{ $pg.owner }}
+      dataChecksums: true
+      {{- with $sql }}
+      postInitApplicationSQL:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  storage:
+    size: {{ $pg.storage.size }}
+    {{- with $pg.storage.storageClass }}
+    storageClass: {{ . }}
+    {{- end }}
+  {{- with $pg.parameters }}
+  postgresql:
+    parameters:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+  resources:
+    {{- toYaml $pg.resources | nindent 4 }}
+  {{- if $pg.backup.enabled }}
+  backup:
+    retentionPolicy: {{ $pg.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: {{ $pg.backup.destinationPath | quote }}
+      {{- with $pg.backup.endpointURL }}
+      endpointURL: {{ . | quote }}
+      {{- end }}
+      s3Credentials:
+        accessKeyId:
+          name: {{ $pg.backup.existingSecret }}
+          key: {{ $pg.backup.accessKeyIdKey }}
+        secretAccessKey:
+          name: {{ $pg.backup.existingSecret }}
+          key: {{ $pg.backup.secretAccessKeyKey }}
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+  {{- end }}
+{{- if and $pg.backup.enabled $pg.backup.schedule }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: {{ include "fundroom.cnpgClusterName" . }}-daily
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fundroom.componentLabels" (list . "database") | nindent 4 }}
+spec:
+  schedule: {{ $pg.backup.schedule | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: {{ include "fundroom.cnpgClusterName" . }}
+{{- end }}
+{{- end }}

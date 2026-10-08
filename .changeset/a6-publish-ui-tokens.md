@@ -1,0 +1,7 @@
+---
+"@fundroomhq/tokens": minor
+"@fundroomhq/ui": minor
+"@fundroom/server": minor
+---
+
+Publish the design system to npm. The new `@fundroomhq/tokens` package holds the DTCG source (`fundroom.tokens.json`, moved from `packages/ui/tokens/`) and the generated `tokens.css` (moved from `packages/ui/src/styles/`; only its header comment changed, because the source path moved). `@fundroomhq/ui` depends on it, imports its CSS, and keeps its `./tokens.css` and `./tokens.json` exports. Both packages are now public, in the fixed group, and published by the `Release` workflow after the image, at the release version, with npm provenance through trusted publishing: `next` for release candidates, `latest` for stable releases; a re-run skips a version already on npm. The registry also gives a package's first version the `latest` tag, so `latest` stays on `1.0.0-rc.1` until the first stable release. Packing (install and build, no credentials) and publishing (only `npm view` and `npm publish`, with the OIDC token) are separate jobs. The published `@fundroomhq/ui/styles.css` needs no monorepo paths: its `@source` points at the package's own `dist/`, so a Tailwind v4 app gets the component classes from one `@import`. `tw-animate-css` moved to `dependencies` and `tailwindcss` ^4 is a peer dependency. `pnpm packages:pack-check` (also in CI) packs both, checks the tarball contract and ui's file list, and builds a Vite + Tailwind v4 + React 19 page from the tarballs. The root `release` script (`changeset publish`) is gone: publishing happens only in the workflow.

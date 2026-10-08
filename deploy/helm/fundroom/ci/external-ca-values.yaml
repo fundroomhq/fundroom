@@ -1,0 +1,24 @@
+# CI render fixture (not a deployment example): an external managed database (RDS, Cloud SQL,
+# Azure …) whose CA is not in Node's bundled roots. `postgresql.external.caSecret` mounts the CA at
+# /etc/seed-host/db-ca/ca.crt in every pod (the migrate hook included) and the URL verifies against
+# it. The key below is the throwaway one .github/workflows/ci.yml uses.
+config:
+  av:
+    acceptUnscanned: true
+  baseUrl: https://investors.example.com
+  mail:
+    from: investors@example.com
+secrets:
+  secretKey: Y2ktb25seS1rZXktbm90LWEtc2VjcmV0LTAwMDAwMDAwMDA=
+  smtpUrl: smtp://ci:hunter2@smtp.example.com:587?requireTLS=true
+storage:
+  s3:
+    bucket: fundroom-docs
+    region: eu-west-1
+    accessKeyId: ci-access-key-id
+    secretAccessKey: ci-not-a-secret
+postgresql:
+  external:
+    url: postgres://seedhost:secret@seedhost.abc123.eu-west-1.rds.amazonaws.com:5432/seedhost?sslmode=verify-full&sslrootcert=/etc/seed-host/db-ca/ca.crt
+    caSecret: rds-ca
+    caSecretKey: global-bundle.pem

@@ -1,0 +1,87 @@
+# The edge for the path-mount e2e stack (deploy/compose/compose.pathmount.yaml). Test scaffolding,
+# not a recipe: it plays two parts at once.
+#
+#   1. The **portal's own front door** (`portal.test`): TLS, then the app. Inside the Compose
+#      network `portal.test` is a network alias of this container, so when a host proxy forwards
+#      to `https://portal.test` it crosses a real TLS hop into the portal's edge, exactly as a
+#      customer's proxy on the internet would.
+#   2. The **internet in front of the host sites** (`nginx.test`, `caddy.test`, …): one container
+#      has to own :443, so it terminates TLS for the five host sites too and hands each one plain
+#      http. The host containers run the recipes; this block only stands in for "the host's own
+#      TLS".
+#
+# `local_certs`: `.test` is RFC 6761 special-use and no public CA can sign for it. The host
+# containers trust this CA's root (published into the `edge_ca` volume by the edge's healthcheck,
+# mounted read-only) so each recipe's hop to the portal is verified TLS, not
+# `insecure_skip_verify`; the browser uses `ignoreHTTPSErrors`.
+{
+	local_certs
+	admin :2019
+	servers {
+		# The host proxies reach `portal.test` from private Compose addresses. Trusting them keeps
+		# the `X-Forwarded-Host` / `-Proto` they send (`www.acme.com`, `https`) instead of
+		# overwriting them with this hop's own values — without it the app could not tell the four
+		# hosts that share `/investors` apart, and would treat their requests as unmounted (a single
+		# mount per prefix needs no forwarded host). A production portal edge serving mounts that
+		# share a prefix needs the equivalent for its host proxies' egress addresses;
+		# see e2e/pathmount/README.md §"The portal's own edge".
+		trusted_proxies static private_ranges
+	}
+}
+
+portal.test {
+	tls internal
+
+	# Harness-only: answered here, never by the app. Echoes what the host proxy actually sent the
+	# portal, so the spec can assert which cookies a recipe forwards (host_session must not reach
+	# the portal through the Worker or WordPress recipes) and that the forwarded headers are right.
+	# Reached through each mount as `<mount>/__e2e/echo`; the replace-shape Caddy recipe rewrites
+	# `/portal/__e2e/echo` to `/investors/__e2e/echo` like any other path.
+	handle /investors/__e2e/echo {
+		header Content-Type "text/plain; charset=utf-8"
+		header Cache-Control "no-store"
+		# A portal response that *does* carry HSTS (the app omits it on mounted responses, but an
+		# edge in front of the portal might add it): the Worker and WordPress recipes must strip it.
+		header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		respond <<ECHO
+			cookie: {http.request.header.Cookie}
+			x-forwarded-for: {http.request.header.X-Forwarded-For}
+			cf-connecting-ip: {http.request.header.CF-Connecting-IP}
+			x-forwarded-host: {http.request.header.X-Forwarded-Host}
+			x-forwarded-proto: {http.request.header.X-Forwarded-Proto}
+			x-forwarded-prefix: {http.request.header.X-Forwarded-Prefix}
+			host: {http.request.host}
+			path: {http.request.uri.path}
+			ECHO 200
+	}
+
+	reverse_proxy app:3000
+}
+
+nginx.test {
+	tls internal
+	reverse_proxy nginx:80
+}
+
+caddy.test {
+	tls internal
+	reverse_proxy hostcaddy:80
+}
+
+worker.test {
+	tls internal
+	# Standing in for Cloudflare's edge, which tells a Worker the visitor's address this way.
+	reverse_proxy worker:8787 {
+		header_up CF-Connecting-IP {remote_host}
+	}
+}
+
+next.test {
+	tls internal
+	reverse_proxy next:3000
+}
+
+wp.test {
+	tls internal
+	reverse_proxy wordpress:80
+}

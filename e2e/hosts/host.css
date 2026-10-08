@@ -1,0 +1,27 @@
+/*
+ * The host site's own stylesheet. A file rather than a <style> block so that `hostile.html` can
+ * send `style-src 'self'` with no `'unsafe-inline'` — which is the point of that page: the
+ * loader styles its iframe through CSSOM property writes, never a `style` attribute, and a host
+ * page with a strict style policy is where that decision either holds or shows up as a 0-height
+ * frame.
+ */
+body {
+  margin: 0;
+  padding: 24px;
+  font:
+    16px / 1.5 system-ui,
+    sans-serif;
+  color: #14171f;
+  background: #fff;
+}
+h1 {
+  font-size: 24px;
+  margin: 0 0 8px;
+}
+p {
+  max-width: 42rem;
+}
+#below {
+  margin-top: 24px;
+  color: #4b5563;
+}

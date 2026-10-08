@@ -1,0 +1,91 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "txn_3Pq0005AcmeTxn",
+      "object": "balance_transaction",
+      "amount": 20000,
+      "available_on": 1772495999,
+      "created": 1772323199,
+      "currency": "usd",
+      "description": null,
+      "exchange_rate": null,
+      "fee": 610,
+      "fee_details": [
+        {
+          "amount": 610,
+          "application": null,
+          "currency": "usd",
+          "description": "Stripe processing fees",
+          "type": "stripe_fee"
+        }
+      ],
+      "net": 19390,
+      "reporting_category": "payment",
+      "source": "ch_3Pq0005AcmeCh",
+      "status": "available",
+      "type": "payment"
+    },
+    {
+      "id": "txn_3Pq0006AcmeTxn",
+      "object": "balance_transaction",
+      "amount": 3000,
+      "available_on": 1770897600,
+      "created": 1770724800,
+      "currency": "eur",
+      "description": null,
+      "exchange_rate": null,
+      "fee": 117,
+      "fee_details": [
+        {
+          "amount": 117,
+          "application": null,
+          "currency": "eur",
+          "description": "Stripe processing fees",
+          "type": "stripe_fee"
+        }
+      ],
+      "net": 2883,
+      "reporting_category": "charge",
+      "source": "ch_3Pq0006AcmeCh",
+      "status": "available",
+      "type": "charge"
+    },
+    {
+      "id": "txn_3Pq0007AcmeTxn",
+      "object": "balance_transaction",
+      "amount": -1500,
+      "available_on": 1770465600,
+      "created": 1770292800,
+      "currency": "usd",
+      "description": null,
+      "exchange_rate": null,
+      "fee": 0,
+      "fee_details": [],
+      "net": -1500,
+      "reporting_category": "stripe_fee",
+      "source": "ch_3Pq0007AcmeCh",
+      "status": "available",
+      "type": "stripe_fee"
+    },
+    {
+      "id": "txn_3Pq0008AcmeTxn",
+      "object": "balance_transaction",
+      "amount": -1000,
+      "available_on": 1770206400,
+      "created": 1770033600,
+      "currency": "usd",
+      "description": null,
+      "exchange_rate": null,
+      "fee": 0,
+      "fee_details": [],
+      "net": -1000,
+      "reporting_category": "payment_refund",
+      "source": "ch_3Pq0008AcmeCh",
+      "status": "available",
+      "type": "payment_refund"
+    }
+  ],
+  "has_more": false,
+  "url": "/v1/balance_transactions"
+}

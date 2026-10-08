@@ -1,0 +1,18 @@
+# FundRoom path mount — Caddy, "replace" shape.
+#
+# Serves the investor portal at https://<your site>/portal although the portal itself runs under
+# /investors: /portal/x → https://portal.test/investors/x, with `X-Forwarded-Prefix: /portal` so
+# the portal presents itself (links, assets, cookie Path) under /portal. The portal runs with
+# BASE_PATH=/investors and lists https://<your site>/portal in PATH_MOUNTS. Paste inside your
+# site block (or `import` this file there); replace portal.test with your portal's host. Caddy
+# forwards every cookie of your site to the portal: keep secrets out of Path=/ cookies here.
+@fundroom path /portal /portal/*
+handle @fundroom {
+	uri path_regexp ^/portal /investors
+	reverse_proxy https://portal.test {
+		header_up Host {upstream_hostport}
+		header_up X-Forwarded-Prefix /portal
+		# An absolute redirect to the portal's own host comes back onto this site.
+		header_down Location ^https://portal\.test/investors /portal
+	}
+}

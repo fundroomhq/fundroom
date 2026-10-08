@@ -1,0 +1,65 @@
+# Local development stack: Postgres, Mailpit, and Caddy fronting the app you
+# run on the host with `pnpm dev`, so `https://*.fundroom.localhost` works with an internal CA.
+#
+#   docker compose -f deploy/compose/compose.dev.yaml up -d
+#   pnpm --filter @fundroom/server dev      # API on :3000 (DATABASE_URL from .env.example works)
+#   pnpm --filter @fundroom/web dev         # SPA on :5173, proxies /api to :3000
+#
+# Mailpit UI: http://localhost:8025. Postgres: postgres://seedhost:seedhost@localhost:5432/seedhost.
+# Trust Caddy's root CA once (`docker compose ... exec caddy cat /data/caddy/pki/authorities/local/root.crt`).
+# `--profile objstore` adds SeaweedFS S3 on :8333 for STORAGE_DRIVER=s3 testing.
+
+name: seed-host-dev
+
+services:
+  db:
+    image: postgres:18-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: seedhost
+      POSTGRES_PASSWORD: seedhost
+      POSTGRES_DB: seedhost
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seedhost -d seedhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  objstore:
+    image: chrislusf/seaweedfs:3.97
+    profiles: ["objstore"]
+    command: ["server", "-s3", "-s3.port=8333", "-dir=/data"]
+    ports:
+      - "8333:8333"
+    volumes:
+      - objstore:/data
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+  objstore:

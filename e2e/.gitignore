@@ -1,0 +1,5 @@
+# Facts one spec hands the next within a run (the owner's TOTP secret); see support/state.ts.
+.state/
+
+# next.test build output, if anyone builds the host app outside its container.
+pathmount/next/.next/

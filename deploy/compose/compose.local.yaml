@@ -1,0 +1,98 @@
+# Local demo stack: the image built from THIS checkout, Postgres, Mailpit. Nothing else.
+#
+#   docker compose -f deploy/compose/compose.local.yaml up -d --build --wait
+#   docker compose -f deploy/compose/compose.local.yaml run --rm app setup-token
+#   open http://localhost:3100/setup          # wizard; mail lands in http://localhost:8125
+#   docker compose -f deploy/compose/compose.local.yaml down       # keeps data
+#   docker compose -f deploy/compose/compose.local.yaml down -v    # wipes it
+#
+# Differences from compose.ci.yaml (the e2e stack): Postgres and /data are on named volumes
+# instead of tmpfs, so the instance survives a restart, and no SETUP_TOKEN / FUNDROOM_SECRET_KEY
+# are pinned — the first start generates both into the /data volume, which is the real first-run
+# path. Ports are 3100/8125 because 3000 is usually taken on this machine.
+#
+# APP_ENV=dev is what allows a plain-http BASE_URL; prod/staging require https (config schema).
+
+name: seed-host-local
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: seedhost
+      POSTGRES_PASSWORD: seedhost
+      POSTGRES_DB: seedhost
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seedhost -d seedhost"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    restart: unless-stopped
+    ports:
+      - "${LOCAL_MAILPIT_PORT:-8125}:8025"
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    volumes:
+      - mailpit:/data
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: fundroom:local
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    volumes:
+      - data:/data
+    ports:
+      - "${LOCAL_APP_PORT:-3100}:3000"
+    environment:
+      APP_ENV: dev
+      LOG_LEVEL: info
+      INSTANCE_NAME: FundRoom (local)
+      BASE_URL: http://localhost:${LOCAL_APP_PORT:-3100}
+      DATABASE_URL: postgres://seedhost:seedhost@db:5432/seedhost
+      TENANCY_MODE: single
+      MIGRATE_ON_START: "true"
+      TRUST_PROXY: "false"
+      MAILER_DRIVER: smtp
+      SMTP_URL: smtp://mailpit:1025
+      MAIL_FROM: portal@example.com
+      MAIL_FROM_NAME: FundRoom local
+      AV_DRIVER: noop
+      STORAGE_DRIVER: fs
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "/app/healthcheck.js"]
+      interval: 3s
+      timeout: 5s
+      start_period: 90s
+      retries: 30
+
+volumes:
+  pgdata:
+  data:
+  mailpit:

@@ -1,0 +1,105 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "packages/adapters/*"
+  - "modules/*"
+  - "e2e"
+  # plugins/wordpress is PHP and is built by its own script, not pnpm.
+
+# Supply chain: refuse to resolve a version published less
+# than 7 days ago, so a hijacked release has a week to be noticed and yanked.
+minimumReleaseAge: 10080
+
+# Only packages that genuinely need postinstall scripts get to run them.
+# Add to this list deliberately; everything else is blocked by pnpm 10.
+onlyBuiltDependencies:
+  - "@biomejs/biome"
+  - esbuild
+  - lefthook
+
+# Optional native accelerators pulled in by testcontainers (ssh2). Pure-JS fallbacks work.
+ignoredBuiltDependencies:
+  - cpu-features
+  - protobufjs
+  - ssh2
+
+# Security floors for transitive deps: the SAML stack under
+# @node-saml/node-saml. xml-crypto >= 6.0.1 fixes the SignedInfo-reference and DigestValue-comment
+# signature bypasses (CVE-2025-29774/29775) and 6.2+ publishes references only after the
+# SignatureValue verifies; 6.3.2 (c14n namespace fix) is younger than minimumReleaseAge on
+# 2026-09-27, so the floor is 6.3.0 until then. @xmldom/xmldom 0.8.15 carries the 2026-04 and
+# 2026-08 advisory fixes; node-saml needs the 0.8 line.
+overrides:
+  xml-crypto: "^6.3.0"
+  "@xmldom/xmldom": "^0.8.15"
+
+# Keep one copy of these across the workspace (peer dep sanity).
+catalog:
+  typescript: "~5.9.3"
+  # zip bundles: the signed audit export and the DSAR subject export. Pure JS, no deps.
+  fflate: "^0.8.3"
+  vitest: "^4.1.11"
+  zod: "^4.6.1"
+  yaml: "^2.8.1"
+  drizzle-orm: "^0.45.2"
+  drizzle-kit: "^0.31.10"
+  pg: "^8.23.0"
+  "@types/pg": "^8.23.1"
+  "@testcontainers/postgresql": "^12.1.0"
+  "@simplewebauthn/server": "^14.0.1"
+  otpauth: "^9.5.2"
+  openid-client: "^6.8.8"
+  hono: "^4.13.7"
+  jose: "^6.2.12"
+  pg-boss: "^12.31.0"
+  "@aws-sdk/client-s3": "^3.1130.0"
+  "@aws-sdk/s3-request-presigner": "^3.1130.0"
+  nodemailer: "^10.0.6"
+  "@types/nodemailer": "^8.0.1"
+  react-email: "^6.9.5"
+  react-dom: "^19.3.0"
+  react: "^19.3.0"
+  "@types/react": "^19.3.0"
+  "@tus/server": "^2.4.5"
+  "@tus/file-store": "^2.1.1"
+  "@hyzyla/pdfium": "^2.1.13"
+  pdf-lib: "^1.17.1"
+  sharp: "^0.35.4"
+  undici: "^8.10.2"
+  testcontainers: "^12.1.0"
+  "@testcontainers/toxiproxy": "^12.1.0"
+  "@hono/zod-openapi": "^1.6.3"
+  "@hono/node-server": "^2.1.1"
+  "@hono/otel": "^1.1.2"
+  pino: "^10.3.1"
+  "@opentelemetry/api": "^1.9.1"
+  "@opentelemetry/sdk-node": "^0.222.0"
+  "@opentelemetry/exporter-trace-otlp-http": "^0.222.0"
+  "@opentelemetry/exporter-metrics-otlp-http": "^0.222.0"
+  "@opentelemetry/exporter-prometheus": "^0.222.0"
+  "@opentelemetry/instrumentation": "^0.222.0"
+  "@opentelemetry/instrumentation-pg": "^0.74.0"
+  "@opentelemetry/instrumentation-undici": "^0.32.0"
+  "@opentelemetry/sdk-metrics": "^2.11.0"
+  "openapi-fetch": "^0.17.0"
+  "openapi-typescript": "^7.13.0"
+  "@types/react-dom": "^19.3.0"
+  esbuild: "^0.28.2"
+  vite: "^8.3.0"
+  "@vitejs/plugin-react": "^6.1.1"
+  tailwindcss: "^4.3.3"
+  "@tailwindcss/vite": "^4.3.3"
+  storybook: "^10.6.0"
+  "@storybook/react-vite": "^10.6.0"
+  "@storybook/addon-a11y": "^10.6.0"
+  "@storybook/addon-docs": "^10.6.0"
+  jsdom: "^30.0.1"
+  axe-core: "^4.13.0"
+  "@testing-library/react": "^16.3.3"
+  "@testing-library/dom": "^10.4.1"
+  "@testing-library/jest-dom": "^7.0.1"
+  "@testing-library/user-event": "^14.6.7"
+  # RFC 3161 timestamp requests/tokens for external audit anchoring (anchor-rfc3161).
+  # Both BSD-3-Clause, pure JS over WebCrypto.
+  pkijs: "^3.4.1"
+  asn1js: "^3.0.10"

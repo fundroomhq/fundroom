@@ -1,0 +1,36 @@
+{
+  "name": "@fundroom/accred-verifyinvestor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AccreditationVendorPort over the VerifyInvestor.com API: invitation start, verification-request status, certificate download and signed callbacks",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fundroom/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@fundroom/accreditation": "workspace:*",
+    "@types/node": "^24.13.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<!--
+  The same loader, with a `path` in the snippet — so that loading this page as
+  `deep-link.html?sh=/updates` shows which of the two wins.
+
+  It must be the URL: `path` is the default for a visitor who arrives without one, and `?sh=` is
+  the deep link this particular visitor followed. A loader that preferred its own configuration
+  would make every shared link land everyone on the same screen, which is the entire failure the
+  history sync exists to prevent.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Acme Inc — Investor updates</title>
+    <link rel="stylesheet" href="host.css" />
+  </head>
+  <body>
+    <h1>Acme Inc</h1>
+    <p id="above">Deep links into the portal keep working inside this page.</p>
+
+    <div id="investors"></div>
+
+    <p id="below">Questions? Email investors@example.com.</p>
+
+    <script src="https://portal.test/embed/v1/embed.js"></script>
+    <script src="instrument.js"></script>
+    <script>
+      SeedHost.init({
+        workspace: "acme-inc",
+        baseUrl: "https://portal.test",
+        el: "#investors",
+        path: "/settings",
+      });
+    </script>
+  </body>
+</html>
