@@ -127,6 +127,8 @@ export function createCertProbe(options: CertProbeOptions = {}): CertProbe {
   function handshake(hostname: string, address: string): Promise<CertProbeResult> {
     return new Promise((resolve) => {
       let settled = false;
+      // The certificate is read, never trusted: validity comes from `socket.authorized` (header).
+      // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
       const socket = connect({
         host: address,
         port,

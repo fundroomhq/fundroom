@@ -2162,6 +2162,9 @@ function aiRules(env: RawEnv): CrossFieldIssue[] {
  * armour is checked here; the adapters parse the DER.
  */
 export function pemBlocks(text: string, label: string): string[] {
+  // Labels are fixed by the callers; the check keeps one from ever being read as a pattern.
+  if (!/^[A-Z0-9 ]+$/u.test(label)) throw new Error(`invalid PEM label: ${label}`);
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   const re = new RegExp(
     `-----BEGIN ${label}-----\\s+([A-Za-z0-9+/=\\s]+?)-----END ${label}-----`,
     "gu",

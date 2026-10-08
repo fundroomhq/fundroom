@@ -60,7 +60,9 @@ RUN pgbackrest version
 # the socket dir, then drops to `postgres` (su-exec) before Postgres starts. The pgbackrest
 # sidecar and the restore helpers run with `user: postgres` (compose.backup.yaml). The explicit
 # USER line exists so the scanner exceptions below can attach to it: Trivy AVD-DS-0002 has no
-# line to attach an inline ignore to when USER is simply absent, and it must sit directly above
-# the line, so hadolint's DL3002/DL3066 exception is the file-level `global ignore` at the top.
-# trivy:ignore:AVD-DS-0002
+# line to attach an inline ignore to when USER is simply absent. Both Trivy's and Opengrep's
+# inline ignores must sit on the line directly above, so they share one comment (Opengrep only
+# reads it when it starts with `nosemgrep`), and hadolint's DL3002/DL3066 exception is the
+# file-level `global ignore` at the top.
+# nosemgrep: dockerfile.security.last-user-is-root.last-user-is-root trivy:ignore:AVD-DS-0002
 USER root

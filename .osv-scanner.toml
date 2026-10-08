@@ -2,3 +2,8 @@
 # [[IgnoredVulns]]
 # id = "GHSA-xxxx-xxxx-xxxx"
 # reason = "dev-only dependency, not reachable at runtime; re-check 2026-12-01"
+
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+ignoreUntil = 2027-01-08
+reason = "esbuild 0.18.20 is pinned by @esbuild-kit/core-utils under drizzle-kit (dev only: migration generation). The advisory is the dev server's CORS policy (`esbuild --serve`), which nothing here starts. Re-check when drizzle-kit drops @esbuild-kit."

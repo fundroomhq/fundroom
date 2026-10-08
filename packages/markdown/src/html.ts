@@ -6,6 +6,8 @@ import { type InlineToken, parseMarkdown, tokenizeInline } from "./parse.js";
  * no way to smuggle markup through because the parser never emits raw source.
  */
 export function escapeHtml(text: string): string {
+  // All five HTML metacharacters, `&` first so no entity is escaped twice.
+  // nosemgrep: javascript.audit.detect-replaceall-sanitization.detect-replaceall-sanitization
   return text
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")

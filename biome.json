@@ -24,6 +24,7 @@
       "!**/routeTree.gen.ts",
       "!**/src/paraglide",
       "!apps/web/messages",
+      "!apps/web/project.inlang",
       "!packages/i18n/src/messages",
       "!**/storybook-static"
     ]

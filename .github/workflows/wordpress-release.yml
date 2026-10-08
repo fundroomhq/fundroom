@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - run: pnpm --filter @fundroom/embed build
       - run: node scripts/build-wordpress-plugin.mjs
@@ -33,7 +33,7 @@ jobs:
       - name: Assemble the release tree
         # The zip already excludes composer.json, phpcs.xml.dist and README.md.
         run: unzip -q plugins/wordpress/dist/seed-host.zip -d build
-      - uses: 10up/action-wordpress-plugin-deploy@v2
+      - uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # 2.3.0
         with:
           generate-zip: true
         env:

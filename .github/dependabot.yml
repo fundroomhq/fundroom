@@ -1,4 +1,6 @@
 version: 2
+# Every ecosystem waits 7 days before proposing a new release, the same floor as pnpm's
+# minimumReleaseAge: a hijacked release has a week to be noticed and yanked first.
 updates:
   - package-ecosystem: npm
     directory: /
@@ -12,17 +14,23 @@ updates:
       minor-and-patch:
         update-types: ["minor", "patch"]
     labels: ["deps", "no-changeset"]
+    cooldown:
+      default-days: 7
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
       day: monday
     labels: ["ci", "no-changeset"]
+    cooldown:
+      default-days: 7
   - package-ecosystem: docker
     directory: /deploy/docker
     schedule:
       interval: weekly
     labels: ["deploy", "no-changeset"]
+    cooldown:
+      default-days: 7
   # Pinned third-party images in the Compose stack (postgres, caddy, seaweedfs, clamav …). The
   # FundRoom image itself is `:latest`/FUNDROOM_IMAGE there and is not bumped by this. The Helm
   # chart has no chart dependencies and defaults its image to appVersion, so the `helm`
@@ -32,3 +40,5 @@ updates:
     schedule:
       interval: weekly
     labels: ["deploy", "no-changeset"]
+    cooldown:
+      default-days: 7

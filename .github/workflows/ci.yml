@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - name: Biome
         run: pnpm exec biome ci --reporter=github .
@@ -120,18 +120,20 @@ jobs:
         run: pnpm packages:pack-check
       - name: Changeset present
         if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changeset')
-        run: pnpm exec changeset status --since=origin/${{ github.base_ref }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: pnpm exec changeset status --since="origin/$BASE_REF"
 
   unit:
     name: Unit tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - run: pnpm build
       - run: pnpm coverage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: unit-results
@@ -144,12 +146,12 @@ jobs:
   integration:
     name: Integration tests (Testcontainers)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       # Pre-pull so the first test doesn't eat its timeout on image download.
       TESTCONTAINERS_RYUK_DISABLED: "false"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - name: Pre-pull test images (Postgres 18, Mailpit, SeaweedFS)
         run: |
@@ -181,7 +183,7 @@ jobs:
       STORAGE_FS_PATH: /tmp/fundroom-storage
       LOG_LEVEL: warn
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
@@ -192,8 +194,10 @@ jobs:
         run: pnpm --filter @fundroom/server openapi --out "$GITHUB_WORKSPACE/openapi.head.json"
       - name: Generate OpenAPI from base branch
         if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          git worktree add ../base origin/${{ github.base_ref }}
+          git worktree add ../base "origin/$BASE_REF"
           if [ -f ../base/apps/server/package.json ]; then
             (cd ../base && pnpm install --frozen-lockfile && pnpm build && pnpm --filter ./apps/server --fail-if-no-match openapi --out "$GITHUB_WORKSPACE/openapi.base.json")
           else
@@ -201,7 +205,7 @@ jobs:
           fi
       - name: Breaking-change check
         if: github.event_name == 'pull_request'
-        uses: oasdiff/oasdiff-action/breaking@v0.0.21
+        uses: oasdiff/oasdiff-action/breaking@1c611ffb1253a72924624aa4fb662e302b3565d3 # v0.0.21
         with:
           base: openapi.base.json
           revision: openapi.head.json
@@ -210,12 +214,13 @@ jobs:
         run: |
           pnpm --filter @fundroom/server start:ci &
           npx --yes wait-on http://127.0.0.1:3000/healthz
-          pipx run schemathesis run openapi.head.json --url http://127.0.0.1:3000/api/v1 --checks all --max-examples 50 --exclude-checks ignored_auth
+          # Pinned: each release adds checks, and the config file's keys are versioned with it.
+          pipx run --spec schemathesis==4.30.0 schemathesis --config-file apps/server/contract/schemathesis.toml run openapi.head.json --url http://127.0.0.1:3000/api/v1 --checks all --max-examples 50 --exclude-checks ignored_auth
 
   migrations:
     name: Migrations (Squawk, up-from-empty, up-from-previous)
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:18-alpine
@@ -229,26 +234,41 @@ jobs:
     env:
       DATABASE_URL: postgres://seedhost:seedhost@localhost:5432/seedhost
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Squawk on new/changed SQL
-        uses: sbdchd/squawk-action@v2
-        with:
-          pattern: "**/migrations/*.sql"
-          version: latest
+        # Only the migration files this push or PR adds or changes: applied migrations are
+        # checksummed and immutable. The diff base (PR base, push `before`, new branch, first
+        # push) is chosen in the script; settings are in .squawk.toml.
+        run: node --test scripts/squawk-changed.test.mjs && node scripts/squawk-changed.mjs
       - run: pnpm build
-      - name: Migrate up on an empty database
-        run: pnpm --filter @fundroom/db migrate
-      - name: Migrate up from the previous release's schema
+      - name: Migrate up on an empty database (kernel CLI, then every module)
+        # The product CLI needs a valid config to start; the key is throwaway.
         run: |
-          prev=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$prev" ]; then echo "no previous tag; skipping"; exit 0; fi
-          psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
-          git worktree add ../prev "$prev"
-          (cd ../prev && pnpm install --frozen-lockfile && pnpm build && pnpm --filter ./packages/db --fail-if-no-match migrate)
           pnpm --filter @fundroom/db migrate
+          FUNDROOM_SECRET_KEY="$(openssl rand -base64 32)" BASE_URL=http://localhost:3000 \
+            node apps/server/dist/cli.js migrate
+      - name: Migrate up from the previous release's schema
+        # The newest `v*` release tag before this commit (chart-v* and other tags are not
+        # releases), migrated into its own database, then this commit's migrations on top: an
+        # edited released migration fails its checksum here. No release yet: nothing to upgrade.
+        run: |
+          prev=""
+          if git rev-parse -q --verify 'HEAD^' >/dev/null; then
+            prev=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 'HEAD^' 2>/dev/null || true)
+          fi
+          if [ -z "$prev" ]; then echo "no earlier v* release tag; nothing to upgrade from"; exit 0; fi
+          echo "upgrading from $prev"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE seedhost_prev'
+          export DATABASE_URL="${DATABASE_URL%/*}/seedhost_prev"
+          FUNDROOM_SECRET_KEY="$(openssl rand -base64 32)"
+          export FUNDROOM_SECRET_KEY BASE_URL=http://localhost:3000
+          git worktree add "$RUNNER_TEMP/prev" "$prev"
+          (cd "$RUNNER_TEMP/prev" && pnpm install --frozen-lockfile && pnpm build && node apps/server/dist/cli.js migrate)
+          node apps/server/dist/cli.js migrate
+          pnpm --filter @fundroom/db test:rls
       - name: RLS catalog test
         run: pnpm --filter @fundroom/db test:rls
 
@@ -261,7 +281,7 @@ jobs:
     # GitHub rejects the whole workflow — actionlint now runs clean.)
     if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'e2e')
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - run: pnpm build
       - name: Boot Compose CI stack
@@ -330,7 +350,7 @@ jobs:
       - name: Path-mount stack logs on failure
         if: failure()
         run: docker compose -f deploy/compose/compose.ci.yaml -f deploy/compose/compose.pathmount.yaml logs --tail 200 app edge nginx hostcaddy worker next wordpress wpcli
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: playwright-traces
@@ -346,7 +366,7 @@ jobs:
     # `@setup` is the first-run wizard every later spec depends on; `@a11y` is 30-a11y; `@csp` is
     # 40-csp: zero enforced CSP and Trusted Types report-only violations on the key screens.
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - run: pnpm build
       - name: Boot Compose CI stack
@@ -358,7 +378,7 @@ jobs:
         run: docker compose -f deploy/compose/compose.ci.yaml logs app --tail 300
       # The HTML report carries every page's axe result as an attachment (pass or fail), so it
       # is uploaded always, not only on failure.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ !cancelled() }}
         with:
           name: a11y-report
@@ -372,12 +392,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - run: pnpm --filter @fundroomhq/ui... build
       - name: Storybook builds (stories carry the a11y addon in `error` mode)
         run: pnpm --filter @fundroomhq/ui storybook:build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: storybook
           path: packages/ui/storybook-static
@@ -388,9 +408,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           # The floor declared in the plugin header and readme.txt, so the lint runs on the oldest
           # runtime we claim to support rather than on whatever the runner happens to ship.
@@ -417,7 +437,7 @@ jobs:
       - name: The committed version header matches readme.txt's Stable tag
         # The build stamps it; a diff here means someone bumped one and not the other.
         run: git diff --exit-code -- plugins/wordpress/seed-host.php
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wordpress-plugin
           path: plugins/wordpress/dist/seed-host.zip
@@ -428,10 +448,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           persist-credentials: false
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: v3.19.0
       - name: Lint and render every fixture
@@ -470,7 +490,7 @@ jobs:
               -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' /r
           done
       - name: Trivy config on the rendered manifests
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
           scan-ref: rendered

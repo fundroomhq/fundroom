@@ -23,12 +23,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - name: pnpm audit (high+)
         run: pnpm audit --audit-level=high --prod
       - name: OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2
+        uses: google/osv-scanner-action/osv-scanner-action@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
         with:
           scan-args: |
             --config=.osv-scanner.toml
@@ -41,16 +41,32 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      # A pinned release binary checked against its published sha256, not the install script
+      # from `main` piped into a shell.
       - name: Install Opengrep
-        run: curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+        env:
+          OPENGREP_VERSION: v1.30.2
+          OPENGREP_SHA256: a66aa3278457f02b287b985a45b6762aebcaba5000f2689245fd1ed86d1456c7
+        run: |
+          mkdir -p "$RUNNER_TEMP/opengrep"
+          curl -fsSL -o "$RUNNER_TEMP/opengrep/opengrep" \
+            "https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}/opengrep_manylinux_x86"
+          echo "${OPENGREP_SHA256}  $RUNNER_TEMP/opengrep/opengrep" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/opengrep/opengrep"
+          echo "$RUNNER_TEMP/opengrep" >> "$GITHUB_PATH"
+      # Test code is out of scope (unit/component tests, the e2e harness and its deliberately
+      # hostile host pages); deliberate exceptions in shipped code carry a `nosemgrep` comment
+      # with the reason next to the line.
       - name: Scan
         run: |
-          ~/.opengrep/cli/latest/opengrep scan \
+          opengrep scan \
             --config p/default --config p/nodejs --config p/typescript --config p/secrets \
-            --exclude node_modules --exclude dist --exclude '**/*.test.ts' \
+            --exclude node_modules --exclude dist \
+            --exclude '**/*.test.ts' --exclude '**/*.test.tsx' --exclude '**/*.test.mjs' \
+            --exclude e2e \
             --error --sarif --sarif-output opengrep.sarif .
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@9f759ee644a3e7c15c1390abf49868036c00067b # v3.38.3
         if: always()
         with:
           sarif_file: opengrep.sarif
@@ -61,12 +77,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: github/codeql-action/init@9f759ee644a3e7c15c1390abf49868036c00067b # v3.38.3
         with:
           languages: javascript-typescript
           queries: security-extended
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@9f759ee644a3e7c15c1390abf49868036c00067b # v3.38.3
         with:
           category: codeql
 
@@ -75,7 +91,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
       # The gitleaks binary from its official image, pinned by digest (v8.30.1). Not
@@ -91,8 +107,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: aquasecurity/trivy-action@0.33.1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -103,7 +119,7 @@ jobs:
           format: sarif
           output: trivy-fs.sarif
           trivyignores: .trivyignore
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@9f759ee644a3e7c15c1390abf49868036c00067b # v3.38.3
         if: always()
         with:
           sarif_file: trivy-fs.sarif
@@ -117,12 +133,12 @@ jobs:
     # workflow). deploy/docker/Dockerfile exists, so the old "once the Dockerfile exists" guard was
     # always true anyway; a missing Dockerfile should now fail loudly, not skip silently.
     steps:
-      - uses: actions/checkout@v5
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: deploy/docker/Dockerfile
           failure-threshold: warning
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: deploy/docker/postgres-pgbackrest.Dockerfile
           failure-threshold: warning
@@ -132,8 +148,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
-      - uses: zizmorcore/zizmor-action@v0.1.1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: zizmorcore/zizmor-action@f52a838cfabf134edcbaa7c8b3677dde20045018 # v0.1.1
 
   actionlint:
     name: actionlint (workflow validity)
@@ -142,7 +158,7 @@ jobs:
     # Catches what GitHub would reject at load time (e.g. `hashFiles` in a job-level `if`), which
     # otherwise shows up only as a workflow that never starts.
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
 
@@ -154,7 +170,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - name: Build authz and its workspace deps (tests import them via dist/)
         run: pnpm --filter "@fundroom/authz..." build
@@ -162,7 +178,7 @@ jobs:
         # A full run (~35 s) rather than incremental: Stryker's incremental diff sees source and
         # test files, not the matrix YAML or built dependencies, so a cached file can be stale.
         run: pnpm --filter @fundroom/authz exec stryker run --force
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: stryker-authz-report

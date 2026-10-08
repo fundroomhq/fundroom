@@ -68,7 +68,7 @@ export type QaAiAnswerResult = {
  * operators, BOM, soft hyphen, interlinear annotations, Unicode tag characters (hidden "ASCII
  * smuggling") and variation selectors.
  */
-const INVISIBLE_CLASS = String.raw`[\u0000-\u0008\u000b-\u001f\u007f-\u009f­؜᠎​-‏‪-‮⁠-⁯︀-️﻿￹-￻\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]`;
+const INVISIBLE_CLASS = String.raw`[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u00ad\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufe00-\ufe0f\ufeff\ufff9-\ufffb\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]`;
 const INVISIBLE = new RegExp(INVISIBLE_CLASS, "gu");
 const INVISIBLE_ONE = new RegExp(INVISIBLE_CLASS, "u");
 

@@ -44,12 +44,12 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Create or update the version PR
-        uses: changesets/action@v1
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: pnpm version-packages
           commit: "chore(release): version packages"
@@ -69,7 +69,7 @@ jobs:
       version: ${{ steps.tag.outputs.version }}
       floating: ${{ steps.tag.outputs.floating }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       # Reads the version and changelog from the commit (never a working tree). Not gated on
       # pending changesets: it releases apps/server's version whenever that version has no tag
       # yet, or its tag is on this commit and the release is still a draft (resume), so a
@@ -96,7 +96,7 @@ jobs:
     with:
       version: ${{ needs.tag.outputs.version }}
       floating: ${{ needs.tag.outputs.floating }}
-    secrets: inherit
+    # No `secrets:`: image.yml uses only GITHUB_TOKEN, which a called workflow always receives.
 
 
   # npm, in two jobs so the npm credentials never meet the install or the build:
@@ -112,7 +112,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -123,7 +123,7 @@ jobs:
         run: node scripts/release/publish-packages.mjs pack --version "$VERSION" --out "$RUNNER_TEMP/npm-packages"
         env:
           VERSION: ${{ needs.tag.outputs.version }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: npm-packages-${{ needs.tag.outputs.version }}
           path: ${{ runner.temp }}/npm-packages/*.tgz
@@ -144,11 +144,11 @@ jobs:
       id-token: write # npm trusted publishing (OIDC) and provenance
     steps:
       # Only for the script; nothing is installed or built in this job.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
       # A known npm rather than whatever the cached Node 24 bundles: trusted publishing needs
@@ -156,7 +156,7 @@ jobs:
       - name: npm 11.20.0
         working-directory: ${{ runner.temp }}
         run: npm install -g npm@11.20.0 && npm --version
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: npm-packages-${{ needs.tag.outputs.version }}
           path: ${{ runner.temp }}/npm-packages

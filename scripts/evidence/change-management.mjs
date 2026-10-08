@@ -119,6 +119,8 @@ export function codeownersPatternToRegExp(pattern) {
     .map((part) => part.split("*").map(escapeRe).join("[^/]*"))
     .join(".*");
   const prefix = anchored || p.includes("/") ? "^" : "^(?:.*/)?";
+  // Every literal piece went through escapeRe; only `[^/]*`, `.*` and the anchors are pattern.
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   return new RegExp(`${prefix}${body}${dir ? "/.*" : "(?:/.*)?"}$`, "u");
 }
 

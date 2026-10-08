@@ -26,10 +26,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - name: Period
@@ -52,7 +52,7 @@ jobs:
           SINCE: ${{ steps.period.outputs.since }}
           UNTIL: ${{ steps.period.outputs.until }}
         run: node scripts/evidence/change-management.mjs --since "$SINCE" --until "$UNTIL" --repo "$GITHUB_REPOSITORY" --out evidence
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: change-management-${{ steps.period.outputs.since }}_${{ steps.period.outputs.until }}
           path: evidence/

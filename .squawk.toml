@@ -1,0 +1,6 @@
+# Squawk (migration linter) settings, used by scripts/squawk-changed.mjs in CI.
+pg_version = "18"
+# The migration runner (packages/db/src/migrate/runner.ts) opens each transactional file with
+# `SET LOCAL lock_timeout` and retries on timeout, so a migration never sets its own. A
+# no-transaction file cannot either: session-level SET is banned (scripts/check-sql-hygiene.mjs).
+excluded_rules = ["require-lock-timeout"]

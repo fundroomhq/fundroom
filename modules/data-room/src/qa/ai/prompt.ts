@@ -129,6 +129,8 @@ export function windowOf(text: string, lexemes: readonly string[], max: number):
   let first = -1;
   for (const l of long.length > 0 ? long : lexemes) {
     if (l.length === 0) continue;
+    // The lexeme is matched as an escaped literal.
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
     const m = new RegExp(escapeRegExp(l), "iu").exec(text);
     if (m !== null && (first === -1 || m.index < first)) first = m.index;
   }
