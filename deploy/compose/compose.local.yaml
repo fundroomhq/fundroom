@@ -32,7 +32,7 @@ services:
       retries: 30
 
   mailpit:
-    image: axllent/mailpit:v1.31.1
+    image: axllent/mailpit:v1.31.4
     restart: unless-stopped
     ports:
       - "${LOCAL_MAILPIT_PORT:-8125}:8025"
