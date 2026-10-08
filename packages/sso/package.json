@@ -32,7 +32,7 @@
     "@fundroom/db": "workspace:*",
     "@fundroom/identity": "workspace:*",
     "@fundroom/ports": "workspace:*",
-    "@xmldom/xmldom": "^0.8.15",
+    "@xmldom/xmldom": "^0.9.12",
     "drizzle-orm": "catalog:",
     "openid-client": "catalog:",
     "xml-crypto": "^6.3.0",

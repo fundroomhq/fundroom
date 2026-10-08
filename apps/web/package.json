@@ -24,11 +24,11 @@
     "@fundroomhq/ui": "workspace:*",
     "@simplewebauthn/browser": "^14.0.0",
     "@tanstack/react-query": "^5.102.8",
-    "@tanstack/react-router": "^1.170.35",
-    "@tiptap/core": "^3.31.3",
-    "@tiptap/pm": "^3.31.3",
-    "@tiptap/react": "^3.31.3",
-    "@tiptap/starter-kit": "^3.31.3",
+    "@tanstack/react-router": "^1.170.41",
+    "@tiptap/core": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/react": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
     "lucide-react": "^1.45.0",
     "qrcode": "^1.5.4",
     "react": "catalog:",
@@ -36,9 +36,9 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@inlang/paraglide-js": "^2.25.2",
+    "@inlang/paraglide-js": "^2.25.4",
     "@tailwindcss/vite": "catalog:",
-    "@tanstack/router-plugin": "^1.168.37",
+    "@tanstack/router-plugin": "^1.168.42",
     "@testing-library/dom": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
@@ -54,6 +54,6 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "@tanstack/router-cli": "^1.167.35"
+    "@tanstack/router-cli": "^1.167.40"
   }
 }
