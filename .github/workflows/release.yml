@@ -156,7 +156,7 @@ jobs:
       - name: npm 11.20.0
         working-directory: ${{ runner.temp }}
         run: npm install -g npm@11.20.0 && npm --version
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
           name: npm-packages-${{ needs.tag.outputs.version }}
           path: ${{ runner.temp }}/npm-packages

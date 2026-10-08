@@ -178,7 +178,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
           name: sbom.spdx.json
       # The tag step created the release as a draft; it is published only now, after the image
