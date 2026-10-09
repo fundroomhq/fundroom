@@ -262,6 +262,27 @@ describe("transactional outbox + relay", () => {
     expect(await relay.runOnce()).toBe(1);
   });
 
+  it("a row stamped by the database within the relay clock's current millisecond is due", async () => {
+    // available_at comes from Postgres in microseconds; the relay's clock reads milliseconds.
+    const ctx = systemContext(wsA);
+    const id = await db.withTenant(ctx, (tx) =>
+      publish(tx, ctx, "acl.changed", { aclVersion: 9, cause: "grant" }),
+    );
+    await pg.pool.query(
+      "UPDATE core.outbox SET available_at = '2026-01-01T12:00:00.123456Z' WHERE id = $1",
+      [id],
+    );
+    const relayAt = (iso: string) =>
+      createOutboxRelay({
+        db,
+        queue,
+        subscriptions: createSubscriptionRegistry(),
+        now: () => new Date(iso),
+      });
+    expect(await relayAt("2026-01-01T12:00:00.122Z").runOnce()).toBe(0);
+    expect(await relayAt("2026-01-01T12:00:00.123Z").runOnce()).toBe(1);
+  });
+
   it("start()/stop() poll the outbox in the background", async () => {
     const ctx = systemContext(wsA);
     const relay = createOutboxRelay({ db, queue, subscriptions, pollIntervalMs: 100 });

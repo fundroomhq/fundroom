@@ -1,5 +1,5 @@
 import { core, type OutboxRow, type Tx } from "@fundroom/db";
-import { and, eq, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
 
 /*
  * Raw access to core.outbox. Writers call `insertOutboxRow` inside the business transaction
@@ -30,16 +30,25 @@ export async function insertOutboxRow(tx: Tx, event: NewOutboxEvent): Promise<nu
   return row.id;
 }
 
-/** Pending rows, oldest first, locked for this transaction; other relays skip them. */
+/**
+ * Pending rows, oldest first, locked for this transaction; other relays skip them.
+ *
+ * `now` is the relay's clock, which has millisecond resolution, while `available_at` defaults
+ * to the database's `now()` in microseconds. A row stamped at 12:00:00.123456 is due once the
+ * relay's clock reads 12:00:00.123, so the bound is the end of `now`'s millisecond: `<= now`
+ * would leave every row written within the current millisecond (the common case on a fast
+ * connection) waiting for the next poll.
+ */
 export async function claimPendingOutboxRows(
   tx: Tx,
   limit: number,
   now: Date,
 ): Promise<OutboxRow[]> {
+  const endOfMillisecond = new Date(now.getTime() + 1);
   return tx
     .select()
     .from(core.outbox)
-    .where(and(isNull(core.outbox.processedAt), lte(core.outbox.availableAt, now)))
+    .where(and(isNull(core.outbox.processedAt), lt(core.outbox.availableAt, endOfMillisecond)))
     .orderBy(core.outbox.id)
     .limit(limit)
     .for("update", { skipLocked: true });
