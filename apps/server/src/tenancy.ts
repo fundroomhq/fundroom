@@ -91,8 +91,12 @@ const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
  * resolved by shape. `v1` *is* a legal slug under `SLUG_RE`, so without this the namespace
  * would depend on whether a workspace happened to claim it first, and a founder who did could
  * shadow the loader for the whole install.
+ *
+ * The pinned segment is the package version verbatim, so a pre-release (`1.0.0-rc.0`) has to
+ * match too or its pinned URL 404s. A dotted name is never a slug (`SLUG_RE` has no `.`), so
+ * the wider shape takes nothing away from workspaces.
  */
-const EMBED_VERSION_RE = /^(?:v\d+|\d+\.\d+\.\d+)$/u;
+const EMBED_VERSION_RE = /^(?:v\d+|\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/u;
 /** One flat file under a version: `embed.js`, `embed.mjs`, `manifest.json`. Never a directory. */
 const EMBED_ASSET_FILE_RE = /^[A-Za-z0-9._-]+$/u;
 const OPS_PATHS: ReadonlySet<string> = new Set([

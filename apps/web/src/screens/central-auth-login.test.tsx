@@ -671,6 +671,7 @@ describe("central auth helpers", () => {
       "/oauth/integrations/callback?code=x",
       "/internal/tls/ask",
       "/embed/v1/embed.js",
+      "/embed/1.0.0-rc.0/embed.js",
       "/embed/acme/theme.json",
       "/csp-report",
       "/healthz",

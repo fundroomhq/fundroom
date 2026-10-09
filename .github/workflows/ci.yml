@@ -45,7 +45,7 @@ jobs:
           pnpm --filter @fundroomhq/tokens codegen:check
           pnpm --filter @fundroomhq/ui codegen:check
           pnpm --filter @fundroom/embed codegen:check
-          git diff --exit-code -- apps/web/src/routeTree.gen.ts packages/tokens/tokens.css packages/ui/src/theme/default-tokens.json packages/embed/src/generated/artifacts.ts
+          git diff --exit-code -- apps/web/src/routeTree.gen.ts packages/tokens/tokens.css packages/ui/src/theme/default-tokens.json packages/embed/src/generated/artifacts.ts packages/embed/src/generated/version.ts
       - name: Webhook topic table is current (docs/api/webhooks.md)
         # After typecheck: the script reads the built registry and event catalogue from dist/.
         run: node scripts/render-webhook-topics.mjs --check && node --test scripts/render-webhook-topics.test.mjs
@@ -115,7 +115,7 @@ jobs:
           done
       - name: PaaS templates are current (Render, Railway, Fly, Coolify)
         # One source (deploy/platforms/source.mjs) renders every template so env names cannot drift.
-        run: pnpm gen:deploy:check && node --test scripts/render-deploy-templates.test.mjs && node --test scripts/release/release-version.test.mjs scripts/release/check-changesets.test.mjs scripts/release/pack-check.test.mjs scripts/release/publish-packages.test.mjs && node scripts/release/check-changesets.mjs
+        run: pnpm gen:deploy:check && node --test scripts/render-deploy-templates.test.mjs && node --test scripts/release/release-version.test.mjs scripts/release/check-changesets.test.mjs scripts/release/pack-check.test.mjs scripts/release/publish-packages.test.mjs scripts/release/version-artifacts.test.mjs && node scripts/release/check-changesets.mjs
       - name: npm packages pack, keep their contract, and install (@fundroomhq/tokens, @fundroomhq/ui)
         # Packs both as the release would, checks the tarball contract fundroom-web's
         # sync-tokens relies on and ui's file list, then builds a Vite + Tailwind v4 + React 19

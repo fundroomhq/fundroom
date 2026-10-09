@@ -76,7 +76,13 @@ describe("classifyRequest", () => {
     // The loader is served by the app, not a CDN (E2.2 decision 9), so `v1` and `0.1.0` are the
     // namespace and a workspace can never claim either — `v1` is otherwise a perfectly legal
     // slug, and one that resolved would shadow the loader for the whole install.
-    for (const p of ["/embed/v1/embed.js", "/embed/v1/manifest.json", "/embed/0.1.0/embed.mjs"]) {
+    for (const p of [
+      "/embed/v1/embed.js",
+      "/embed/v1/manifest.json",
+      "/embed/0.1.0/embed.mjs",
+      // A pre-release is pinned under its own version too (the 1.0 release candidates are).
+      "/embed/1.0.0-rc.0/embed.js",
+    ]) {
       expect(classifyRequest({ host: "localhost:3000", path: p }, single)).toMatchObject({
         tree: "asset",
         slug: undefined,
