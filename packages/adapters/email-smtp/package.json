@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/email-smtp",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "MailerPort adapter over nodemailer SMTP (Mailpit in dev)",
   "license": "MIT",

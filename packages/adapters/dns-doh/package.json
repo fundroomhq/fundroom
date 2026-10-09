@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/dns-doh",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "DnsResolverPort over the JSON DNS-over-HTTPS API of IP-literal endpoints (1.1.1.1, 8.8.8.8), with a two-resolver quorum for any positive answer",
   "license": "MIT",

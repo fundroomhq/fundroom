@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/compliance",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Offering mode, the tenant legal-document library, click-wrap acceptances, consent and the pre-existing-relationship heuristic for FundRoom",
   "license": "MIT",

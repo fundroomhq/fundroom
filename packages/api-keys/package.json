@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/api-keys",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Workspace API keys for FundRoom: the frk_ token (legacy shk_ still accepted), its digest and plausibility guard, the key row's domain types, and the repository behind core.api_key",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/decimal",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Fixed-point decimal arithmetic on bigint at scale 1e6: the one way money and metric values are parsed, rounded and formatted (no dependencies, no I/O)",
   "license": "MIT",

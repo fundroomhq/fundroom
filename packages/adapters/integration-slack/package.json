@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/integration-slack",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "IntegrationAdapter for Slack app (OAuth v2 bot token): channel list and chat.postMessage",
   "license": "MIT",

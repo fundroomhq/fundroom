@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/directory",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "The shared cell directory for FundRoom: global slug and hostname uniqueness, cross-cell routing and move bookkeeping between cells, with a local mode over a single database",
   "license": "MIT",

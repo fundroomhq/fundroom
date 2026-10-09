@@ -3,4 +3,4 @@
 // `changeset version`); `codegen:check` fails CI if it is stale.
 
 /** This package's version, from package.json: the pinned URL segment and the banner. */
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0-rc.0";

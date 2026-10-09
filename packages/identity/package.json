@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/identity",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Identity and session kernel for FundRoom: users, sessions, devices, OTP, magic link, passkeys, TOTP, password, OIDC, memberships, invites, rate limiting, cookie and CSRF recipes",
   "license": "MIT",

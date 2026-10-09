@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/update-check",
-  "version": "0.0.0",
+  "version": "0.0.1-rc.0",
   "private": true,
   "description": "Update notifications for self-hosters: the release index.json v1 parser, a strict semver comparator, status derivation and a cached, single-flight checker over OutboundHttpPort that sends no identifiers",
   "license": "MIT",

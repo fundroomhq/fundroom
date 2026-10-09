@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/avscan-clamd",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "VirusScanPort adapter that streams uploads to a clamd daemon over INSTREAM (ClamAV in a sidecar container)",
   "license": "MIT",

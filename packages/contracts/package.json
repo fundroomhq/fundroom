@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/contracts",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "API contract vocabulary for FundRoom: error envelope, shared Zod/OpenAPI schemas, route helpers, OpenAPI document builder",
   "license": "MIT",

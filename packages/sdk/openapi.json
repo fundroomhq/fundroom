@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "FundRoom API",
-    "version": "0.0.0",
+    "version": "1.0.0-rc.0",
     "description": "Gated investor-relations portal API. Sessions are cookies; mutating requests pass an Origin/Sec-Fetch-Site check; errors share one envelope (`Error`).",
     "license": {
       "name": "MIT"

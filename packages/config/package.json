@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/config",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Zod-validated environment schema, *_FILE secrets, key ring, and doctor output for FundRoom",
   "license": "MIT",

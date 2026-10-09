@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/search",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Workspace search for FundRoom: the core.search_entry index modules write through services.search, ACL-filtered Postgres full-text + trigram queries, snippets and the reindex job",
   "license": "MIT",

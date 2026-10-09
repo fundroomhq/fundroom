@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/module-crm",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "FundRoom CRM-lite module: contacts and organisations that need no login, a per-round pipeline with tenant-editable stages, notes and tasks, kept in step with the round module over outbox events",
   "license": "MIT",

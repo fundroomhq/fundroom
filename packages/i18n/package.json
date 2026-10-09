@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/i18n",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Locales for FundRoom: the supported locale list, negotiation, the en-XA pseudo-locale and the server-side message catalogue for emails",
   "license": "MIT",

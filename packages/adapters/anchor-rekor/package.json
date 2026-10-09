@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/anchor-rekor",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "AuditAnchorPort over Sigstore Rekor v2: hashedrekord entries signed with a key-ring-derived ECDSA P-256 key, inclusion proofs and signed checkpoints verified offline",
   "license": "MIT",

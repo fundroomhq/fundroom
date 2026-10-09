@@ -1,6 +1,6 @@
 {
   "name": "@fundroomhq/tokens",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": false,
   "description": "FundRoom design tokens: the W3C Design Tokens (DTCG) source and the generated --sh-* CSS custom properties",
   "keywords": [

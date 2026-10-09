@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/esign-docuseal",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "ESignPort over the DocuSeal HTTP API: envelopes, status pull, signed-artifact download, void and authenticated callbacks",
   "license": "MIT",

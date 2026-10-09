@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/charts",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Chart geometry: one layout pass emitting VectorOps that the SPA draws as SVG and the render adapter draws with pdf-lib — no DOM, no I/O, no palette",
   "license": "MIT",

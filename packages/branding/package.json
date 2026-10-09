@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/branding",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Derives the portal's --sh-* theme tokens and validates logo bytes from the small brand a workspace picks (no I/O, no dependencies)",
   "license": "MIT",

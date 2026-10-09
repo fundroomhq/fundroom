@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/module-analytics",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "FundRoom engagement analytics module: view sessions, partitioned engagement events, page-dwell heartbeats, viewer/resource rollups, per-document viewers, per-contact timeline, page heatmaps, email opens/clicks, hot list + CSV + hot-lead alerts, tracking mode + per-workspace retention, DSAR erasure",
   "license": "MIT",

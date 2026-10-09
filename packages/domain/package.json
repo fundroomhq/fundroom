@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/domain",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Pure domain definitions for FundRoom: the domain event catalogue with Zod payloads (no I/O)",
   "license": "MIT",

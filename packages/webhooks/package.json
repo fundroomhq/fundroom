@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/webhooks",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Outbound webhooks for FundRoom: the Standard Webhooks signer and verifier (runtime-neutral, re-exported by the SDK), the endpoint and delivery domain types, and the repositories behind core.webhook_endpoint and core.webhook_delivery",
   "license": "MIT",

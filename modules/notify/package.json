@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/module-notify",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "FundRoom notifications module: per-staff notification preferences, notification inbox, instant email alerts and daily digests for document views, downloads and update replies",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/integration-xero",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "IntegrationAdapter for Xero accounting API: monthly revenue, expenses, net income and cash, with organisation choice",
   "license": "MIT",

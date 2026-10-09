@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/email-ses",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "MailerPort adapter over the Amazon SES v2 API (hand-rolled SigV4), with signature-verified SNS event parsing",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/sdk",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Typed API client for FundRoom generated from the OpenAPI 3.1 contract (openapi-typescript + openapi-fetch), with API-key auth and the Standard Webhooks verifier for receivers",
   "license": "MIT",

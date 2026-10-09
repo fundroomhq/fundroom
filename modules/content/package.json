@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/module-content",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "FundRoom content module: the investor overview page (block registry, draft/publish revisions, section visibility, server-side hydration, preview-as)",
   "license": "MIT",

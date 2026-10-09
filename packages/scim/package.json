@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/scim",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Kernel SCIM 2.0 provisioning service for FundRoom: per-workspace SCIM bearer tokens, the Users/Groups protocol surface Entra ID and Okta speak, the per-workspace scim_user projection, and SCIM group → staff role mapping",
   "license": "MIT",

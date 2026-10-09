@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/server",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "FundRoom server: Hono API, composition root, tenant resolution, health, telemetry and the fundroom CLI",
   "license": "MIT",
