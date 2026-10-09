@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/ai-anthropic",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "ModelPort over the Anthropic Messages API, plain fetch through the guarded outbound client",
   "license": "MIT",

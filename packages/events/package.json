@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/events",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Transactional outbox, outbox relay, event subscriptions, idempotency keys and job definitions for FundRoom",
   "license": "MIT",

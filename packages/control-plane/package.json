@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/control-plane",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Kernel managed-host control plane for FundRoom: platform operators, workspace provisioning and status (hold / suspend), cells, self-service signup, plans, the daily usage rollup and plan quotas",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/share-links",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Share links for FundRoom: the link row and its token, the admission rules (domain allowlist, named contacts, passcode, expiry, use and view caps), the offering-mode shape rule, and the repositories behind them",
   "license": "MIT",

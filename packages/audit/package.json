@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/audit",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Append-only, per-workspace hash-chained audit log for FundRoom: recorder, checkpoints, partition maintenance, verification CLI",
   "license": "MIT",

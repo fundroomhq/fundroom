@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/sanctions",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Kernel sanctions screening for FundRoom: screening tenant companies against sanctions lists, the name matcher (normalise + token-set Jaro-Winkler), the hold/suspend decisions and the list refresh / re-screen jobs",
   "license": "MIT",

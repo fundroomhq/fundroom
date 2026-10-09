@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/ports",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "TypeScript interfaces (ports) that adapters implement and application code depends on",
   "license": "MIT",

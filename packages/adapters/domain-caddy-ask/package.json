@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/domain-caddy-ask",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "CustomDomainProviderPort for Caddy on-demand TLS: activation is the ask endpoint, so this adapter only derives the records an operator must publish",
   "license": "MIT",

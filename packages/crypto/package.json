@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/crypto",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Envelope encryption for FundRoom: streaming AEAD for objects, per-workspace data keys in core.workspace_key, KEK rotation job",
   "license": "MIT",

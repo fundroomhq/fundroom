@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/forensic",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Forensic (invisible) watermarking engine: a keyed per-recipient spread-spectrum pattern embedded into page images and detected non-blind against every recipient — pure TypeScript, node:crypto only",
   "license": "MIT",

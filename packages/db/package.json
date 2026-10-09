@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/db",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Drizzle schemas per Postgres schema, SQL migration runner, RLS tenant fence, and withTenant() for FundRoom",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/ai",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Kernel AI assist service for FundRoom: provider selection, per-workspace settings and acknowledgement, budgets, core.ai_request and the ai.run job; ModuleServices.ai; the fake model every test uses",
   "license": "MIT",

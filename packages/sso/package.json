@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/sso",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Kernel staff SSO service for FundRoom: the per-workspace OIDC or SAML connection (sealed client secret, IdP metadata), DNS-verified email domains, the SP-initiated login flow with its canonical-host handoff, identity linking and JIT, and SSO enforcement",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/ai-openai-compatible",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "ModelPort over the OpenAI-compatible chat completions API: self-hosted Ollama, vLLM, llama.cpp server, LM Studio, or a hosted OpenAI-compatible provider",
   "license": "MIT",

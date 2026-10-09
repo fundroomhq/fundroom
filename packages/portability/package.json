@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/portability",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Workspace export and import for FundRoom: the signed seed-host.workspace-export zip (manifest + JSONL + blobs + audit trail), its verification, and re-import into a new workspace",
   "license": "MIT",

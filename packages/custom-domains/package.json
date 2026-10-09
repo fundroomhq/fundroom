@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/custom-domains",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Custom portal domains for FundRoom: hostname rules, challenge tokens, expected DNS records, the DNS verdict and state machine (pure), plus the repo, admin service, hostname lookup cache and verification jobs",
   "license": "MIT",

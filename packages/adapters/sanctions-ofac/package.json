@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/sanctions-ofac",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "SanctionsScreeningPort over the US OFAC Sanctions List Service: downloads the SDN and consolidated lists, caches them on disk and matches locally",
   "license": "MIT",

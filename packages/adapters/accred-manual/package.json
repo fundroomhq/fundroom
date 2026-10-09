@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/accred-manual",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "AccreditationVerificationPort adapter for installs where an admin reads the evidence and decides: every attempt stays pending until a human settles it",
   "license": "MIT",

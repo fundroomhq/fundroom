@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/integration-calendly",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "IntegrationAdapter for Calendly API over a personal access token: webhook subscription and signed booking webhooks",
   "license": "MIT",

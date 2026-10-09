@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/module-updates",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "FundRoom investor updates module: block editor drafts, YC/minimal/board templates, audiences, test send, schedule, send job with per-recipient status, web archive, reply threads, unsubscribe compliance, per-workspace sending domain (DKIM) records",
   "license": "MIT",

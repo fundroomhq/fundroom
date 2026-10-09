@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/email-postmark",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "MailerPort adapter over the Postmark HTTPS API (message streams, per-message open/link tracking), with basic-auth webhook parsing",
   "license": "MIT",

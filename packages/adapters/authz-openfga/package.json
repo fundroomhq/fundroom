@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/authz-openfga",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "RelationshipEnginePort over OpenFGA: a generated authorization model encoding the access-rule ordering, per-workspace stores, paged full-diff sync and Check/BatchCheck over plain fetch",
   "license": "MIT",

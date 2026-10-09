@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/accreditation",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "Kernel accreditation-vendor service for FundRoom: the per-workspace vendor connection (sealed credentials), ModuleServices.accreditation (effective provider, vendor start/check/evidence outside transactions), the ops callback wake-up, and the in-memory adapter every test uses",
   "license": "MIT",

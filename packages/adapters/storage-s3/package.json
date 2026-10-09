@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/storage-s3",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "ObjectStoragePort adapter over the AWS SDK v3 (S3, R2, B2, Garage, SeaweedFS) with presigned multipart uploads",
   "license": "MIT",

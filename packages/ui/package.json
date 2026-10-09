@@ -1,6 +1,6 @@
 {
   "name": "@fundroomhq/ui",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": false,
   "description": "FundRoom design system: shadcn-style React 19 components on Radix, a Tailwind v4 theme over @fundroomhq/tokens, light/dark/system theming and runtime workspace themes",
   "license": "MIT",

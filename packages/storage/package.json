@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/storage",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "Object key layout, upload policy helpers and the ObjectStoragePort contract test suite for FundRoom",
   "license": "MIT",

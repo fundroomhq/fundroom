@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/module-metrics",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "FundRoom KPIs module: metric definitions with per-metric audiences, an append-only point series with restatement revisions, calendar periods, fixed-point decimals, derived metrics, CSV and Google Sheets import",
   "license": "MIT",

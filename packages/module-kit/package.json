@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/module-kit",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "defineModule() manifests, the module registry (dependency order, enablement, permissions, slots, flags) and the /api/v1/modules bootstrap for FundRoom",
   "license": "MIT",

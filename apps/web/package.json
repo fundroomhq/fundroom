@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/web",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "FundRoom web app: Vite + React 19 + TanStack Router SPA with the investor, admin and embed route trees",
   "license": "MIT",

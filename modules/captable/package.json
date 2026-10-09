@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/module-captable",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "FundRoom cap-table module: read-only snapshots imported from our CSV template, a Carta export or a Pulley export; fully diluted summary by class, option pool and SAFEs outstanding; an investor's own holdings; immutable published snapshots",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/anchor-rfc3161",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "AuditAnchorPort over RFC 3161 trusted timestamping: SHA-256 TimeStampReq to the operator's TSAs, tokens verified offline against pinned certificates with pkijs",
   "license": "MIT",

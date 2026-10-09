@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/sheets-google",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "SpreadsheetPort over the Google Sheets v4 REST API using a service account (RS256 JWT bearer), plus a noop driver that switches the integration off",
   "license": "MIT",

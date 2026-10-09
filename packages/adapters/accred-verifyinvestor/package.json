@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/accred-verifyinvestor",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "AccreditationVendorPort over the VerifyInvestor.com API: invitation start, verification-request status, certificate download and signed callbacks",
   "license": "MIT",

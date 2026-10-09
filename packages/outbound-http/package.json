@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/outbound-http",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "private": true,
   "description": "SSRF-guarded OutboundHttpPort: DNS pre-resolution, private-range deny, pinned addresses, timeouts, size caps",
   "license": "MIT",

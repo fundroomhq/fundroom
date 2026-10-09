@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/clickwrap",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.0",
   "private": true,
   "description": "The click-wrap certificate for FundRoom: the canonical JSON document and its digest (pure), the PDF rendering of it, and the issuer that anchors both into the audit chain and stores them under the workspace key",
   "license": "MIT",
