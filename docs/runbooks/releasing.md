@@ -12,7 +12,7 @@ For maintainers. How a release is cut, what it produces, and what to do when par
 | OCI label `org.opencontainers.image.version` | `X.Y.Z` | `X.Y.Z-rc.N` |
 | npm (`@fundroomhq/tokens`, `@fundroomhq/ui`) | `X.Y.Z` under dist-tag `latest` if it is the highest stable release, else `release-X.Y` | `X.Y.Z-rc.N` under dist-tag `next` (`next-X.Y` if a higher version is already on npm) |
 
-**`latest` on the first release candidate.** npm's own client sends only the tag it was given (`next`), but the registry gives a brand-new package a `latest` tag as well, and `latest` cannot be removed, only moved. npm's documentation does not state this (`npm dist-tag`: "Publishing a package sets the `latest` tag to the published version unless the `--tag` option is used"); it is the registry's long-standing behaviour, not verifiable without publishing, so check `npm view @fundroomhq/ui dist-tags` after the first publish. Expect `latest` to stay on `1.0.0-rc.1` until the first stable release moves it: `npm install @fundroomhq/ui` without a version installs the release candidate until then. That is acceptable (there is nothing older to protect); do not move `latest` by hand.
+**`latest` on the first release candidate.** npm's own client sends only the tag it was given (`next`), but the registry gives a brand-new package a `latest` tag as well, and `latest` cannot be removed, only moved. npm's documentation does not state this (`npm dist-tag`: "Publishing a package sets the `latest` tag to the published version unless the `--tag` option is used"); it is the registry's long-standing behaviour, not verifiable without publishing, so check `npm view @fundroomhq/ui dist-tags` after the first publish. Expect `latest` to stay on `1.0.0-rc.0` until the first stable release moves it: `npm install @fundroomhq/ui` without a version installs the release candidate until then. That is acceptable (there is nothing older to protect); do not move `latest` by hand.
 
 `latest` moves for `0.x` releases too. That is deliberate: no `latest` existed before the first release, and the templates name it.
 
@@ -62,7 +62,7 @@ The version and the release notes are read from the commit (`git show <sha>:apps
 
 ## npm: first-time setup
 
-Needed once, before the first release that publishes (A-7's `1.0.0-rc.1`). Nothing here is automated: it needs an npm account with 2FA.
+Needed once, before the first release that publishes (A-7's `1.0.0-rc.0`). Nothing here is automated: it needs an npm account with 2FA.
 
 1. **The scope.** The packages publish under `@fundroomhq`, the npm organisation `fundroomhq` the maintainer owns (free plan; public packages only). `@fundroom` belongs to someone else, so no package of ours may ever be published or depended on under it: the private workspace packages keep `@fundroom/*` names, are `workspace:` references inside the repository, and `pnpm packages:pack-check` refuses a published manifest that depends on any of them (amendment 2026-10-08).
 2. **First publish.** A trusted publisher can only be configured on a package that already exists on the registry (`npm help trust`: "Package must exist"), so each package's first version goes up with a token:
