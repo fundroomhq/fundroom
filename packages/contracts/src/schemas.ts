@@ -45,6 +45,8 @@ export const TRIMMED_CHARACTERS =
  */
 export function nonBlankPattern(min = 1): RegExp {
   const kept = `[^${TRIMMED_CHARACTERS}]`;
+  // Built only from the constant character class and an integer; no input reaches it.
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   return new RegExp(min <= 1 ? kept : `${kept}[\\s\\S]{${min - 2},}${kept}`, "u");
 }
 
