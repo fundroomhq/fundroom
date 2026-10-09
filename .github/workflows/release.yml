@@ -48,14 +48,18 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
+      # changesets/action v2 is the line for Changesets CLI v3; v1 bundles the v2 reader, which
+      # takes every directory in .changeset/ for a Changesets v1 changeset, so in pre mode it
+      # crashes on .changeset/pre/ (where v3 moves consumed changesets) reading pre/changes.md.
+      # v2 takes its token from `github-token` (default github.token) and refuses a differing
+      # GITHUB_TOKEN env; git CLI pushes as v1 did (v2's default is the GitHub API).
       - name: Create or update the version PR
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          version: pnpm version-packages
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version-script: pnpm version-packages
+          commit-message: "chore(release): version packages"
+          pr-title: "chore(release): version packages"
+          push-with-git-cli: true
 
   tag:
     name: Tag release
