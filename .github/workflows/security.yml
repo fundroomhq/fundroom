@@ -117,6 +117,8 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
           format: sarif
+          # Without this the action reports every severity in SARIF and fails on low ones too.
+          limit-severities-for-sarif: true
           output: trivy-fs.sarif
           trivyignores: .trivyignore
       - uses: github/codeql-action/upload-sarif@9f759ee644a3e7c15c1390abf49868036c00067b # v3.38.3
