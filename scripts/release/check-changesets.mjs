@@ -8,6 +8,8 @@
  * `"@fundroom/server": patch` (or the bump the change deserves) to it.
  *
  * An empty changeset (no packages between the `---` lines) is allowed: it says "no release".
+ * Only pending changesets (`.changeset/*.md`) are checked; in pre mode Changesets v3 moves the ones
+ * a prerelease consumed into `.changeset/pre/`, which this does not read.
  * A core entry with bump `none` does not count. `#` comments in the front matter are ignored.
  *
  *   node scripts/release/check-changesets.mjs [--dir .changeset]

@@ -1,5 +1,7 @@
 // node --test scripts/release/check-changesets.test.mjs
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -64,4 +66,20 @@ test("comments are ignored and a core entry bumped `none` does not count", () =>
 test("the repository's own changesets all bump the core", () => {
   const dir = join(here, "..", "..", ".changeset");
   assert.deepEqual(findProblems(readChangesets(dir), coreGroup(dir)), []);
+});
+
+test("pre mode: only pending changesets are read, never the consumed ones in .changeset/pre/", () => {
+  // Changesets v3 moves a changeset consumed by a prerelease version into .changeset/pre/ and
+  // keeps the mode in .changeset/pre.json. Those were checked when they landed.
+  const dir = mkdtempSync(join(tmpdir(), "check-changesets-"));
+  try {
+    mkdirSync(join(dir, "pre"));
+    writeFileSync(join(dir, "pre.json"), '{ "mode": "pre", "tag": "rc" }\n');
+    writeFileSync(join(dir, "README.md"), "# Changesets\n");
+    writeFileSync(join(dir, "pending.md"), '---\n"@fundroom/server": patch\n---\n\nx\n');
+    writeFileSync(join(dir, "pre", "consumed.md"), '---\n"@fundroom/embed": patch\n---\n\nx\n');
+    assert.deepEqual(Object.keys(readChangesets(dir)), ["pending.md"]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
