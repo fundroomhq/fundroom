@@ -1,4 +1,10 @@
-import { page, paginationQuery, TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import {
+  page,
+  paginationQuery,
+  TimestampSchema,
+  trimmedText,
+  UuidSchema,
+} from "@fundroom/contracts";
 import { z } from "@hono/zod-openapi";
 import {
   QA_CLOSED_REASONS,
@@ -64,8 +70,7 @@ export const QaSettingsPatchBody = z
 /** Postgres `text` cannot hold U+0000: refuse it as a 400 instead of failing the write. */
 const noNul = (s: string) => !s.includes("\u0000");
 const NUL_MESSAGE = "must not contain the NUL character";
-const text = (min: number, max: number) =>
-  z.string().trim().min(min).max(max).refine(noNul, NUL_MESSAGE);
+const text = (min: number, max: number) => trimmedText({ min, max }).refine(noNul, NUL_MESSAGE);
 
 const subjectField = text(1, 200);
 const questionBodyField = text(1, 5000);

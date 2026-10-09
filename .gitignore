@@ -135,3 +135,9 @@ e2e/.state/
 .eslintcache
 .parcel-cache/
 .next/
+
+# Python bytecode and Schemathesis state
+__pycache__/
+*.pyc
+.schemathesis/
+.hypothesis/

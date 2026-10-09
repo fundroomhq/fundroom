@@ -25,6 +25,46 @@ export const EmailSchema = z
   .max(320)
   .openapi({ example: "ada@example.com", pattern: EMAIL_PATTERN.source });
 
+/**
+ * The characters `String.prototype.trim()` strips: ECMAScript WhiteSpace and LineTerminator
+ * (tab, LF, VT, FF, CR, space, NBSP, U+FEFF, the `Zs` separators, LS, PS).
+ *
+ * Spelled out instead of `\s`. In JavaScript `\s` is exactly this set, but a `pattern` in the
+ * document is also evaluated by engines whose `\s` differs: Python's, for one, matches U+001C to
+ * U+001F and U+0085 (which `trim()` keeps) and does not match U+FEFF (which `trim()` strips), so
+ * a generator reading `\S` there would produce a lone U+FEFF that the server trims to nothing.
+ */
+export const TRIMMED_CHARACTERS =
+  "\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff";
+
+/**
+ * Holds for a string exactly when `trim()` leaves at least `min` characters of it: two
+ * characters `trim()` keeps, `min - 1` apart (one such character for `min` 1). Unanchored, as
+ * a JSON Schema `pattern` is. Counts code points, as zod's length checks and JSON Schema's
+ * `minLength` do.
+ */
+export function nonBlankPattern(min = 1): RegExp {
+  const kept = `[^${TRIMMED_CHARACTERS}]`;
+  return new RegExp(min <= 1 ? kept : `${kept}[\\s\\S]{${min - 2},}${kept}`, "u");
+}
+
+/**
+ * Free text the server trims before it checks the length: `"  "` is as empty as `""`.
+ *
+ * The length checks apply to the trimmed value, but the document can only state `minLength`
+ * of the value as sent, which a string of spaces satisfies. With `min` above zero the schema
+ * also carries {@link nonBlankPattern}, so the document says what the trimmed `min` means and a
+ * client (or a contract fuzzer) generating from it never produces a blank value the server
+ * refuses. The pattern cannot fail where `min` passes; `min` aborts, so a blank value is refused
+ * with the same single "too small" issue as before.
+ */
+export function trimmedText(options: { readonly min?: number; readonly max: number }) {
+  const { min = 0, max } = options;
+  const text = z.string().trim();
+  if (min <= 0) return text.max(max);
+  return text.min(min, { abort: true }).max(max).regex(nonBlankPattern(min));
+}
+
 /** Workspace slug: DNS label (`core.workspace.slug` CHECK). */
 /**
  * Path segments reserved under `/embed/`, and therefore unavailable as workspace slugs (E2.2,

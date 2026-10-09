@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { JurisdictionSchema, MoveStateSchema } from "./residency.js";
-import { EmailSchema, SlugSchema, TimestampSchema, UuidSchema } from "./schemas.js";
+import { EmailSchema, SlugSchema, TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * The managed-host control plane's operator API (E3.10, ADR-0058): `/api/v1/platform/*`, plus the
@@ -279,8 +279,8 @@ export const PlatformWorkspaceIdParam = z.object({ id: UuidSchema });
 
 export const PlatformWorkspaceCreateBody = z.strictObject({
   slug: SlugSchema,
-  name: z.string().trim().min(1).max(100),
-  legalName: z.string().trim().min(1).max(200),
+  name: trimmedText({ min: 1, max: 100 }),
+  legalName: trimmedText({ min: 1, max: 200 }),
   country: CountryCodeSchema,
   ownerEmail: EmailSchema,
   planId: z.union([PlanIdSchema, z.null()]),
@@ -291,7 +291,7 @@ export const PlatformWorkspacePatchBody = z
   .strictObject({
     planId: z.union([PlanIdSchema, z.null()]).optional(),
     cellId: CellIdSchema.optional(),
-    legalName: z.string().trim().min(1).max(200).optional().openapi({
+    legalName: trimmedText({ min: 1, max: 200 }).optional().openapi({
       description: "The tenant company's legal name; a change queues a sanctions re-screen",
     }),
     country: CountryCodeSchema.optional().openapi({
@@ -309,11 +309,11 @@ export const PlatformWorkspacePatchBody = z
 
 export const PlatformSuspendBody = z.strictObject({
   reason: z.literal("operator"),
-  note: z.string().trim().min(1).max(2000),
+  note: trimmedText({ min: 1, max: 2000 }),
 });
 
 export const PlatformUnsuspendBody = z.strictObject({
-  note: z.string().trim().min(1).max(2000).optional(),
+  note: trimmedText({ min: 1, max: 2000 }).optional(),
   hold: LiftableHoldSchema.default("operator").openapi({
     description:
       "The hold to lift (default `operator`); every other hold stays. `sanctions_review` and `sanctions` need the latest screening clear or cleared (409 `sanctions_unresolved`); `billing` is an audited override (the billing job sets it again while the subscription is past its grace)",
@@ -529,7 +529,7 @@ export const PlanIdParam = z.object({ id: PlanIdSchema });
 
 export const PlanCreateBody = z.strictObject({
   id: PlanIdSchema,
-  name: z.string().trim().min(1).max(100),
+  name: trimmedText({ min: 1, max: 100 }),
   limits: PlanLimitsSchema,
   billingPriceRef: z.union([z.string().min(1).max(255), z.null()]).optional(),
   billingMeteredPriceRefs: MeteredPriceRefsSchema.optional(),
@@ -543,7 +543,7 @@ export const PlanPatchBody = z.strictObject({
     .int()
     .min(1)
     .openapi({ description: "The version read; 409 `version_conflict` if stale" }),
-  name: z.string().trim().min(1).max(100).optional(),
+  name: trimmedText({ min: 1, max: 100 }).optional(),
   limits: PlanLimitsSchema.optional(),
   billingPriceRef: z.union([z.string().min(1).max(255), z.null()]).optional(),
   billingMeteredPriceRefs: MeteredPriceRefsSchema.optional(),
@@ -603,5 +603,5 @@ export const SanctionsIdParam = z.object({ id: UuidSchema });
 
 export const SanctionsDecisionBody = z.strictObject({
   decision: z.enum(["cleared", "confirmed"]),
-  note: z.string().trim().min(1).max(2000),
+  note: trimmedText({ min: 1, max: 2000 }),
 });

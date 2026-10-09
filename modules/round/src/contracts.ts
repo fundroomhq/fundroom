@@ -1,4 +1,4 @@
-import { EmailSchema, TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import { EmailSchema, TimestampSchema, trimmedText, UuidSchema } from "@fundroom/contracts";
 import { ROUND_CLOSING_PREFILL_SOURCES } from "@fundroom/domain";
 import {
   ACCREDITATION_PATHS,
@@ -216,7 +216,7 @@ export const RoundIdParams = z.object({ id: UuidSchema });
 
 export const CreateRoundBody = z
   .object({
-    name: z.string().trim().min(1).max(120),
+    name: trimmedText({ min: 1, max: 120 }),
     stage: RoundStageSchema,
     instrumentKind: InstrumentKindSchema,
     targetAmount: PositiveDecimal,
@@ -464,7 +464,7 @@ export const InterestBody = z
   .object({
     amount: PositiveDecimal,
     subject: InterestSubjectSchema,
-    entityName: z.string().trim().min(1).max(200).optional(),
+    entityName: trimmedText({ min: 1, max: 200 }).optional(),
     note: z.string().max(4000).optional(),
     /** Required when the computed eligibility asks for the questionnaire. */
     accreditation: RoundAccreditationAnswersSchema.optional(),
@@ -533,7 +533,7 @@ export const CreateCommitmentBody = z
     membershipId: UuidSchema.optional(),
     organizationId: UuidSchema.optional(),
     contactId: UuidSchema.optional(),
-    displayName: z.string().trim().min(1).max(200).optional(),
+    displayName: trimmedText({ min: 1, max: 200 }).optional(),
     amount: PositiveDecimal,
     status: CommitmentStatusSchema.optional(),
     note: z.string().max(4000).optional(),
@@ -688,7 +688,7 @@ export const PutClosingTasksBody = z
         z
           .object({
             id: UuidSchema.optional(),
-            title: z.string().trim().min(1).max(200),
+            title: trimmedText({ min: 1, max: 200 }),
             done: z.boolean().default(false),
           })
           .openapi("RoundClosingTaskInput"),
@@ -716,14 +716,14 @@ export const RoundClosingPrefillSourceSchema = z.enum(ROUND_CLOSING_PREFILL_SOUR
 export const RoundClosingSettingsSchema = z
   .object({
     /** The vendor-side template the subscription agreement is generated from; `null` = not set up. */
-    subscriptionTemplateRef: z.union([z.string().trim().min(1).max(200), z.null()]),
+    subscriptionTemplateRef: z.union([trimmedText({ min: 1, max: 200 }), z.null()]),
     /**
      * The template's signer role the investor fills (DocuSign, multi-role DocuSeal). Default
      * "Signer".
      */
-    templateRole: z.string().trim().min(1).max(100),
+    templateRole: trimmedText({ min: 1, max: 100 }),
     /** Vendor field name → the fact it is filled with. At most 50. */
-    prefill: z.record(z.string().trim().min(1).max(100), RoundClosingPrefillSourceSchema),
+    prefill: z.record(trimmedText({ min: 1, max: 100 }), RoundClosingPrefillSourceSchema),
   })
   .openapi("RoundClosingSettings");
 
@@ -751,10 +751,10 @@ export const RoundSettingsPatchBody = z
     /** Merged field by field into the stored block; `prefill`, when sent, replaces the map. */
     closing: z
       .object({
-        subscriptionTemplateRef: z.union([z.string().trim().min(1).max(200), z.null()]).optional(),
-        templateRole: z.string().trim().min(1).max(100).optional(),
+        subscriptionTemplateRef: z.union([trimmedText({ min: 1, max: 200 }), z.null()]).optional(),
+        templateRole: trimmedText({ min: 1, max: 100 }).optional(),
         prefill: z
-          .record(z.string().trim().min(1).max(100), RoundClosingPrefillSourceSchema)
+          .record(trimmedText({ min: 1, max: 100 }), RoundClosingPrefillSourceSchema)
           .refine((m) => Object.keys(m).length <= 50, "at most 50 prefill fields")
           .optional(),
       })
@@ -795,14 +795,14 @@ export const RoundSignatureRequestSchema = z
 export const RoundSignatureRequestBody = z
   .object({
     /** Shown to the signer in the vendor's email. */
-    message: z.string().trim().min(1).max(2000).optional(),
+    message: trimmedText({ min: 1, max: 2000 }).optional(),
     /**
      * Who signs, for a commitment that names no member (a CRM contact or a name only). Ignored
      * when the commitment names a member: the member's own name and address are used.
      */
     signer: z
       .object({
-        name: z.string().trim().min(1).max(200),
+        name: trimmedText({ min: 1, max: 200 }),
         email: EmailSchema,
       })
       .strict()
@@ -813,7 +813,7 @@ export const RoundSignatureRequestBody = z
   .openapi("RoundSignatureRequestBody");
 
 export const RoundSignatureVoidBody = z
-  .object({ reason: z.string().trim().min(1).max(500).optional() })
+  .object({ reason: trimmedText({ min: 1, max: 500 }).optional() })
   .strict()
   .openapi("RoundSignatureVoidBody");
 

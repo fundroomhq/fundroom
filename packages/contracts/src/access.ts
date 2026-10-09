@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { RelationshipSourceSchema, RelationshipWarningSchema } from "./compliance.js";
-import { EmailSchema, page, TimestampSchema, UuidSchema } from "./schemas.js";
+import { EmailSchema, page, TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * Access management contracts (E1.1): people, invitations, CSV imports, groups, grants,
@@ -370,11 +370,11 @@ export const GroupDetailSchema = z
   .object({ group: GroupSchema, members: z.array(PersonSchema) })
   .openapi("GroupDetail");
 export const GroupCreateBody = z.object({
-  name: z.string().trim().min(1).max(80),
+  name: trimmedText({ min: 1, max: 80 }),
   kind: GroupKindSchema.default("custom"),
 });
 export const GroupPatchBody = z.object({
-  name: z.string().trim().min(1).max(80).optional(),
+  name: trimmedText({ min: 1, max: 80 }).optional(),
   kind: GroupKindSchema.optional(),
 });
 export const GroupMembersBody = z.object({ membershipIds: z.array(UuidSchema).min(1).max(500) });
@@ -614,7 +614,7 @@ export const DelegateListSchema = z
 
 export const DelegateCreateBody = z.object({
   email: EmailSchema,
-  displayName: z.string().trim().min(1).max(120).optional(),
+  displayName: trimmedText({ min: 1, max: 120 }).optional(),
   scope: DelegateScopeSchema,
   message: z.string().trim().max(2000).optional(),
 });
@@ -668,7 +668,7 @@ export const AccessRequestStatusSchema = z
 /** POST /access-requests/start (public). */
 export const AccessRequestStartBody = z.object({
   email: EmailSchema,
-  name: z.string().trim().min(1).max(120),
+  name: trimmedText({ min: 1, max: 120 }),
   firm: z.string().trim().max(160).optional(),
   reason: z.string().trim().max(2000).optional(),
   /** Honeypot: humans never see it and leave it empty. Anything else is a silent decoy. */

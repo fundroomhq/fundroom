@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { TimestampSchema, UuidSchema } from "./schemas.js";
+import { TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * Integrations hub (E3.6, ADR-0054). Handlers live in `apps/server/src/routes/integrations.ts`
@@ -235,11 +235,11 @@ export const BookingLinkListSchema = z
 export const BookingLinkCreateBodySchema = z
   .object({
     provider: BookingProviderSchema,
-    url: z.string().trim().min(9).max(500).openapi({
+    url: trimmedText({ min: 9, max: 500 }).openapi({
       description:
         "`https://` on one of the provider's `bookingLinkHosts` (422 `booking_link_invalid_url` otherwise)",
     }),
-    label: z.string().trim().min(1).max(80),
+    label: trimmedText({ min: 1, max: 80 }),
     description: z.string().trim().max(300).nullable().optional(),
     audience: BookingLinkAudienceSchema.optional().openapi({ description: "Default everyone" }),
     position: z.number().int().min(0).max(1000).optional(),
@@ -249,8 +249,8 @@ export const BookingLinkCreateBodySchema = z
 
 export const BookingLinkPatchBodySchema = z
   .object({
-    url: z.string().trim().min(9).max(500).optional(),
-    label: z.string().trim().min(1).max(80).optional(),
+    url: trimmedText({ min: 9, max: 500 }).optional(),
+    label: trimmedText({ min: 1, max: 80 }).optional(),
     description: z.string().trim().max(300).nullable().optional(),
     audience: BookingLinkAudienceSchema.optional(),
     position: z.number().int().min(0).max(1000).optional(),

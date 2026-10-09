@@ -1,7 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import { PendingAcceptanceSchema } from "./compliance.js";
 import { PlanFeatureSchema, WorkspaceStatusStateSchema } from "./platform.js";
-import { EmailSchema, SlugSchema, TimestampSchema, UuidSchema } from "./schemas.js";
+import { EmailSchema, SlugSchema, TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 import { ViewAsStateSchema } from "./view-as.js";
 
 /*
@@ -477,8 +477,8 @@ export const SetupTokenBody = z.object({ token: z.string().min(16).max(256) });
 export const SetupOwnerBody = z.object({
   token: z.string().min(16).max(256),
   email: EmailSchema,
-  displayName: z.string().trim().min(1).max(120),
-  workspaceName: z.string().trim().min(1).max(120).openapi({ example: "Acme Inc." }),
+  displayName: trimmedText({ min: 1, max: 120 }),
+  workspaceName: trimmedText({ min: 1, max: 120 }).openapi({ example: "Acme Inc." }),
   /** Defaults to a slug derived from the name. */
   workspaceSlug: SlugSchema.optional(),
 });

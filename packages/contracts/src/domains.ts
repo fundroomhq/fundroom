@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { TimestampSchema, UuidSchema } from "./schemas.js";
+import { TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * Custom portal domains (E2.1, EXECUTION_PLAN §9.2, design/07 §2.2–2.3, ADR-0039).
@@ -139,7 +139,7 @@ export const CustomDomainListSchema = z
  */
 export const CustomDomainCreateBody = z
   .object({
-    hostname: z.string().trim().min(1).max(253).openapi({ example: "investors.acme.com" }),
+    hostname: trimmedText({ min: 1, max: 253 }).openapi({ example: "investors.acme.com" }),
   })
   .strict();
 

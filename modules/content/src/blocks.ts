@@ -1,3 +1,4 @@
+import { trimmedText } from "@fundroom/contracts";
 import { z } from "@hono/zod-openapi";
 
 /*
@@ -48,7 +49,7 @@ const href = z
       httpsUrl.safeParse(v).success,
     "must be an http(s) URL or a same-site path",
   );
-const shortText = (max: number) => z.string().trim().min(1).max(max);
+const shortText = (max: number) => trimmedText({ min: 1, max: max });
 const optionalText = (max: number) => z.string().trim().max(max).nullable().default(null);
 
 export const HeroSchema = z

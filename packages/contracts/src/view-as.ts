@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { TimestampSchema, UuidSchema } from "./schemas.js";
+import { TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * View-as-investor contracts (E2.7 package B2): `ViewAsState`, `POST /access/people/{id}/view-as`,
@@ -31,7 +31,7 @@ export const ViewAsResponseSchema = z
 export const StartViewAsBody = z
   .object({
     /** Why staff are looking (kept in the audit trail). */
-    reason: z.string().trim().min(3).max(500),
+    reason: trimmedText({ min: 3, max: 500 }),
   })
   .openapi("StartViewAsBody");
 

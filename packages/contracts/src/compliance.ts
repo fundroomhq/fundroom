@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { page, paginationQuery, TimestampSchema, UuidSchema } from "./schemas.js";
+import { page, paginationQuery, TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * Offering mode and the legal kernel (E1.6, ADR-0037, EXECUTION_PLAN §11, design/04 §1.6/§2/§4).
@@ -253,7 +253,7 @@ export const TemplateContextBody = z.object({
 
 export const LegalDocumentCreateBody = z.object({
   slug: LegalDocumentSlugSchema,
-  title: z.string().trim().min(1).max(200).optional(),
+  title: trimmedText({ min: 1, max: 200 }).optional(),
   kind: LegalDocumentKindSchema.optional(),
   audience: LegalAudienceSchema.optional(),
   requiresAcceptance: z.boolean().optional(),
@@ -269,7 +269,7 @@ export const LegalDocumentCreateBody = z.object({
 });
 
 export const LegalDocumentPatchBody = z.object({
-  title: z.string().trim().min(1).max(200).optional(),
+  title: trimmedText({ min: 1, max: 200 }).optional(),
   kind: LegalDocumentKindSchema.optional(),
   audience: LegalAudienceSchema.optional(),
   requiresAcceptance: z.boolean().optional(),
@@ -606,7 +606,7 @@ export const ErasureRequestSchema = z
 export const ErasureRequestCreateBody = z.object({
   membershipId: UuidSchema,
   /** How the request arrived (email, letter …). Staff-only. */
-  note: z.string().trim().min(1).max(1000).optional(),
+  note: trimmedText({ min: 1, max: 1000 }).optional(),
 });
 
 export const ErasureRequestListQuery = z.object({
@@ -685,11 +685,11 @@ export const DataRequestCreateBody = z.object({
   kind: z.enum(["access", "rectification"]),
   membershipId: UuidSchema,
   /** How the request arrived, what is to be corrected … Staff-only. */
-  note: z.string().trim().min(1).max(1000).optional(),
+  note: trimmedText({ min: 1, max: 1000 }).optional(),
 });
 
 export const DataRequestCompleteBody = z.object({
-  note: z.string().trim().min(1).max(1000).optional(),
+  note: trimmedText({ min: 1, max: 1000 }).optional(),
   /**
    * Access only: the sha256 (hex) of the subject export handed over — the export's
    * `X-Content-SHA256` header. Must match a `compliance.dsar_exported` audit row for this member

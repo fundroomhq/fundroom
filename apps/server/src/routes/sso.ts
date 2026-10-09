@@ -9,6 +9,7 @@ import {
   requestIdOf,
   sessionSecurity,
   TimestampSchema,
+  trimmedText,
   UuidSchema,
   z,
 } from "@fundroom/contracts";
@@ -151,7 +152,7 @@ const SsoConnectionSavedSchema = z
   .openapi("SsoConnectionSaved");
 
 const common = {
-  name: z.string().trim().min(1).max(100).openapi({ example: "Okta" }),
+  name: trimmedText({ min: 1, max: 100 }).openapi({ example: "Okta" }),
   jit: z.object({ enabled: z.boolean(), role: StaffJitRoleSchema }),
   mfa: z.object({
     trust: z.boolean(),
@@ -244,7 +245,7 @@ const SsoDomainListSchema = z
   .openapi("SsoDomainList");
 const SsoDomainResponseSchema = z.object({ domain: SsoDomainSchema }).openapi("SsoDomainResponse");
 const SsoDomainPostSchema = z
-  .object({ domain: z.string().trim().min(1).max(253).openapi({ example: "acme.com" }) })
+  .object({ domain: trimmedText({ min: 1, max: 253 }).openapi({ example: "acme.com" }) })
   .openapi("SsoDomainPost");
 
 const ScimTokenSchema = z
@@ -276,7 +277,7 @@ const ScimAdminSchema = z
   .openapi("ScimAdmin");
 
 const ScimTokenPostSchema = z
-  .object({ name: z.string().trim().min(1).max(80).openapi({ example: "Entra ID" }) })
+  .object({ name: trimmedText({ min: 1, max: 80 }).openapi({ example: "Entra ID" }) })
   .openapi("ScimTokenPost");
 
 const ScimTokenCreatedSchema = z

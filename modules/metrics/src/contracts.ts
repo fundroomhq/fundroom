@@ -1,4 +1,4 @@
-import { integrations, TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import { integrations, TimestampSchema, trimmedText, UuidSchema } from "@fundroom/contracts";
 import { z } from "@hono/zod-openapi";
 import { FormulaSchema } from "./formula.js";
 import {
@@ -98,7 +98,7 @@ const DisplaySchema = z.record(z.string(), z.unknown());
 
 export const CreateDefinitionBody = z.object({
   key: MetricKeySchema,
-  name: z.string().trim().min(1).max(120),
+  name: trimmedText({ min: 1, max: 120 }),
   description: z.string().trim().max(2000).optional(),
   unit: UnitKindSchema,
   currency: z
@@ -118,7 +118,7 @@ export const CreateDefinitionBody = z.object({
 
 /** `key` is absent by design — see `DefinitionRepo.update`: a key is other people's stored data. */
 export const PatchDefinitionBody = z.object({
-  name: z.string().trim().min(1).max(120).optional(),
+  name: trimmedText({ min: 1, max: 120 }).optional(),
   description: z.union([z.string().trim().max(2000), z.null()]).optional(),
   unit: UnitKindSchema.optional(),
   currency: z
@@ -334,10 +334,10 @@ export const SeriesQuery = z.object({
  */
 export const MetricCsvMappingSchema = z
   .object({
-    periodColumn: z.string().trim().min(1).max(120),
+    periodColumn: trimmedText({ min: 1, max: 120 }),
     periodKind: PeriodKindSchema.default("month"),
     columns: z
-      .array(z.object({ column: z.string().trim().min(1).max(120), key: MetricKeySchema }))
+      .array(z.object({ column: trimmedText({ min: 1, max: 120 }), key: MetricKeySchema }))
       .min(1)
       .max(50),
   })
@@ -433,8 +433,8 @@ export const MetricSheetConnectionEnvelopeSchema = z
   .openapi("MetricSheetConnectionEnvelope");
 
 export const PutSheetsBody = z.object({
-  spreadsheetId: z.string().trim().min(1).max(200),
-  range: z.string().trim().min(1).max(200),
+  spreadsheetId: trimmedText({ min: 1, max: 200 }),
+  range: trimmedText({ min: 1, max: 200 }),
   mapping: MetricCsvMappingSchema,
   /**
    * The service-account JSON, exactly as Google generated it. Validated before it is

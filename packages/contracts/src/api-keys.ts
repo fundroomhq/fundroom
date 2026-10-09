@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { paginationQuery, TimestampSchema, UuidSchema } from "./schemas.js";
+import { paginationQuery, TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * Workspace API keys (E3.4, ADR-0052). Handlers live in `apps/server/src/routes/api-keys.ts` —
@@ -106,7 +106,7 @@ export const ApiKeyScopesSchema = z
   .object({ scopes: z.array(ApiKeyScopeOptionSchema) })
   .openapi("ApiKeyScopes");
 
-const NameSchema = z.string().trim().min(1).max(80);
+const NameSchema = trimmedText({ min: 1, max: 80 });
 const NoteSchema = z.string().trim().max(500);
 
 export const CreateApiKeyBody = z.object({

@@ -2,7 +2,7 @@ import { z } from "@hono/zod-openapi";
 import { BillingPlanSchema } from "./billing.js";
 import { CountryCodeSchema, PlanIdSchema } from "./platform.js";
 import { JurisdictionSchema } from "./residency.js";
-import { EmailSchema, SlugSchema } from "./schemas.js";
+import { EmailSchema, SlugSchema, trimmedText } from "./schemas.js";
 
 /*
  * Self-service signup (E3.10, ADR-0058): `/api/v1/signup/*` on the canonical host (no workspace),
@@ -56,8 +56,8 @@ export const SignupPlansSchema = z
 
 export const SignupStartBody = z.strictObject({
   email: EmailSchema,
-  companyName: z.string().trim().min(1).max(100),
-  legalName: z.string().trim().min(1).max(200),
+  companyName: trimmedText({ min: 1, max: 100 }),
+  legalName: trimmedText({ min: 1, max: 200 }),
   country: CountryCodeSchema,
   slug: SlugSchema,
   locale: z

@@ -1,4 +1,4 @@
-import { access, TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import { access, TimestampSchema, trimmedText, UuidSchema } from "@fundroom/contracts";
 import { z } from "@hono/zod-openapi";
 import { FOLDER_TEMPLATES, ProtectionSchema, ProtectionViewSchema } from "./model.js";
 import { QaSettingsPatchBody, QaSettingsSchema } from "./qa/contracts.js";
@@ -163,7 +163,7 @@ export const UploadSchema = z
   .openapi("DataRoomUpload");
 
 export const UploadStartBody = z.object({
-  fileName: z.string().trim().min(1).max(255),
+  fileName: trimmedText({ min: 1, max: 255 }),
   size: z.number().int().min(0),
   contentType: z.string().max(200).default("application/octet-stream"),
   /** New document in this folder … */
@@ -207,15 +207,15 @@ export const UploadCompleteSchema = z
 
 export const FolderCreateBody = z.object({
   parentId: UuidSchema,
-  name: z.string().trim().min(1).max(200),
+  name: trimmedText({ min: 1, max: 200 }),
 });
 export const FolderPatchBody = z.object({
-  name: z.string().trim().min(1).max(200).optional(),
+  name: trimmedText({ min: 1, max: 200 }).optional(),
   parentId: UuidSchema.optional(),
   sortOrder: z.number().int().min(0).max(1_000_000).optional(),
 });
 export const DocumentPatchBody = z.object({
-  title: z.string().trim().min(1).max(300).optional(),
+  title: trimmedText({ min: 1, max: 300 }).optional(),
   folderId: UuidSchema.optional(),
   sortOrder: z.number().int().min(0).max(1_000_000).optional(),
   protection: ProtectionSchema.partial().optional(),
@@ -254,7 +254,7 @@ export const SearchHitSchema = z
 export const SearchResultSchema = z
   .object({ hits: z.array(SearchHitSchema) })
   .openapi("DataRoomSearchResult");
-export const SearchQuery = z.object({ q: z.string().trim().min(1).max(200) });
+export const SearchQuery = z.object({ q: trimmedText({ min: 1, max: 200 }) });
 
 /** `GET /documents/{id}/pages/{n}/text` (E2.8): the extracted text of one page, for assistive tech. */
 export const PageTextSchema = z

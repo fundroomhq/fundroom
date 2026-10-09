@@ -61,12 +61,15 @@ export {
   EMAIL_PATTERN,
   EmailSchema,
   isoDate,
+  nonBlankPattern,
   OkSchema,
   page,
   paginationQuery,
   RequestIdHeaderSchema,
   SlugSchema,
   TimestampSchema,
+  TRIMMED_CHARACTERS,
+  trimmedText,
   UuidSchema,
 } from "./schemas.js";
 export * as search from "./search.js";

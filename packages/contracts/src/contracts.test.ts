@@ -18,8 +18,11 @@ import {
   jsonBody,
   jsonResponse,
   kernel,
+  nonBlankPattern,
   platform,
   SlugSchema,
+  TRIMMED_CHARACTERS,
+  trimmedText,
   z,
 } from "./index.js";
 
@@ -172,6 +175,97 @@ describe("EmailSchema", () => {
     );
     const doc = buildOpenApiDocument(api as never, { version: "0" });
     expect(JSON.stringify(doc)).toContain(JSON.stringify(EMAIL_PATTERN.source));
+  });
+});
+
+describe("trimmedText", () => {
+  it("names exactly the characters trim() strips", () => {
+    const trimmed = new RegExp(`^[${TRIMMED_CHARACTERS}]$`);
+    for (let cp = 0; cp <= 0x10ffff; cp++) {
+      if (cp >= 0xd800 && cp <= 0xdfff) continue;
+      const ch = String.fromCodePoint(cp);
+      if (trimmed.test(ch) !== (ch.trim() === "")) {
+        expect.fail(`U+${cp.toString(16).padStart(4, "0")}`);
+      }
+    }
+  });
+
+  const samples = [
+    "",
+    " ",
+    "\u000b",
+    "\ufeff",
+    "\u3000\u2028\t",
+    "a",
+    " a ",
+    "\ufeffa\ufeff",
+    "\u001c", // kept by trim(), though Python's `\s` matches it
+    "\u0085",
+    "ab",
+    " a b ",
+    "abc",
+    "  ab  ",
+    " a  b ",
+    "\u00a0abc\u00a0",
+    "a😀",
+    "x".repeat(10),
+    ` ${"x".repeat(10)} `,
+    "x".repeat(11),
+  ];
+
+  it.each([1, 2, 3, 9])("min %i: the pattern holds exactly when the schema accepts", (min) => {
+    const schema = trimmedText({ min, max: 10 });
+    const pattern = nonBlankPattern(min);
+    for (const v of samples) {
+      const fits = v.trim().length <= 10;
+      expect(schema.safeParse(v).success, JSON.stringify(v)).toBe(pattern.test(v) && fits);
+    }
+  });
+
+  it("refuses a blank value with the one length issue it always had", () => {
+    const result = trimmedText({ min: 1, max: 10 }).safeParse(" \t ");
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((i) => i.code)).toEqual(["too_small"]);
+    expect(trimmedText({ min: 1, max: 10 }).parse("  ok  ")).toBe("ok");
+    expect(trimmedText({ max: 3 }).parse("  ")).toBe("");
+  });
+
+  it("states the trimmed minimum in the document", () => {
+    const api = createApi();
+    api.openapi(
+      createRoute({
+        method: "post",
+        path: "/t",
+        request: {
+          body: jsonBody(
+            z.object({
+              name: trimmedText({ min: 1, max: 80 }).openapi({ example: "Ada" }),
+              reason: trimmedText({ min: 3, max: 500 }).optional(),
+              note: trimmedText({ max: 500 }),
+            }),
+          ),
+        },
+        responses: { 200: jsonResponse(z.object({}), "ok") },
+      }),
+      (c) => c.json({}, 200),
+    );
+    const doc = buildOpenApiDocument(api as never, { version: "0" });
+    const body = (
+      doc as unknown as {
+        paths: Record<string, { post: { requestBody: { content: Record<string, unknown> } } }>;
+      }
+    ).paths["/t"]?.post.requestBody.content["application/json"] as {
+      schema: { properties: Record<string, unknown> };
+    };
+    const props = body.schema.properties;
+    expect(props["name"]).toMatchObject({
+      minLength: 1,
+      maxLength: 80,
+      pattern: nonBlankPattern(1).source,
+      example: "Ada",
+    });
+    expect(props["reason"]).toMatchObject({ minLength: 3, pattern: nonBlankPattern(3).source });
+    expect(props["note"]).not.toHaveProperty("pattern");
   });
 });
 

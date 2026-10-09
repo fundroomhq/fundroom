@@ -1,4 +1,4 @@
-import { TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import { TimestampSchema, trimmedText, UuidSchema } from "@fundroom/contracts";
 import { z } from "@hono/zod-openapi";
 import { BLOCK_TYPES, PageDocSchema, SECTION_KEY_RE } from "./blocks.js";
 import { PreviewAsSchema, VisibilityMapSchema, VisibilityRuleSchema } from "./visibility.js";
@@ -123,10 +123,10 @@ export const RevisionParams = z.object({ id: UuidSchema, revisionId: UuidSchema 
 export const SlugParams = z.object({ slug: SlugSchema });
 export const CreatePageBody = z.object({
   slug: SlugSchema,
-  title: z.string().trim().min(1).max(200),
+  title: trimmedText({ min: 1, max: 200 }),
 });
 export const PatchPageBody = z.object({
-  title: z.string().trim().min(1).max(200).optional(),
+  title: trimmedText({ min: 1, max: 200 }).optional(),
   slug: SlugSchema.optional(),
 });
 export const SaveDraftBody = z.object({

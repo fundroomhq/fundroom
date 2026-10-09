@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { TimestampSchema, UuidSchema } from "./schemas.js";
+import { TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * E-signature (E3.5, ADR-0053). Handlers live in `apps/server/src/routes/esign.ts` — kernel routes
@@ -112,7 +112,7 @@ export const ESignConnectionResponseSchema = z
 export const ESignConnectionPutSchema = z
   .object({
     driver: ESignDriverSchema,
-    baseUrl: z.string().trim().min(1).max(2048).optional().openapi({
+    baseUrl: trimmedText({ min: 1, max: 2048 }).optional().openapi({
       description:
         "Self-hosted vendors only: the instance's origin. `https://` only, unless the operator allow-lists the host (ESIGN_ALLOW_PRIVATE_HOSTS). Never returned.",
       example: "https://sign.example.com",
@@ -184,7 +184,7 @@ export const ESignEnvelopeListQuery = z.object({
 });
 
 export const ESignVoidBody = z.object({
-  reason: z.string().trim().min(1).max(500).openapi({ example: "Sent to the wrong address" }),
+  reason: trimmedText({ min: 1, max: 500 }).openapi({ example: "Sent to the wrong address" }),
 });
 
 export const ESignNdaStartBodySchema = z

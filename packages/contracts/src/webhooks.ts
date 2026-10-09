@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { TimestampSchema, UuidSchema } from "./schemas.js";
+import { TimestampSchema, trimmedText, UuidSchema } from "./schemas.js";
 
 /*
  * Outbound webhooks (E3.4, ADR-0052). Handlers live in `apps/server/src/routes/webhooks.ts` —
@@ -102,7 +102,7 @@ export const WebhookEndpointListSchema = z
   })
   .openapi("WebhookEndpointList");
 
-const UrlSchema = z.string().trim().min(1).max(2048).openapi({
+const UrlSchema = trimmedText({ min: 1, max: 2048 }).openapi({
   description:
     "Where deliveries are POSTed. `https://` only (plain `http://` only for hosts the operator allows); private and link-local addresses are refused. Never returned.",
   example: "https://hooks.zapier.com/hooks/catch/123/abc/",

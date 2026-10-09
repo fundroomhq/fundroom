@@ -1,4 +1,4 @@
-import { page, TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import { page, TimestampSchema, trimmedText, UuidSchema } from "@fundroom/contracts";
 import { z } from "@hono/zod-openapi";
 import {
   ACTIVITY_KINDS,
@@ -87,7 +87,7 @@ export const PutStagesBody = z.object({
       z.object({
         id: UuidSchema.optional(),
         key: z.string().regex(STAGE_KEY_RE).optional(),
-        name: z.string().trim().min(1).max(80),
+        name: trimmedText({ min: 1, max: 80 }),
         isTerminal: z.boolean().default(false),
       }),
     )
@@ -122,7 +122,7 @@ const WebsiteSchema = z.string().trim().max(2000);
 const NotesSchema = z.string().trim().max(4000);
 
 export const CreateOrganizationBody = z.object({
-  name: z.string().trim().min(1).max(200),
+  name: trimmedText({ min: 1, max: 200 }),
   domain: DomainSchema.optional(),
   website: WebsiteSchema.optional(),
   kind: OrganizationKindSchema.optional(),
@@ -130,7 +130,7 @@ export const CreateOrganizationBody = z.object({
 });
 
 export const PatchOrganizationBody = z.object({
-  name: z.string().trim().min(1).max(200).optional(),
+  name: trimmedText({ min: 1, max: 200 }).optional(),
   domain: z.union([DomainSchema, z.null()]).optional(),
   website: z.union([WebsiteSchema, z.null()]).optional(),
   kind: z.union([OrganizationKindSchema, z.null()]).optional(),
@@ -251,7 +251,7 @@ export const CrmActivityListSchema = z
   .openapi("CrmActivityList");
 
 const EmailSchema = z.string().trim().max(320);
-const TagsSchema = z.array(z.string().trim().min(1).max(40)).max(50);
+const TagsSchema = z.array(trimmedText({ min: 1, max: 40 })).max(50);
 
 /**
  * `displayName` defaults to the empty string because `membershipId` may supply it: a staff
@@ -271,7 +271,7 @@ export const CreateContactBody = z.object({
 });
 
 export const PatchContactBody = z.object({
-  displayName: z.string().trim().min(1).max(200).optional(),
+  displayName: trimmedText({ min: 1, max: 200 }).optional(),
   organizationId: z.union([UuidSchema, z.null()]).optional(),
   membershipId: z.union([UuidSchema, z.null()]).optional(),
   email: z.union([EmailSchema, z.null()]).optional(),
@@ -358,19 +358,19 @@ export const PatchPipelineItemBody = z.object({
 export const CreateNoteBody = z.object({
   subjectKind: SubjectKindSchema,
   subjectId: UuidSchema,
-  body: z.string().trim().min(1).max(20_000),
+  body: trimmedText({ min: 1, max: 20_000 }),
 });
 
 export const CreateTaskBody = z.object({
   subjectKind: SubjectKindSchema,
   subjectId: UuidSchema,
-  title: z.string().trim().min(1).max(200),
+  title: trimmedText({ min: 1, max: 200 }),
   dueAt: TimestampSchema.optional(),
   assigneeMembershipId: UuidSchema.optional(),
 });
 
 export const PatchTaskBody = z.object({
-  title: z.string().trim().min(1).max(200).optional(),
+  title: trimmedText({ min: 1, max: 200 }).optional(),
   dueAt: z.union([TimestampSchema, z.null()]).optional(),
   assigneeMembershipId: z.union([UuidSchema, z.null()]).optional(),
   done: z.boolean().optional(),

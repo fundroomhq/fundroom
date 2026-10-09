@@ -1,4 +1,4 @@
-import { TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import { TimestampSchema, trimmedText, UuidSchema } from "@fundroom/contracts";
 import { z } from "@hono/zod-openapi";
 import { CHANNEL_EVENT_TYPES, NOTIFY_EVENT_TYPES } from "./rules.js";
 import { isValidTimezone } from "./schedule.js";
@@ -207,7 +207,7 @@ const ChannelEventTypes = z.array(ChannelEventTypeSchema).max(CHANNEL_EVENT_TYPE
 export const CreateChannelBody = z
   .object({
     kind: ChannelKindSchema.optional(),
-    name: z.string().trim().min(1).max(80).optional(),
+    name: trimmedText({ min: 1, max: 80 }).optional(),
     /** `slack` only: the incoming-webhook URL. */
     url: WebhookUrl.optional(),
     /** `slack_app` only: a channel from `GET /notify/slack/channels`. */
@@ -219,7 +219,7 @@ export const CreateChannelBody = z
 
 export const UpdateChannelBody = z
   .object({
-    name: z.string().trim().min(1).max(80).optional(),
+    name: trimmedText({ min: 1, max: 80 }).optional(),
     /** `slack` only. Changing the URL needs a fresh session (step-up), like creating a channel. */
     url: WebhookUrl.optional(),
     /** `slack_app` only (E3.6). Re-pointing needs a fresh session too. */

@@ -10589,6 +10589,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
+            "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
             "example": "Okta"
           },
           "jit": {
@@ -10668,6 +10669,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
+            "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
             "example": "Okta"
           },
           "jit": {
@@ -20135,7 +20137,8 @@
           "periodColumn": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 120
+            "maxLength": 120,
+            "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
           },
           "periodKind": {
             "type": "string",
@@ -20155,7 +20158,8 @@
                 "column": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 120
+                  "maxLength": 120,
+                  "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                 },
                 "key": {
                   "type": "string",
@@ -23466,7 +23470,8 @@
           "title": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 200,
+            "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
           },
           "done": {
             "type": "boolean",
@@ -23513,7 +23518,8 @@
               {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 200,
+                "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
               },
               {
                 "type": "null"
@@ -23523,7 +23529,8 @@
           "templateRole": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 100
+            "maxLength": 100,
+            "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
           },
           "prefill": {
             "type": "object",
@@ -23885,7 +23892,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 200,
+            "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
           },
           "email": {
             "type": "string",
@@ -34357,12 +34365,14 @@
                   "displayName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "workspaceName": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "example": "Acme Inc."
                   },
                   "workspaceSlug": {
@@ -38037,7 +38047,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "kind": {
                     "type": "string",
@@ -38478,7 +38489,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "kind": {
                     "type": "string",
@@ -41994,7 +42006,8 @@
                   "displayName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "scope": {
                     "$ref": "#/components/schemas/DelegateScope"
@@ -42643,7 +42656,8 @@
                   "displayName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "scope": {
                     "$ref": "#/components/schemas/DelegateScope"
@@ -44149,7 +44163,8 @@
                   "note": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 1000
+                    "maxLength": 1000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -45282,7 +45297,8 @@
                   "note": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 1000
+                    "maxLength": 1000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -45511,7 +45527,8 @@
                   "note": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 1000
+                    "maxLength": 1000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "exportSha256": {
                     "type": "string",
@@ -46520,7 +46537,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "kind": {
                     "type": "string",
@@ -47061,7 +47079,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "kind": {
                     "type": "string",
@@ -51468,6 +51487,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 253,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "example": "investors.acme.com"
                   }
                 },
@@ -56723,7 +56743,8 @@
                   "reason": {
                     "type": "string",
                     "minLength": 3,
-                    "maxLength": 500
+                    "maxLength": 500,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff][\\s\\S]{1,}[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -62030,7 +62051,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "firm": {
                     "type": "string",
@@ -63646,7 +63668,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "scopes": {
                     "type": "array",
@@ -64124,7 +64147,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "note": {
                     "anyOf": [
@@ -65165,6 +65189,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2048,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "description": "Where deliveries are POSTed. `https://` only (plain `http://` only for hosts the operator allows); private and link-local addresses are refused. Never returned.",
                     "example": "https://hooks.zapier.com/hooks/catch/123/abc/"
                   },
@@ -65642,6 +65667,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2048,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "description": "Re-pointing an endpoint needs a fresh session (step-up)",
                     "example": "https://hooks.zapier.com/hooks/catch/123/abc/"
                   },
@@ -67680,6 +67706,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2048,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "description": "Self-hosted vendors only: the instance's origin. `https://` only, unless the operator allow-lists the host (ESIGN_ALLOW_PRIVATE_HOSTS). Never returned.",
                     "example": "https://sign.example.com"
                   },
@@ -69671,6 +69698,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 500,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "example": "Sent to the wrong address"
                   }
                 },
@@ -74028,12 +74056,14 @@
                     "type": "string",
                     "minLength": 9,
                     "maxLength": 500,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff][\\s\\S]{7,}[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "description": "`https://` on one of the provider's `bookingLinkHosts` (422 `booking_link_invalid_url` otherwise)"
                   },
                   "label": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "description": {
                     "type": [
@@ -74323,12 +74353,14 @@
                   "url": {
                     "type": "string",
                     "minLength": 9,
-                    "maxLength": 500
+                    "maxLength": 500,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff][\\s\\S]{7,}[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "label": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "description": {
                     "type": [
@@ -77368,6 +77400,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 253,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "example": "acme.com"
                   }
                 },
@@ -78283,6 +78316,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "example": "Entra ID"
                   }
                 },
@@ -82209,12 +82243,14 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 100
+                    "maxLength": 100,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "legalName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "country": {
                     "type": "string",
@@ -82699,6 +82735,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
                     "description": "The tenant company's legal name; a change queues a sanctions re-screen"
                   },
                   "country": {
@@ -82935,7 +82972,8 @@
                   "note": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -83164,7 +83202,8 @@
                   "note": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "hold": {
                     "$ref": "#/components/schemas/LiftableHold"
@@ -84365,7 +84404,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 100
+                    "maxLength": 100,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "limits": {
                     "$ref": "#/components/schemas/PlanLimits"
@@ -84631,7 +84671,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 100
+                    "maxLength": 100,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "limits": {
                     "$ref": "#/components/schemas/PlanLimits"
@@ -86834,7 +86875,8 @@
                   "note": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -87558,12 +87600,14 @@
                   "companyName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 100
+                    "maxLength": 100,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "legalName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "country": {
                     "type": "string",
@@ -95261,7 +95305,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -95693,7 +95738,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "slug": {
                     "type": "string",
@@ -98451,7 +98497,8 @@
                         "name": {
                           "type": "string",
                           "minLength": 1,
-                          "maxLength": 80
+                          "maxLength": 80,
+                          "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                         },
                         "isTerminal": {
                           "type": "boolean",
@@ -98919,7 +98966,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "domain": {
                     "type": "string",
@@ -99390,7 +99438,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "domain": {
                     "anyOf": [
@@ -100152,7 +100201,8 @@
                     "items": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 40
+                      "maxLength": 40,
+                      "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                     },
                     "maxItems": 50
                   },
@@ -100616,7 +100666,8 @@
                   "displayName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "organizationId": {
                     "anyOf": [
@@ -100671,7 +100722,8 @@
                     "items": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 40
+                      "maxLength": 40,
+                      "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                     },
                     "maxItems": 50
                   },
@@ -102363,7 +102415,8 @@
                   "body": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 20000
+                    "maxLength": 20000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -102816,7 +102869,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "dueAt": {
                     "type": "string",
@@ -103075,7 +103129,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "dueAt": {
                     "anyOf": [
@@ -104780,7 +104835,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -105062,7 +105118,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "parentId": {
                     "type": "string",
@@ -106596,7 +106653,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 300
+                    "maxLength": 300,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "folderId": {
                     "type": "string",
@@ -108886,7 +108944,8 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200
+              "maxLength": 200,
+              "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
             },
             "required": true,
             "name": "q",
@@ -109621,7 +109680,8 @@
                   "fileName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 255
+                    "maxLength": 255,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "size": {
                     "type": "integer",
@@ -111827,12 +111887,14 @@
                   "subject": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "body": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 5000
+                    "maxLength": 5000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -112657,17 +112719,20 @@
                   "subject": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "body": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 5000
+                    "maxLength": 5000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "answer": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 20000
+                    "maxLength": 20000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -113076,14 +113141,14 @@
                       "null"
                     ],
                     "minLength": 1,
-                    "maxLength": 60
+                    "maxLength": 60,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "internalNote": {
                     "type": [
                       "string",
                       "null"
                     ],
-                    "minLength": 0,
                     "maxLength": 2000
                   },
                   "publicText": {
@@ -113092,7 +113157,8 @@
                       "null"
                     ],
                     "minLength": 1,
-                    "maxLength": 6000
+                    "maxLength": 6000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "dueAt": {
                     "type": [
@@ -113544,7 +113610,8 @@
                   "body": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 20000
+                    "maxLength": 20000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -114364,7 +114431,8 @@
                   "note": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [
@@ -114588,7 +114656,8 @@
                   "publicText": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 6000
+                    "maxLength": 6000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "additionalProperties": false
@@ -115581,7 +115650,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "description": {
                     "type": "string",
@@ -116097,7 +116167,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "description": {
                     "anyOf": [
@@ -118808,12 +118879,14 @@
                   "spreadsheetId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "range": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "mapping": {
                     "$ref": "#/components/schemas/MetricCsvMapping"
@@ -122576,7 +122649,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "url": {
                     "type": "string",
@@ -122862,7 +122936,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 80
+                    "maxLength": 80,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "url": {
                     "type": "string",
@@ -124550,7 +124625,8 @@
                   "entityName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "note": {
                     "type": "string",
@@ -126306,7 +126382,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "stage": {
                     "type": "string",
@@ -126919,7 +126996,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "stage": {
                     "type": "string",
@@ -129314,7 +129392,8 @@
                   "displayName": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "amount": {
                     "type": "string",
@@ -132266,7 +132345,8 @@
                           {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 200
+                            "maxLength": 200,
+                            "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                           },
                           {
                             "type": "null"
@@ -132276,7 +132356,8 @@
                       "templateRole": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 100
+                        "maxLength": 100,
+                        "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                       },
                       "prefill": {
                         "type": "object",
@@ -133566,7 +133647,8 @@
                   "message": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "signer": {
                     "$ref": "#/components/schemas/RoundSignatureSigner"
@@ -133830,7 +133912,8 @@
                   "reason": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 500
+                    "maxLength": 500,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "additionalProperties": false
@@ -135125,7 +135208,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "template": {
                     "type": "string",
@@ -136042,7 +136126,8 @@
                   "title": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "doc": {
                     "$ref": "#/components/schemas/PageDoc"
@@ -138703,7 +138788,8 @@
                   "body": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 5000
+                    "maxLength": 5000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "threadMembershipId": {
                     "type": "string",
@@ -139735,7 +139821,8 @@
                       "null"
                     ],
                     "minLength": 1,
-                    "maxLength": 120
+                    "maxLength": 120,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "fromLocalPart": {
                     "type": "string",
@@ -139757,7 +139844,8 @@
                       "null"
                     ],
                     "minLength": 1,
-                    "maxLength": 300
+                    "maxLength": 300,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   },
                   "footerNote": {
                     "type": [
@@ -139765,7 +139853,8 @@
                       "null"
                     ],
                     "minLength": 1,
-                    "maxLength": 1000
+                    "maxLength": 1000,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "additionalProperties": false
@@ -140184,7 +140273,8 @@
                   "domain": {
                     "type": "string",
                     "minLength": 4,
-                    "maxLength": 253
+                    "maxLength": 253,
+                    "pattern": "[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff][\\s\\S]{2,}[^\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]"
                   }
                 },
                 "required": [

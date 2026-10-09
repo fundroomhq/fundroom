@@ -1,4 +1,10 @@
-import { EmailSchema, TimestampSchema, UuidSchema } from "@fundroom/contracts";
+import {
+  EmailSchema,
+  nonBlankPattern,
+  TimestampSchema,
+  trimmedText,
+  UuidSchema,
+} from "@fundroom/contracts";
 import { PageDocSchema } from "@fundroom/module-content";
 import { z } from "@hono/zod-openapi";
 import { AudienceSchema, SectionRulesSchema } from "./model.js";
@@ -115,7 +121,7 @@ export const SendIdParams = z.object({ sendId: UuidSchema });
 export const ArchiveParams = z.object({ slug: z.string().min(1).max(80) });
 
 export const CreatePostBody = z.object({
-  title: z.string().trim().min(1).max(200),
+  title: trimmedText({ min: 1, max: 200 }),
   template: TemplateKeySchema.default("yc"),
 });
 
@@ -132,7 +138,7 @@ export const AiDraftBody = z.object({
 });
 
 export const SaveDraftBody = z.object({
-  title: z.string().trim().min(1).max(200).optional(),
+  title: trimmedText({ min: 1, max: 200 }).optional(),
   doc: PageDocSchema.optional(),
   audience: AudienceSchema.optional(),
   visibility: SectionRulesSchema.optional(),
@@ -225,7 +231,7 @@ export const ThreadListSchema = z
   .object({ threads: z.array(ThreadSchema) })
   .openapi("UpdateThreadList");
 export const CreateReplyBody = z.object({
-  body: z.string().trim().min(1).max(5000),
+  body: trimmedText({ min: 1, max: 5000 }),
   /** Staff only: the investor whose thread to answer in. */
   threadMembershipId: UuidSchema.optional(),
 });
@@ -260,15 +266,15 @@ export const UpdatesSettingsSchema = z
   })
   .openapi("UpdatesSettings");
 export const UpdatesSettingsPatchBody = z.object({
-  fromName: z.string().trim().min(1).max(120).nullable().optional(),
+  fromName: trimmedText({ min: 1, max: 120 }).nullable().optional(),
   fromLocalPart: z
     .string()
     .trim()
     .regex(/^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/u)
     .optional(),
   replyTo: EmailSchema.nullable().optional(),
-  postalAddress: z.string().trim().min(1).max(300).nullable().optional(),
-  footerNote: z.string().trim().min(1).max(1000).nullable().optional(),
+  postalAddress: trimmedText({ min: 1, max: 300 }).nullable().optional(),
+  footerNote: trimmedText({ min: 1, max: 1000 }).nullable().optional(),
 });
 
 export const DnsRecordSchema = z
@@ -303,5 +309,11 @@ export const SendingDomainEnvelopeSchema = z
   .object({ domain: z.union([SendingDomainSchema, z.null()]) })
   .openapi("SendingDomainEnvelope");
 export const SetSendingDomainBody = z.object({
-  domain: z.string().trim().toLowerCase().min(4).max(253),
+  domain: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(4, { abort: true })
+    .max(253)
+    .regex(nonBlankPattern(4)),
 });
