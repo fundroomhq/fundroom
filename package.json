@@ -25,7 +25,7 @@
     "test:watch": "vitest --project unit --project ui --project web",
     "coverage": "vitest run --project unit --project ui --project web --coverage",
     "changeset": "changeset",
-    "version-packages": "changeset version",
+    "version-packages": "changeset version && node scripts/release/version-artifacts.mjs",
     "packages:pack-check": "node scripts/release/pack-check.mjs",
     "prepare": "lefthook install",
     "lint:deps": "depcruise --config .dependency-cruiser.cjs .",

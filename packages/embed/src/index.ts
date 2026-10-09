@@ -9,6 +9,13 @@
  */
 export type { ConsentInput } from "./consent.js";
 export type { FallbackReason } from "./fallback.js";
+/**
+ * The loader's own version, which is also what the capability document's `MIN_EMBED_SDK`
+ * (`apps/server/src/version.ts`) is compared against. Generated from `package.json` by
+ * `scripts/build-artifacts.mjs`, so `changeset version` (via the root `version-packages`) cannot
+ * leave it behind; `artifacts.test.ts` and `codegen:check` fail if the two drift.
+ */
+export { VERSION } from "./generated/version.js";
 export type { HistoryMode } from "./history.js";
 export {
   DEFAULT_MIN_HEIGHT,
@@ -27,10 +34,3 @@ export {
   type PayloadOf,
   type SeedHostEvent,
 } from "./protocol.js";
-
-/**
- * The loader's own version, which is also what the capability document's `MIN_EMBED_SDK`
- * (`apps/server/src/version.ts`) is compared against. `artifacts.test.ts` pins it to
- * `package.json` so the two cannot drift.
- */
-export const VERSION = "0.1.0";

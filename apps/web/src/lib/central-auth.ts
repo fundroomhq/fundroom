@@ -56,7 +56,7 @@ const SERVER_PATTERNS: readonly RegExp[] = [
   /^\/webhooks\/email\/[a-z0-9-]{1,32}$/u,
   new RegExp(`^/webhooks/(?:esign|accreditation|integrations)/${UUID}$`, "u"),
   new RegExp(`^/sso/(?:oidc/${UUID}/callback|saml/${UUID}/(?:acs|metadata))$`, "u"),
-  /^\/embed\/(?:v\d+|\d+\.\d+\.\d+)\/[A-Za-z0-9._-]+$/u,
+  /^\/embed\/(?:v\d+|\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\/[A-Za-z0-9._-]+$/u,
   /^\/embed\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\/theme\.json$/u,
 ];
 
