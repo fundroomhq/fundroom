@@ -475,6 +475,22 @@ function remember(route: KeyRoute, body: Record<string, unknown>): void {
     importId ??= body["id"] as string;
 }
 
+/**
+ * Waits until the import the table started is `done` or `failed`. The worker moves it (and fills
+ * `startedAt`/`finishedAt`) between the key's call and the session's, which would otherwise
+ * compare a null with a string.
+ */
+async function importSettled(): Promise<void> {
+  const deadline = Date.now() + 30_000;
+  for (;;) {
+    const res = await request(`/api/v1/metrics/import/${importId}`, { cookie: owner.cookie });
+    const { status } = await json<{ status: string }>(res);
+    if (status === "done" || status === "failed") return;
+    if (Date.now() > deadline) throw new Error(`import ${importId} still ${status} after 30 s`);
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
 async function call(route: KeyRoute, auth: Auth): Promise<Response> {
   const body = route.body?.();
   return request(`/api/v1${route.url()}`, {
@@ -511,6 +527,7 @@ describe("a key holding exactly the route's permission", () => {
 
   for (const route of ROUTES) {
     it(`${route.method} ${route.path} (${route.perm}) answers like a session does`, async () => {
+      if (route.path === "/metrics/import/{id}") await importSettled();
       const key = await keyFor(route.perm);
       const viaKey = await call(route, { key: key.token });
       const keyText = await viaKey.text();
