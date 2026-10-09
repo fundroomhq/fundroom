@@ -31,6 +31,15 @@ import { createOpenFgaEngine, OPENFGA_DEFAULT_DEPTH_LIMIT, openFgaStoreName } fr
 const IMAGE = process.env["FUNDROOM_TEST_OPENFGA_IMAGE"] ?? "openfga/openfga:v1.21.0";
 const PORT = 8080;
 const TOKEN = "fundroom-test-preshared-key";
+/*
+ * OpenFGA answers each BatchCheck item that outlives its request deadline (3 s by default) with
+ * "context deadline exceeded", which the engine reports as a failed item (denied by the caller).
+ * That is a wall-clock limit, so on a CPU-starved runner it turns a correctness comparison into
+ * a race: one 50-item batch of the 5k-tuple world crossing it fails the differential as surely as
+ * a wrong answer would. The server and the client get a deadline far above any healthy request
+ * here; latency is asserted explicitly, around the operation being measured, where it matters.
+ */
+const REQUEST_TIMEOUT_MS = 30_000;
 
 let container: StartedTestContainer;
 let url: string;
@@ -44,13 +53,19 @@ beforeAll(async () => {
       OPENFGA_AUTHN_PRESHARED_KEYS: TOKEN,
       OPENFGA_PLAYGROUND_ENABLED: "false",
       OPENFGA_LOG_LEVEL: "warn",
+      OPENFGA_REQUEST_TIMEOUT: `${REQUEST_TIMEOUT_MS / 1000}s`,
     })
     .withExposedPorts(PORT)
     .withWaitStrategy(Wait.forHttp("/healthz", PORT))
     .withStartupTimeout(120_000)
     .start();
   url = `http://${container.getHost()}:${container.getMappedPort(PORT)}`;
-  engine = createOpenFgaEngine({ url, apiToken: TOKEN, http: fetch, timeoutMs: 10_000 });
+  engine = createOpenFgaEngine({
+    url,
+    apiToken: TOKEN,
+    http: fetch,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+  });
 });
 
 afterAll(async () => {
@@ -603,11 +618,11 @@ describe("openfga engine sync", () => {
     const want = resources
       .filter((r) => expected(rules, m, resourceRefOf(w, r.kind, r.id), new Date(BASE)).view)
       .map((r) => r.id);
-    expect(failed.size).toBe(0);
-    expect([...allowed].sort()).toEqual(want.sort());
     console.info(
       `[openfga 5k] tuples=${first.writes} firstSync=${firstMs.toFixed(0)}ms noopSync=${secondMs.toFixed(0)}ms batchCheck(${resources.length})=${listMs.toFixed(0)}ms`,
     );
+    expect(Object.fromEntries(failed)).toEqual({});
+    expect([...allowed].sort()).toEqual(want.sort());
     expect(firstMs).toBeLessThan(60_000);
     expect(secondMs).toBeLessThan(20_000);
     await engine.dropWorkspace(second);
