@@ -122,7 +122,8 @@ jobs:
         # consumer from the two tarballs. Only these two packages may be public.
         run: pnpm packages:pack-check
       - name: Changeset present
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changeset')
+        # The version PR consumes the changesets, so it never has one of its own.
+        if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/') && !contains(github.event.pull_request.labels.*.name, 'no-changeset')
         env:
           BASE_REF: ${{ github.base_ref }}
         run: pnpm exec changeset status --since="origin/$BASE_REF"
