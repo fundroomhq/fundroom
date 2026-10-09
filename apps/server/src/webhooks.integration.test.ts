@@ -20,7 +20,9 @@ import { createMemoryMailer, type MemoryMailer } from "@fundroom/mail";
 import { verifyWebhook, WebhookVerificationError } from "@fundroom/webhooks";
 import * as OTPAuth from "otpauth";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createContainer } from "./container.js";
 import { createLogger } from "./logger.js";
+import { COMPILED_IN_MODULES } from "./modules.js";
 import { type RunningServer, startServer } from "./server.js";
 import { bearer, mintTestApiKey } from "./test/api-keys.js";
 import { withSetCookies } from "./test/session-cookies.js";
@@ -1510,30 +1512,52 @@ describe("fix round 2", () => {
   });
 
   it("R4: a claim lost while waiting for a send slot is never POSTed", async () => {
-    const { id } = await createEndpoint("r4");
+    // The claim must be this call's, never the background workers'. So: a workspace of its own
+    // (no members, so no fan-out adds rows to it) and an unstarted container whose clock runs an
+    // hour ahead. The row is due in 30 minutes: due for that container's claim, and not due for
+    // this server's sweep or deliver jobs, whatever they are doing meanwhile. (Making a row due
+    // with Postgres now() instead is not enough: background workers may claim it first, and the
+    // claim compares it with a millisecond JS clock, so on a clock shared with the database a
+    // claim in the same millisecond finds it not yet due.)
+    const ws = (await createWorkspace(running.container.db, { slug: "r4-claims", name: "R4" })).id;
+    behaviours.set("r4", { status: 204 });
+    const { endpoint } = await running.container.webhooks.createEndpoint(
+      systemContext(ws),
+      { url: hookUrl("r4"), events: ["membership.created"] },
+      {},
+    );
     const [row] = await sql<{ id: string }>(
       `INSERT INTO core.webhook_delivery (workspace_id, endpoint_id, topic, event_id, payload, status, next_attempt_at)
-       VALUES ($1, $2, 'membership.created', 'r4', '{"type":"membership.created","data":{}}'::jsonb, 'pending', now() + interval '1 hour')
+       VALUES ($1, $2, 'membership.created', 'r4', '{"type":"membership.created","data":{}}'::jsonb, 'pending', $3)
        RETURNING id`,
-      [acmeId, id],
+      [ws, endpoint.id, new Date(Date.now() + 30 * 60_000)],
     );
-    // Due only for this call (the background sweep sees it as not due until then).
-    await sql("UPDATE core.webhook_delivery SET next_attempt_at = now() WHERE id = $1", [row?.id]);
-    const outcome = await running.container.webhooks.deliverWorkspace(acmeId, undefined, {
-      afterClaim: async (claimed) => {
-        if (!claimed.some((d) => d.id === row?.id)) return;
-        // While this worker waited for a slot, its lease ran out and another worker re-claimed.
-        await sql(
-          "UPDATE core.webhook_delivery SET claimed_at = now() + interval '1 second' WHERE id = $1",
-          [row?.id],
-        );
-      },
+    const ahead = createContainer({
+      config: testConfig(),
+      logger: createLogger({ level: "warn" }),
+      modules: COMPILED_IN_MODULES,
+      mailer,
+      now: () => new Date(Date.now() + 60 * 60_000),
     });
-    expect(outcome.claimed).toBeGreaterThanOrEqual(1);
+    try {
+      const outcome = await ahead.webhooks.deliverWorkspace(ws, undefined, {
+        afterClaim: async (claimed) => {
+          if (!claimed.some((d) => d.id === row?.id)) return;
+          // While this worker waited for a slot, its lease ran out and another worker re-claimed.
+          await sql(
+            "UPDATE core.webhook_delivery SET claimed_at = claimed_at + interval '1 second' WHERE id = $1",
+            [row?.id],
+          );
+        },
+      });
+      expect(outcome.claimed).toBe(1);
+    } finally {
+      await ahead.stop();
+    }
     expect(hitsFor("r4")).toHaveLength(0);
-    const after = (await rowsOf(id)).find((r) => r.id === row?.id);
+    const after = (await rowsOf(endpoint.id)).find((r) => r.id === row?.id);
     expect(after?.status).toBe("sending");
-    await sql("DELETE FROM core.webhook_endpoint WHERE id = $1", [id]);
+    await sql("DELETE FROM core.webhook_endpoint WHERE id = $1", [endpoint.id]);
   });
 
   it("R7: a failure from the old URL after a re-point still honours Retry-After", async () => {
