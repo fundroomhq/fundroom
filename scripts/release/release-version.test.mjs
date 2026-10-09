@@ -25,6 +25,8 @@ import {
   isPrerelease,
   parseFloating,
   planTag,
+  RELEASE_BODY_MAX,
+  releaseBody,
   releaseNotes,
   remoteTagSha,
   // biome-ignore lint/correctness/useImportExtensions: the module is .mjs; the rule's ".js" fix does not resolve under node --test.
@@ -193,6 +195,29 @@ test("release notes come from the version's CHANGELOG section", () => {
   assert.equal(releaseNotes(changelog, "1.1.0"), "### Minor Changes\n\n- b");
   assert.equal(releaseNotes(changelog, "1.0.0"), "- a");
   assert.equal(releaseNotes(changelog, "2.0.0"), null);
+});
+
+test("release body: whole notes when they fit; else cut before an entry, linking the CHANGELOG", () => {
+  const args = { version: "1.0.0-rc.0", image: "ghcr.io/o/r", repository: "o/r" };
+  const small = releaseBody({ ...args, notes: "- a" });
+  assert.match(small, /^- a\n\nImage: `ghcr\.io\/o\/r:1\.0\.0-rc\.0`/u);
+  const entry = (i) => `- entry ${i}\n  ${"x".repeat(200)}\n  - nested ${i}`;
+  const notes = `### Major Changes\n\n${Array.from({ length: 1000 }, (_, i) => entry(i)).join("\n")}`;
+  assert.ok(notes.length > 125_000, "the fixture exceeds GitHub's limit");
+  const body = releaseBody({ ...args, notes });
+  assert.ok(body.length <= RELEASE_BODY_MAX, `${body.length} > ${RELEASE_BODY_MAX}`);
+  assert.ok(RELEASE_BODY_MAX <= 125_000);
+  // Cut between entries: the last kept entry is complete (its nested line is there).
+  const kept = body.split("\n").filter((l) => l.startsWith("- entry ")).length;
+  assert.ok(kept > 100);
+  assert.match(body, new RegExp(`  - nested ${kept - 1}\\n\\n…and more`, "u"));
+  assert.match(
+    body,
+    /\(https:\/\/github\.com\/o\/r\/blob\/v1\.0\.0-rc\.0\/apps\/server\/CHANGELOG\.md#100-rc0\)/u,
+  );
+  assert.match(body, /Image: `ghcr\.io\/o\/r:1\.0\.0-rc\.0`.*\n$/u);
+  // A small limit still never exceeds itself.
+  assert.ok(releaseBody({ ...args, notes, max: 2000 }).length <= 2000);
 });
 
 // --- image.yml: nothing is named before it is scanned, signed and attested ---------------------
@@ -398,7 +423,7 @@ const a = process.argv.slice(2);
 fs.appendFileSync(${JSON.stringify(ghLog)}, a.join(" ") + "\\n");
 if (process.env.GH_FAIL && a[1] === "create") { process.stderr.write("HTTP 502\\n"); process.exit(1); }
 if (a[1] === "view") { const r = s[a[2]]; if (!r) { process.stderr.write("release not found\\n"); process.exit(1); } console.log(String(r.draft)); }
-else if (a[1] === "create") { s[a[2]] = { draft: a.includes("--draft"), prerelease: a.includes("--prerelease"), notes: fs.readFileSync(0, "utf8") }; }
+else if (a[1] === "create") { const notes = fs.readFileSync(0, "utf8"); if (notes.length > 125000) { process.stderr.write("HTTP 422: Validation Failed (body is too long (maximum is 125000 characters))\\n"); process.exit(1); } s[a[2]] = { draft: a.includes("--draft"), prerelease: a.includes("--prerelease"), notes }; }
 else if (a[1] === "edit") { s[a[2]].draft = !a.includes("--draft=false"); }
 fs.writeFileSync(${JSON.stringify(ghState)}, JSON.stringify(s));
 `,
@@ -583,6 +608,29 @@ test("tag: after a failure before Apply tags, deleting the draft and the tag let
     assert.equal(again.out.released, "true");
     assert.equal(box.remoteTag("v1.0.0"), sha);
     assert.equal(box.releases()["v1.0.0"].draft, true);
+  } finally {
+    rmSync(box.dir, { recursive: true, force: true });
+  }
+});
+
+test("tag: a first release whose notes exceed GitHub's body limit still creates the draft", () => {
+  const box = sandbox("1.0.0-rc.0");
+  try {
+    const big = Array.from({ length: 800 }, (_, i) => `- change ${i} ${"y".repeat(200)}`).join(
+      "\n",
+    );
+    writeFileSync(
+      join(box.dir, "work/apps/server/CHANGELOG.md"),
+      `# @fundroom/server\n\n## 1.0.0-rc.0\n\n${big}\n`,
+    );
+    const sha = box.commit("chore(release): version packages");
+    const res = box.tag(sha);
+    assert.equal(res.status, 0);
+    assert.equal(res.out.released, "true");
+    const notes = box.releases()["v1.0.0-rc.0"].notes;
+    assert.ok(notes.length <= RELEASE_BODY_MAX);
+    assert.match(notes, /^- change 0 /u);
+    assert.match(notes, /…and more: the full notes are in/u);
   } finally {
     rmSync(box.dir, { recursive: true, force: true });
   }

@@ -7,7 +7,7 @@ For maintainers. How a release is cut, what it produces, and what to do when par
 | Output | Stable `X.Y.Z` | Release candidate `X.Y.Z-rc.N` |
 |---|---|---|
 | Git tag | `vX.Y.Z` (annotated, on the commit the image is built from) | `vX.Y.Z-rc.N` |
-| GitHub release | notes from `apps/server/CHANGELOG.md`, SBOM attached; a draft until the image is signed and tagged | the same, marked prerelease |
+| GitHub release | notes from `apps/server/CHANGELOG.md` (cut before GitHub's 125,000-character body limit, ending with a link to the full section; the first release's section is longer than that), SBOM attached; a draft until the image is signed and tagged | the same, marked prerelease |
 | Image tags (`ghcr.io/fundroomhq/fundroom`) | `X.Y.Z`; `X.Y` if it is the highest patch of `X.Y`; `X` if it is the highest `X.*` (never `0`); `latest` if it is the highest stable release | `X.Y.Z-rc.N` only |
 | OCI label `org.opencontainers.image.version` | `X.Y.Z` | `X.Y.Z-rc.N` |
 | npm (`@fundroomhq/tokens`, `@fundroomhq/ui`) | `X.Y.Z` under dist-tag `latest` if it is the highest stable release, else `release-X.Y` | `X.Y.Z-rc.N` under dist-tag `next` (`next-X.Y` if a higher version is already on npm) |

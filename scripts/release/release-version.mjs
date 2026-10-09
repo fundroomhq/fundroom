@@ -7,7 +7,7 @@
  *     core package together). It releases when that version (not 0.0.0) has no `v<version>` tag on
  *     origin yet: annotated tag on GITHUB_SHA (the commit this run builds and signs, so the
  *     signature's workflow SHA is the tag's commit), pushed, and a DRAFT GitHub release from the
- *     version's CHANGELOG section. It also resumes when the tag is on this commit and the release
+ *     version's CHANGELOG section (cut to fit GitHub's body limit, linking the rest). It also resumes when the tag is on this commit and the release
  *     is missing or still a draft. Outputs `released`, `version`, `tag`, `prerelease`, `floating`.
  *     One tag per release, not per package: `changeset publish` is never run (its per-package
  *     tags are not release tags). The two public packages, @fundroomhq/tokens and @fundroomhq/ui, are
@@ -238,6 +238,47 @@ export function releaseNotes(changelog, version) {
   return body === "" ? null : body;
 }
 
+/**
+ * GitHub refuses a release body over 125,000 characters ("body is too long"), which would fail
+ * the tag step AFTER the tag push, on every resume too. The first release's section holds every
+ * changeset since the start (~130,000 characters for 1.0.0-rc.0). Measured in UTF-16 units,
+ * which never undercount, with a margin.
+ */
+export const RELEASE_BODY_MAX = 120_000;
+
+/**
+ * The GitHub release body: the notes, then the image line. Notes that would push it over
+ * RELEASE_BODY_MAX are cut before the last top-level entry (`- `) or heading that fits, and end
+ * with a link to the whole section in the CHANGELOG at the tag.
+ *
+ * @param {{ notes: string, version: string, image: string, repository: string,
+ *   max?: number }} input
+ */
+export function releaseBody({ notes, version, image, repository, max = RELEASE_BODY_MAX }) {
+  const tail = `\n\nImage: \`${image}:${version}\` (signed by the \`Release\` workflow; verify before you deploy, docs/runbooks/install-and-upgrade.md).\n`;
+  if (notes.length + tail.length <= max) return `${notes}${tail}`;
+  const more = `\n\n…and more: the full notes are in [apps/server/CHANGELOG.md](https://github.com/${repository}/blob/${gitTag(version)}/apps/server/CHANGELOG.md#${version.replaceAll(".", "")}).`;
+  const budget = max - tail.length - more.length;
+  if (budget <= 0) throw new Error(`release body limit ${max} is too small`);
+  const lines = notes.split("\n");
+  let kept = 0;
+  let length = 0;
+  let cut = 0;
+  for (const [i, line] of lines.entries()) {
+    const next = length + line.length + (i === 0 ? 0 : 1);
+    if (next > budget) break;
+    length = next;
+    kept = i + 1;
+    // A boundary is just before a top-level entry or a heading, so no entry is cut in half.
+    if (lines[i + 1] !== undefined && /^(- |#)/u.test(lines[i + 1] ?? "")) cut = kept;
+  }
+  const body = lines
+    .slice(0, cut > 0 ? cut : kept)
+    .join("\n")
+    .trimEnd();
+  return `${body}${more}${tail}`;
+}
+
 // --- I/O -------------------------------------------------------------------------------------
 
 /**
@@ -343,8 +384,9 @@ function tagCommand(/** @type {boolean} */ dryRun) {
   const floating = floatingTags(version, remoteTags);
   const changelog = fileAt(sha, "apps/server/CHANGELOG.md");
   const notes = (changelog !== null && releaseNotes(changelog, version)) || `FundRoom ${version}.`;
-  const image = `ghcr.io/${(actionsEnv("GITHUB_REPOSITORY") || "fundroomhq/fundroom").toLowerCase()}`;
-  const body = `${notes}\n\nImage: \`${image}:${version}\` (signed by the \`Release\` workflow; verify before you deploy, docs/runbooks/install-and-upgrade.md).\n`;
+  const repository = actionsEnv("GITHUB_REPOSITORY") || "fundroomhq/fundroom";
+  const image = `ghcr.io/${repository.toLowerCase()}`;
+  const body = releaseBody({ notes, version, image, repository });
   if (dryRun) {
     console.error(`dry run: ${JSON.stringify(plan)} at ${sha}`);
   } else {
