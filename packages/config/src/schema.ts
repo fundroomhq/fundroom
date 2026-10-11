@@ -1120,7 +1120,7 @@ export const envSchema = z.object({
   METRICS_TOKEN: z.string().min(16).optional(),
 
   // --- operator toggles ----------------------------------------------------
-  /** Checks releases.fundroom.com/index.json (no identifiers sent). Opt out per §4.4 of design/07. */
+  /** Checks releases.fundroom.io/index.json (no identifiers sent). Opt out per §4.4 of design/07. */
   UPDATE_CHECK: bool.default(true),
   /**
    * The release index the update check reads (design/07 §4.4). A static JSON file; the request
@@ -1135,7 +1135,7 @@ export const envSchema = z.object({
       const url = new URL(u);
       return url.search === "" && url.hash === "" && url.username === "" && url.password === "";
     }, "must not carry a query string, fragment or credentials")
-    .default("https://releases.fundroom.com/index.json"),
+    .default("https://releases.fundroom.io/index.json"),
   /**
    * Offer the generated `en-XA` pseudo-locale in the language switch (E2.8). For translators and
    * layout QA on a staging install; development builds always offer it.

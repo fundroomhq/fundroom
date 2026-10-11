@@ -246,7 +246,7 @@ Do not edit `core.schema_migration` by hand to make an old image start. The jour
 
 The install checks, by itself, whether a newer release exists. It never installs anything.
 
-- **What it sends:** one `GET` of `UPDATE_CHECK_URL` (default `https://releases.fundroom.com/index.json`, a static file) with no query string, no cookies and nothing about the install except its version, in the User-Agent (`FundRoom/<version>`). The answer is cached for 12 hours, or 1 hour after a failure. The request has a 5-second timeout and follows no redirects (a moved index is a config change: set `UPDATE_CHECK_URL`).
+- **What it sends:** one `GET` of `UPDATE_CHECK_URL` (default `https://releases.fundroom.io/index.json`, a static file) with no query string, no cookies and nothing about the install except its version, in the User-Agent (`FundRoom/<version>`). The answer is cached for 12 hours, or 1 hour after a failure. The request has a 5-second timeout and follows no redirects (a moved index is a config change: set `UPDATE_CHECK_URL`).
 - **When it runs:** only when asked — by `fundroom doctor`, and by the admin **Health** page (`GET /api/v1/ops/update`, owner and admin). The Health page shows it on single-tenant installs only; on a multi-tenant host the running version is the operator's business rather than a workspace admin's, so the page says nothing and makes no request. `doctor` checks in both modes.
 
 What it says (the `doctor` line, and the card):
@@ -286,7 +286,7 @@ An air-gapped install that still wants the notice can mirror the index and point
 | `SETUP_TOKEN` | app | generated; fixed by the templates |
 | `STORAGE_DRIVER` | app | `fs`; `s3` in every multi-process template |
 | `CUSTOM_DOMAIN_DRIVER` | app | `caddy-ask`; `manual` in Helm and the PaaS templates |
-| `UPDATE_CHECK` / `UPDATE_CHECK_URL` | app | `true` / `https://releases.fundroom.com/index.json` |
+| `UPDATE_CHECK` / `UPDATE_CHECK_URL` | app | `true` / `https://releases.fundroom.io/index.json` |
 | `AV_ACCEPT_UNSCANNED` | app | `false`; prod/staging refuse `AV_DRIVER=noop` without it |
 | `POSTGRES_PASSWORD` | Compose `.env` | required; `seedhost` on stacks created before |
 | `EDGE_TRUSTED_PROXIES` | Compose `.env` (caddy) | empty: Caddy trusts no forwarded headers |

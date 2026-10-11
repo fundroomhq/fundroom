@@ -7,7 +7,7 @@ FundRoom gates investor materials and offering information. We treat security re
 Please **do not** open a public issue for anything that could be a vulnerability.
 
 - Preferred: GitHub private vulnerability reporting on this repository: <https://github.com/fundroomhq/fundroom/security/advisories/new>.
-- Or email `security@fundroom.com`. If you need to encrypt, ask for our current PGP key in your first message.
+- Or email `security@fundroom.io`. If you need to encrypt, ask for our current PGP key in your first message.
 
 Include what you found, how to reproduce it, the version or commit, and what impact you believe it has. You will get an acknowledgement within 2 business days and a triage decision within 7 days. We will keep you informed and credit you in the advisory unless you prefer otherwise.
 

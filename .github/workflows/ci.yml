@@ -53,6 +53,8 @@ jobs:
         run: pnpm lint:sql && node --test scripts/check-sql-hygiene.test.mjs scripts/evidence/change-management.test.mjs
       - name: i18n (catalogue parity, pseudo-locale drift, unused keys, no JSX literals)
         run: pnpm lint:i18n
+      - name: No foreign domain (fundroom.io is ours; the .com is not)
+        run: pnpm lint:domain
       - name: Edge config is valid (Caddyfile, unset env)
         # Only FUNDROOM_DOMAIN is passed, exactly as compose defaults it: every optional
         # placeholder stays unset, which is the case that breaks. Caddy substitutes an empty

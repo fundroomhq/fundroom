@@ -935,7 +935,7 @@ describe("loadConfig", () => {
 
   it("UPDATE_CHECK_URL (E2.9): defaults to the release CDN, https outside dev/test, no identifiers", () => {
     expect(loadConfig({ env: minimal }).raw.UPDATE_CHECK_URL).toBe(
-      "https://releases.fundroom.com/index.json",
+      "https://releases.fundroom.io/index.json",
     );
     // A local test server over http is fine in test/dev.
     expect(
