@@ -341,7 +341,7 @@ services:
   objstore:
     # S3-compatible store for installs that outgrow the /data volume. For a managed bucket
     # (S3, R2, MinIO elsewhere) use compose.s3.yaml instead and skip this profile.
-    image: chrislusf/seaweedfs:3.97
+    image: chrislusf/seaweedfs:4.48
     profiles: ["objstore"]
     restart: unless-stopped
     command: ["server", "-s3", "-s3.port=8333", "-dir=/data", "-master.volumeSizeLimitMB=1024"]
