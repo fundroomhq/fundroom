@@ -27,7 +27,9 @@ describe("API key tokens", () => {
     const hash = apiKeyTokenHash(token);
     expect(hash).toHaveLength(32);
     expect(hash.equals(createHash("sha256").update(token).digest())).toBe(true);
-    expect(hash.equals(apiKeyTokenHash(`${token.slice(0, -1)}A`))).toBe(false);
+    // A different last character: a random token ends in "A" one time in 64.
+    const other = token.endsWith("A") ? "B" : "A";
+    expect(hash.equals(apiKeyTokenHash(`${token.slice(0, -1)}${other}`))).toBe(false);
   });
 
   it("guards the shape before any database work", () => {
