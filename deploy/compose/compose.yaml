@@ -353,7 +353,7 @@ services:
       - no-new-privileges:true
 
   clamav:
-    image: clamav/clamav:1.4
+    image: clamav/clamav:1.5
     profiles: ["av"]
     restart: unless-stopped
     volumes:
