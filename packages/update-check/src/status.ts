@@ -9,9 +9,11 @@ import { compareSemVer, isPrerelease, parseSemVer, type SemVer } from "./semver.
  *                        tenant admin's (`multi_tenant`).
  *  - `unknown`           this build has no place in the release line: a development build
  *                        (`0.0.0`, what an unreleased checkout reports), a prerelease, or a
- *                        version string that does not parse. `latestVersion` is still reported.
+ *                        version string that does not parse. `latestVersion` is still reported
+ *                        when the index has one.
  *  - `current`           nothing newer than this build is listed (a build newer than `latest`,
- *                        e.g. a hotfix ahead of the index, is current too).
+ *                        e.g. a hotfix ahead of the index, is current too, and so is every build
+ *                        while the index has no stable release and so no `latest`).
  *  - `update_available`  a newer stable release exists and none of the newer ones is a security
  *                        release.
  *  - `security_update`   at least one security release is newer than this build. Checked
@@ -60,10 +62,13 @@ export function errorStatus(currentVersion: string, now: Date): UpdateStatus {
 
 /** Pure: the status of `current` against a validated index, as of `now`. */
 export function deriveUpdateStatus(current: string, index: ReleaseIndex, now: Date): UpdateStatus {
-  const latest = index.releases.find((r) => r.version === index.latest);
+  // No `latest` (no stable release yet): no latestVersion and no releaseUrl, but security
+  // releases are still computed from `releases`.
+  const latest =
+    index.latest === undefined ? undefined : index.releases.find((r) => r.version === index.latest);
   const base = {
     currentVersion: current,
-    latestVersion: index.latest,
+    ...(index.latest === undefined ? {} : { latestVersion: index.latest }),
     checkedAt: now.toISOString(),
     ...(latest === undefined ? {} : { releaseUrl: latest.url }),
   };
@@ -82,7 +87,8 @@ export function deriveUpdateStatus(current: string, index: ReleaseIndex, now: Da
   if (security.length > 0) {
     return { status: "security_update", ...base, securityReleases: security };
   }
-  return { status: newer(parseSemVer(index.latest)) ? "update_available" : "current", ...base };
+  const target = index.latest === undefined ? undefined : parseSemVer(index.latest);
+  return { status: newer(target) ? "update_available" : "current", ...base };
 }
 
 /** One line for `fundroom doctor`. Plain text; the doctor never fails because of it. */
@@ -94,13 +100,17 @@ export function formatUpdateStatus(s: UpdateStatus): string {
         ? "Update check: not reported on a multi-tenant host"
         : "Update check: off (UPDATE_CHECK=false)";
     case "unknown":
-      return `Update check: ${s.currentVersion} is a development or prerelease build; latest release is ${s.latestVersion ?? "unknown"}`;
+      return s.latestVersion === undefined
+        ? `Update check: ${s.currentVersion} is a development or prerelease build; no stable release has been published yet`
+        : `Update check: ${s.currentVersion} is a development or prerelease build; latest release is ${s.latestVersion}`;
     case "current":
-      return `Update check: up to date (${s.currentVersion}; latest release ${s.latestVersion ?? s.currentVersion})`;
+      return s.latestVersion === undefined
+        ? `Update check: up to date (${s.currentVersion}; no stable release listed)`
+        : `Update check: up to date (${s.currentVersion}; latest release ${s.latestVersion})`;
     case "update_available":
       return `Update check: ${s.latestVersion ?? "a newer release"} is available (running ${s.currentVersion})${notes}`;
     case "security_update":
-      return `Update check: SECURITY UPDATE — ${(s.securityReleases ?? []).join(", ")} fixes security issues (running ${s.currentVersion}; latest ${s.latestVersion ?? "unknown"})${notes}`;
+      return `Update check: SECURITY UPDATE — ${(s.securityReleases ?? []).join(", ")} fixes security issues (running ${s.currentVersion}${s.latestVersion === undefined ? "" : `; latest ${s.latestVersion}`})${notes}`;
     case "error":
       return "Update check: could not read the release index (network or index problem; this does not fail doctor)";
   }

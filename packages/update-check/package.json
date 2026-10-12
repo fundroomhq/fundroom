@@ -2,7 +2,7 @@
   "name": "@fundroom/update-check",
   "version": "0.0.1-rc.0",
   "private": true,
-  "description": "Update notifications for self-hosters: the release index.json v1 parser, a strict semver comparator, status derivation and a cached, single-flight checker over OutboundHttpPort that sends no identifiers",
+  "description": "Update notifications for self-hosters: the release index.json v1 parser, a strict semver comparator, status derivation and a cached, single-flight checker over OutboundHttpPort that sends no identifiers; plus (./publish) the release workflow's index builder and R2 publisher",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -10,13 +10,17 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./publish": {
+      "types": "./dist/publish.d.ts",
+      "default": "./dist/publish.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -b tsconfig.json",
+    "build": "tsc -b tsconfig.json && esbuild dist/release-index-bin.js --bundle --platform=node --format=esm --target=node24 --legal-comments=none --log-level=warning --outfile=dist/release-index.mjs",
     "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
@@ -25,7 +29,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@fundroom/outbound-http": "workspace:*",
     "@types/node": "^24.13.4",
+    "esbuild": "catalog:",
+    "testcontainers": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

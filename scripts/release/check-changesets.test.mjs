@@ -5,8 +5,14 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-// biome-ignore lint/correctness/useImportExtensions: the module is .mjs; the rule's ".js" fix does not resolve under node --test.
-import { changesetPackages, coreGroup, findProblems, readChangesets } from "./check-changesets.mjs";
+import {
+  changesetPackages,
+  coreGroup,
+  findProblems,
+  isSecurityChangeset,
+  readChangesets,
+  // biome-ignore lint/correctness/useImportExtensions: the module is .mjs; the rule's ".js" fix does not resolve under node --test.
+} from "./check-changesets.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CORE = ["@fundroom/server", "@fundroom/web", "@fundroom/config"];
@@ -61,6 +67,31 @@ test("comments are ignored and a core entry bumped `none` does not count", () =>
     problems.map((p) => p.file),
     ["none.md"],
   );
+});
+
+test("a security changeset must bump @fundroom/server, where the release notes come from", () => {
+  assert.equal(
+    isSecurityChangeset('---\n"@fundroom/server": patch\n---\n\n**Security:** x\n'),
+    true,
+  );
+  assert.equal(
+    isSecurityChangeset('---\n"@fundroom/server": patch\n---\n\nFix. **Security:** x\n'),
+    false,
+  );
+  assert.equal(isSecurityChangeset("no front matter"), false);
+  const problems = findProblems(
+    {
+      "server.md": '---\n"@fundroom/server": patch\n---\n\n**Security:** fixed x.\n',
+      "web-only.md": '---\n"@fundroom/web": patch\n---\n\n**Security:** fixed y.\n',
+      "none.md": '---\n"@fundroom/server": none\n"@fundroom/web": patch\n---\n\n**Security:** z\n',
+    },
+    CORE,
+  );
+  assert.deepEqual(
+    problems.map((p) => p.file),
+    ["web-only.md", "none.md"],
+  );
+  assert.match(problems[0]?.problem ?? "", /security changeset/u);
 });
 
 test("the repository's own changesets all bump the core", () => {

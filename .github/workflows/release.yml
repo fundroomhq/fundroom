@@ -22,6 +22,11 @@ name: Release
 #    already on npm. Every other package is private.
 #    After a pack or publish failure use "Re-run failed jobs" only: "Re-run all jobs" re-runs
 #    `tag`, which finds the release published and releases (and publishes) nothing.
+#  - `release-index`: only after `image` succeeded (the GitHub release is then published), in
+#    parallel with npm. Calls release-index.yml, which rebuilds https://releases.fundroom.io/index.json
+#    from the published GitHub releases and uploads it to R2: a `build` job with no secrets, then a
+#    `publish` job in the GitHub Environment `releases` that installs nothing. Fails loudly when
+#    that environment is not configured; "Re-run failed jobs" once it is.
 # docs/runbooks/releasing.md.
 
 on:
@@ -172,3 +177,14 @@ jobs:
           VERSION: ${{ needs.tag.outputs.version }}
           FLOATING: ${{ needs.tag.outputs.floating }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # The update check's index (B-11). Its own workflow so the same job also runs by hand
+  # (workflow_dispatch) to flag a security release after the fact.
+  release-index:
+    name: Release index
+    needs: [tag, image]
+    if: needs.tag.outputs.released == 'true' && needs.image.result == 'success'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/release-index.yml
+    # No `secrets:`: the called job reads the `releases` environment's own secrets.

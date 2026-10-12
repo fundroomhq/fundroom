@@ -35,6 +35,16 @@ describe("parseReleaseIndex", () => {
     expect(parsed.index).not.toHaveProperty("extra");
   });
 
+  it("accepts an index with no latest (no stable release yet)", () => {
+    const parsed = parseReleaseIndex(
+      JSON.stringify({ schemaVersion: 1, releases: [rel("1.0.0-rc.1"), rel("1.0.0-rc.0")] }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.index).not.toHaveProperty("latest");
+    expect(parsed.index.releases).toHaveLength(2);
+  });
+
   it("refuses malformed, oversized and hostile indexes without throwing", () => {
     const ok = { schemaVersion: 1, latest: "1.4.2", releases: [rel("1.4.2")] };
     const cases: [string, string][] = [
@@ -42,6 +52,8 @@ describe("parseReleaseIndex", () => {
       ["wrong schema version", JSON.stringify({ ...ok, schemaVersion: 2 })],
       ["loose version", JSON.stringify({ ...ok, latest: "v1.4.2" })],
       ["latest missing from releases", JSON.stringify({ ...ok, latest: "1.4.3" })],
+      ["latest null", JSON.stringify({ ...ok, latest: null })],
+      ["latest empty", JSON.stringify({ ...ok, latest: "" })],
       [
         "prerelease latest",
         JSON.stringify({ ...ok, latest: "1.5.0-rc.1", releases: [rel("1.5.0-rc.1")] }),
@@ -139,6 +151,59 @@ describe("deriveUpdateStatus", () => {
   it("prerelease security releases in the index do not count", () => {
     const pre = indexOf("1.4.2", [rel("1.4.2"), rel("1.5.0-rc.1", true)]);
     expect(deriveUpdateStatus("1.4.2", pre, NOW).status).toBe("current");
+  });
+});
+
+describe("deriveUpdateStatus without latest (no stable release yet)", () => {
+  const rcOnly = (releases: ReturnType<typeof rel>[]) => {
+    const parsed = parseReleaseIndex(JSON.stringify({ schemaVersion: 1, releases }));
+    if (!parsed.ok) throw new Error(parsed.reason);
+    return parsed.index;
+  };
+  const index = rcOnly([rel("1.0.0-rc.1"), rel("1.0.0-rc.0")]);
+
+  it("a prerelease or development build is unknown, with no latestVersion or release URL", () => {
+    for (const v of ["1.0.0-rc.1", "1.0.0-rc.0", "0.0.0"]) {
+      expect(deriveUpdateStatus(v, index, NOW)).toEqual({
+        status: "unknown",
+        currentVersion: v,
+        checkedAt: NOW.toISOString(),
+      });
+    }
+  });
+
+  it("a stable build is current", () => {
+    expect(deriveUpdateStatus("1.0.0", index, NOW)).toEqual({
+      status: "current",
+      currentVersion: "1.0.0",
+      checkedAt: NOW.toISOString(),
+    });
+  });
+
+  it("security releases are still computed from releases", () => {
+    // Not what the publisher writes (it always sets latest when a stable release exists), but a
+    // mirror may: the security fact must survive a missing latest.
+    const mirror = rcOnly([rel("1.0.1", true), rel("1.0.0")]);
+    expect(deriveUpdateStatus("1.0.0", mirror, NOW)).toEqual({
+      status: "security_update",
+      currentVersion: "1.0.0",
+      checkedAt: NOW.toISOString(),
+      securityReleases: ["1.0.1"],
+    });
+    expect(deriveUpdateStatus("1.0.1", mirror, NOW).status).toBe("current");
+  });
+
+  it("formats without a latest release", () => {
+    const mirror = rcOnly([rel("1.0.1", true), rel("1.0.0")]);
+    expect(formatUpdateStatus(deriveUpdateStatus("1.0.0", mirror, NOW))).toBe(
+      "Update check: SECURITY UPDATE — 1.0.1 fixes security issues (running 1.0.0)",
+    );
+    expect(formatUpdateStatus(deriveUpdateStatus("1.0.0-rc.1", index, NOW))).toBe(
+      "Update check: 1.0.0-rc.1 is a development or prerelease build; no stable release has been published yet",
+    );
+    expect(formatUpdateStatus(deriveUpdateStatus("1.0.0", index, NOW))).toBe(
+      "Update check: up to date (1.0.0; no stable release listed)",
+    );
   });
 });
 

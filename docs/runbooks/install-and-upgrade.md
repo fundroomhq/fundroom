@@ -247,18 +247,21 @@ Do not edit `core.schema_migration` by hand to make an old image start. The jour
 The install checks, by itself, whether a newer release exists. It never installs anything.
 
 - **What it sends:** one `GET` of `UPDATE_CHECK_URL` (default `https://releases.fundroom.io/index.json`, a static file) with no query string, no cookies and nothing about the install except its version, in the User-Agent (`FundRoom/<version>`). The answer is cached for 12 hours, or 1 hour after a failure. The request has a 5-second timeout and follows no redirects (a moved index is a config change: set `UPDATE_CHECK_URL`).
+- **What it reads:** the release index, published by FundRoom's release workflow with every release: each published release (release candidates included), its date, its release notes link and whether it fixes a security issue, plus `latest`, the newest stable release. Until the first stable release there is no `latest` ([releasing.md](releasing.md#release-index)).
 - **When it runs:** only when asked — by `fundroom doctor`, and by the admin **Health** page (`GET /api/v1/ops/update`, owner and admin). The Health page shows it on single-tenant installs only; on a multi-tenant host the running version is the operator's business rather than a workspace admin's, so the page says nothing and makes no request. `doctor` checks in both modes.
 
 What it says (the `doctor` line, and the card):
 
 | Status | `doctor` says | Means |
 |---|---|---|
-| `current` | `Update check: up to date (…)` | Nothing newer is listed (a hotfix build ahead of the index counts as current). |
+| `current` | `Update check: up to date (…)` | Nothing newer is listed (a hotfix build ahead of the index counts as current, and so does any stable build while no stable release is listed). |
 | `update_available` | `Update check: <version> is available (running …) — <release notes URL>` | A newer release exists; none of the newer ones is a security release. Plan the upgrade. |
 | `security_update` | `Update check: SECURITY UPDATE — <versions> fixes security issues …` | At least one release newer than yours fixes a security issue — checked against every newer release, not just the latest. Read the advisory and upgrade promptly. |
-| `unknown` | `… is a development or prerelease build …` | You run `edge`, a prerelease or a local build; there is nothing to compare. |
+| `unknown` | `… is a development or prerelease build …` | You run `edge`, a prerelease or a local build; there is nothing to compare. Before 1.0.0 the line ends `no stable release has been published yet`. |
 | `error` | `Update check: could not read the release index …` | The index could not be fetched or did not validate. Harmless — it never fails `doctor` or the page — and expected on a host with no outbound internet. |
 | `disabled` | `Update check: off (UPDATE_CHECK=false)` / `not reported on a multi-tenant host` | Opted out, or the Health page on a multi-tenant host. |
+
+**On `1.0.0-rc.0`, upgrade or opt out.** That build's default `UPDATE_CHECK_URL` is on the `.com` domain of the same name, which is not FundRoom's (FundRoom's is `fundroom.io`). The check reports `error` today, but whoever controls that domain could serve a valid index, and the Health page would show its release links. Upgrade to a later release (which reads `releases.fundroom.io`), or set `UPDATE_CHECK=false` until you do. Setting `UPDATE_CHECK_URL=https://releases.fundroom.io/index.json` on `1.0.0-rc.0` only turns that into a harmless `error`: its parser requires a stable `latest`, which the index has only from 1.0.0.
 
 **Opting out:** `UPDATE_CHECK=false`. With it off, the install builds no outbound client for the check and never fetches. Helm: `config.updateCheck=false`. PaaS: add the variable to both services. Compose: the reference `compose.yaml` passes only a listed set of variables to the app, and `UPDATE_CHECK` is not one of them — add it in a `compose.override.yaml` next to `compose.yaml`:
 
