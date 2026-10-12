@@ -1334,20 +1334,23 @@ describe("fix round 1", () => {
     );
     await sql(
       `INSERT INTO core.webhook_delivery (workspace_id, endpoint_id, topic, event_id, payload, status, next_attempt_at)
-       VALUES ($1, $2, 'membership.created', 'd2q', '{"type":"membership.created","data":{}}'::jsonb, 'pending', now())`,
+       VALUES ($1, $2, 'membership.created', 'd2q', '{"type":"membership.created","data":{}}'::jsonb, 'pending', now() - interval '1 second')`,
       [acmeId, quiet.id],
     );
-    await running.container.webhooks.deliverWorkspace(acmeId);
-    await waitFor("the quiet endpoint's row delivered", async () =>
-      (await rowsOf(quiet.id)).every((r) => r.status === "succeeded") ? true : undefined,
-    );
-    // The busy endpoint stayed at its cap: nothing of it was claimed on top of the 10.
-    const busyRows = await rowsOf(busy.id);
-    expect(busyRows.filter((r) => r.status === "pending")).toHaveLength(90);
-    expect(hitsFor("d2busy")).toHaveLength(0);
-    await sql("DELETE FROM core.webhook_endpoint WHERE id = ANY($1::uuid[])", [
-      [busy.id, quiet.id],
-    ]);
+    try {
+      await running.container.webhooks.deliverWorkspace(acmeId);
+      await waitFor("the quiet endpoint's row delivered", async () =>
+        (await rowsOf(quiet.id)).every((r) => r.status === "succeeded") ? true : undefined,
+      );
+      // The busy endpoint stayed at its cap: nothing of it was claimed on top of the 10.
+      const busyRows = await rowsOf(busy.id);
+      expect(busyRows.filter((r) => r.status === "pending")).toHaveLength(90);
+      expect(hitsFor("d2busy")).toHaveLength(0);
+    } finally {
+      await sql("DELETE FROM core.webhook_endpoint WHERE id = ANY($1::uuid[])", [
+        [busy.id, quiet.id],
+      ]);
+    }
   });
 
   it("D3: a workspace's turn is bounded, and the sweep only enqueues", async () => {
