@@ -10,9 +10,10 @@ name: Release index
 # bucket. Nobody edits the object in the bucket by hand.
 #
 # Two jobs, so the R2 keys never meet an install (the npm pack/publish split in release.yml):
-#  - `build`: no environment, no secrets. Installs, builds @fundroom/update-check, whose build
-#    bundles the publisher and its dependencies into one file (dist/release-index.mjs), lists the
-#    GitHub releases and attaches each one's CHANGELOG section at its tag
+#  - `build`: no environment, no secrets. Installs, bundles the publisher from
+#    @fundroom/update-check with its dependencies into one file (its `bundle` script,
+#    dist/release-index.mjs; not part of `build`, so the image never runs it), lists the GitHub
+#    releases and attaches each one's CHANGELOG section at its tag
 #    (scripts/release/release-index.mjs prepare), and uploads both as an artifact.
 #  - `publish`: in the GitHub Environment `releases` (secrets R2_RELEASES_ACCESS_KEY_ID and
 #    R2_RELEASES_SECRET_ACCESS_KEY, an R2 S3-API token scoped to the bucket alone; variables
