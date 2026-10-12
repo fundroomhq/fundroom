@@ -20,7 +20,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -b tsconfig.json && esbuild dist/release-index-bin.js --bundle --platform=node --format=esm --target=node24 --legal-comments=none --log-level=warning --outfile=dist/release-index.mjs",
+    "build": "tsc -b tsconfig.json",
+    "bundle": "node scripts/bundle.mjs",
     "typecheck": "tsc -b tsconfig.json tsconfig.test.json",
     "clean": "rm -rf dist *.tsbuildinfo"
   },

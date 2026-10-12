@@ -245,14 +245,14 @@ describe("main", () => {
   });
 });
 
-describe("the bundled publisher (dist/release-index.mjs, built by `pnpm build`)", () => {
+describe("the bundled publisher (scripts/bundle.mjs, what the workflow's publish job runs)", () => {
   it("runs with Node alone: no node_modules next to it", async () => {
     const { execFileSync } = await import("node:child_process");
-    const { copyFileSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
-    const bundle = fileURLToPath(new URL("../dist/release-index.mjs", import.meta.url));
     const dir = mkdtempSync(join(tmpdir(), "release-index-bundle-"));
-    copyFileSync(bundle, join(dir, "release-index.mjs"));
+    // A variable specifier: the script is plain JS, outside the typed sources.
+    const script = new URL("../scripts/bundle.mjs", import.meta.url).href;
+    const { bundle } = (await import(script)) as { bundle: (outfile: string) => Promise<string> };
+    await bundle(join(dir, "release-index.mjs"));
     const releases = join(dir, "releases.json");
     writeFileSync(releases, JSON.stringify([gh("v1.0.0-rc.1"), gh("v1.0.0-rc.0")]));
     const out = join(dir, "index.json");

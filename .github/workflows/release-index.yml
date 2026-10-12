@@ -68,7 +68,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build and bundle the publisher
         run: |
-          pnpm --filter @fundroom/update-check build
+          pnpm --filter @fundroom/update-check bundle
           mkdir -p "$RUNNER_TEMP/release-index"
           cp packages/update-check/dist/release-index.mjs "$RUNNER_TEMP/release-index/"
       - name: List the GitHub releases, with their CHANGELOG notes
