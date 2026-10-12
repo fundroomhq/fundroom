@@ -12,6 +12,11 @@
  * a prerelease consumed into `.changeset/pre/`, which this does not read.
  * A core entry with bump `none` does not count. `#` comments in the front matter are ignored.
  *
+ * A security changeset (summary starting with `**Security:**`, the release index's convention,
+ * docs/runbooks/releasing.md) must name `@fundroom/server`: the release notes, where the release
+ * index looks for the marker, are apps/server's CHANGELOG section, and a changeset naming only
+ * another core package never reaches it.
+ *
  *   node scripts/release/check-changesets.mjs [--dir .changeset]
  *
  * Exit 0 = every changeset bumps the core; 1 = at least one does not (each is listed).
@@ -77,8 +82,32 @@ export function findProblems(files, core) {
         problem: `bumps no package of the fixed group (${entries.map((e) => `${e.name}: ${e.bump}`).join(", ")}): it would release nothing. Add "@fundroom/server": patch (or the right bump).`,
       });
     }
+    if (
+      isSecurityChangeset(text) &&
+      !entries.some((e) => e.name === "@fundroom/server" && e.bump !== "none")
+    ) {
+      problems.push({
+        file,
+        problem:
+          'is a security changeset (**Security:**) but does not bump @fundroom/server: the marker would never reach the release notes, so the release index would not flag the release. Add "@fundroom/server": patch.',
+      });
+    }
   }
   return problems;
+}
+
+/**
+ * Whether the changeset's summary starts with the security marker `**Security:**`.
+ *
+ * @param {string} text
+ */
+export function isSecurityChangeset(text) {
+  const m = /^---[ \t]*\r?\n[\s\S]*?^---[ \t]*$/mu.exec(text);
+  if (!m) return false;
+  return text
+    .slice(m.index + m[0].length)
+    .trimStart()
+    .startsWith("**Security:**");
 }
 
 /** @param {string} dir */

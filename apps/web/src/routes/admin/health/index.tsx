@@ -309,7 +309,9 @@ function CheckedAt({ status }: { status: UpdateStatus }) {
 }
 
 function UpdateBody({ status }: { status: UpdateStatus }) {
-  const latest = status.latestVersion ?? "";
+  // An index without `latest` (no stable release listed) can still list a security release;
+  // name the newest one rather than an empty version.
+  const latest = status.latestVersion ?? status.securityReleases?.[0] ?? "";
   switch (status.status) {
     case "security_update":
       return (

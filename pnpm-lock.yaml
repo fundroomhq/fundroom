@@ -3258,9 +3258,18 @@ importers:
         specifier: 'catalog:'
         version: 4.6.1
     devDependencies:
+      '@fundroom/outbound-http':
+        specifier: workspace:*
+        version: link:../outbound-http
       '@types/node':
         specifier: ^24.13.4
         version: 24.13.4
+      esbuild:
+        specifier: 'catalog:'
+        version: 0.28.2
+      testcontainers:
+        specifier: 'catalog:'
+        version: 12.1.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

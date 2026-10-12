@@ -1,0 +1,144 @@
+name: Release index
+# Publishes https://releases.fundroom.io/index.json, the file every install's update check reads
+# (B-11; docs/runbooks/releasing.md, "Release index"). Two ways in:
+#  - `workflow_call` from release.yml's `release-index` job, after the image job published the
+#    GitHub release: adds the new release.
+#  - `workflow_dispatch` (main only): rebuilds and republishes, e.g. to flag a version as a
+#    security release after the fact (`security`) or clear a wrong flag (`not-security`), or the
+#    bootstrap run into an empty bucket (`first-publish`).
+# Either way the index is rebuilt from every published GitHub release plus the index already in the
+# bucket. Nobody edits the object in the bucket by hand.
+#
+# Two jobs, so the R2 keys never meet an install (the npm pack/publish split in release.yml):
+#  - `build`: no environment, no secrets. Installs, builds @fundroom/update-check, whose build
+#    bundles the publisher and its dependencies into one file (dist/release-index.mjs), lists the
+#    GitHub releases and attaches each one's CHANGELOG section at its tag
+#    (scripts/release/release-index.mjs prepare), and uploads both as an artifact.
+#  - `publish`: in the GitHub Environment `releases` (secrets R2_RELEASES_ACCESS_KEY_ID and
+#    R2_RELEASES_SECRET_ACCESS_KEY, an R2 S3-API token scoped to the bucket alone; variables
+#    R2_RELEASES_ENDPOINT, R2_RELEASES_BUCKET, RELEASE_INDEX_URL). No checkout, no install: Node,
+#    the artifact and the runner's aws CLI. Any of the five unset fails the job with an error
+#    naming it: the index is part of the release, not a best effort.
+# After a publish failure, "Re-run failed jobs" re-runs `publish` on the same artifact.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      security:
+        description: "Versions to flag as security releases (e.g. 1.4.1, 1.3.7)"
+        type: string
+        required: false
+        default: ""
+      not-security:
+        description: "Versions whose security flag to clear"
+        type: string
+        required: false
+        default: ""
+      allow-removal:
+        description: "Drop versions GitHub no longer lists as published (a release deleted on purpose)"
+        type: boolean
+        default: false
+      ignore-current:
+        description: "Rebuild from GitHub alone, ignoring the published index (flags set by dispatch are lost: pass them again)"
+        type: boolean
+        default: false
+      first-publish:
+        description: "The bucket is new and empty: publish the first index (refused if one exists)"
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build release index inputs
+    # Forks: no. Dispatch from a branch: no; the environment also admits main only (runbook).
+    if: github.repository == 'fundroomhq/fundroom' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # Full clone: `prepare` reads apps/server/CHANGELOG.md at every release tag.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Build and bundle the publisher
+        run: |
+          pnpm --filter @fundroom/update-check bundle
+          mkdir -p "$RUNNER_TEMP/release-index"
+          cp packages/update-check/dist/release-index.mjs "$RUNNER_TEMP/release-index/"
+      - name: List the GitHub releases, with their CHANGELOG notes
+        run: |
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$RUNNER_TEMP/gh-releases.json"
+          node scripts/release/release-index.mjs prepare --releases "$RUNNER_TEMP/gh-releases.json" --out "$RUNNER_TEMP/release-index/releases.json"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-index-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-index/
+          if-no-files-found: error
+          # A "Re-run job" of a build that already succeeded uploads the same commit's files again.
+          overwrite: true
+          retention-days: 7
+
+  publish:
+    name: Publish release index
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: releases
+    permissions: {}
+    # One writer at a time: each run reads the bucket's index, then writes the next one. A newer
+    # run waiting here replaces an older waiting one (GitHub's rule); the replaced run shows as
+    # cancelled, and a dispatch that was replaced must be run again.
+    concurrency:
+      group: release-index
+      cancel-in-progress: false
+    steps:
+      # No checkout and no install: nothing from the repository or the registry runs next to the
+      # R2 keys but the bundle the build job made.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: release-index-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-index
+      - name: Build, upload and verify index.json
+        working-directory: ${{ runner.temp }}/release-index
+        run: |
+          args=(--releases releases.json --out index.json)
+          if [ -n "$SECURITY" ]; then args+=(--security "$SECURITY"); fi
+          if [ -n "$NOT_SECURITY" ]; then args+=(--not-security "$NOT_SECURITY"); fi
+          if [ "$ALLOW_REMOVAL" = "true" ]; then args+=(--allow-removal); fi
+          if [ "$IGNORE_CURRENT" = "true" ]; then args+=(--ignore-current); fi
+          if [ "$FIRST_PUBLISH" = "true" ]; then args+=(--first-publish); fi
+          node release-index.mjs "${args[@]}"
+        env:
+          SECURITY: ${{ inputs.security }}
+          NOT_SECURITY: ${{ inputs.not-security }}
+          ALLOW_REMOVAL: ${{ inputs.allow-removal }}
+          IGNORE_CURRENT: ${{ inputs.ignore-current }}
+          FIRST_PUBLISH: ${{ inputs.first-publish }}
+          R2_RELEASES_ENDPOINT: ${{ vars.R2_RELEASES_ENDPOINT }}
+          R2_RELEASES_BUCKET: ${{ vars.R2_RELEASES_BUCKET }}
+          RELEASE_INDEX_URL: ${{ vars.RELEASE_INDEX_URL }}
+          R2_RELEASES_ACCESS_KEY_ID: ${{ secrets.R2_RELEASES_ACCESS_KEY_ID }}
+          R2_RELEASES_SECRET_ACCESS_KEY: ${{ secrets.R2_RELEASES_SECRET_ACCESS_KEY }}
+      - name: Summary
+        if: always()
+        working-directory: ${{ runner.temp }}/release-index
+        run: |
+          [ -f index.json ] || exit 0
+          {
+            echo '### Release index'
+            echo
+            echo '```json'
+            cat index.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

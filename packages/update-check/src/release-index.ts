@@ -8,6 +8,13 @@ import { isPrerelease, MAX_VERSION_LENGTH, parseSemVer } from "./semver.js";
  *     "releases": [{ "version": "1.4.2", "date": "2026-10-01", "url": "https://…",
  *                    "security": false, "summary": "…" }] }
  *
+ * `latest` is the highest stable release, and is absent while there is none (the 1.0 release
+ * candidates): an index that lists only prereleases is valid, and tells a stable install nothing
+ * newer exists. When present it must be a stable version listed in `releases`. (Added to v1 as an
+ * optional field: every index a v1 reader ever accepted still parses the same. 1.0.0-rc.0's
+ * reader required it; that build also defaults to a host that is not FundRoom's, see
+ * docs/runbooks/install-and-upgrade.md.)
+ *
  * Validation is strict about everything we read and silent about everything we do not: unknown
  * fields are dropped, so a v1 reader keeps working when the file grows. Everything is bounded —
  * the byte size before `JSON.parse`, the number of releases, every string — because the file
@@ -41,7 +48,7 @@ const ReleaseSchema = z.object({
 export const ReleaseIndexSchema = z
   .object({
     schemaVersion: z.literal(1),
-    latest: VersionSchema,
+    latest: VersionSchema.optional(),
     releases: z.array(ReleaseSchema).min(1).max(MAX_RELEASES),
   })
   .superRefine((index, ctx) => {
@@ -52,6 +59,7 @@ export const ReleaseIndexSchema = z
       }
       seen.add(r.version);
     }
+    if (index.latest === undefined) return;
     const latest = parseSemVer(index.latest);
     // `latest` is what a stable install is told to move to, so it must be a stable release.
     if (latest !== undefined && isPrerelease(latest)) {
