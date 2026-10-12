@@ -29,7 +29,7 @@ When unsure between two levels, take the higher and downgrade later. The time yo
 2. **Start the timeline.** UTC timestamps, what was seen, what was done, by whom. Every command below goes in it with its output file.
 3. **Preserve before you change anything** (next section). Recreating a container throws away its logs; rotating a key changes what `audit verify` can check; revoking sessions removes the live sessions you might want to look at. Take the copies first — it takes minutes.
 4. **Contain the obvious** (the section after that): if a session or credential is being used right now, revoke or rotate it as soon as the evidence is taken.
-5. **If the flaw is in FundRoom itself**, report it privately as `SECURITY.md` describes — GitHub private vulnerability reporting, or `security@fundroom.com` — not in a public issue. Include the version (below).
+5. **If the flaw is in FundRoom itself**, report it privately as `SECURITY.md` describes — GitHub private vulnerability reporting, or `security@fundroom.io` — not in a public issue. Include the version (below).
 
 ## Preserve evidence
 

@@ -118,7 +118,7 @@ x-app-env: &app-env
   METRICS_ENABLED: ${METRICS_ENABLED:-}
   METRICS_TOKEN: ${METRICS_TOKEN:-}
   # Release check: no identifiers sent, never auto-updates. Empty = schema
-  # defaults (enabled, https://releases.fundroom.com/index.json); UPDATE_CHECK=false turns it off.
+  # defaults (enabled, https://releases.fundroom.io/index.json); UPDATE_CHECK=false turns it off.
   UPDATE_CHECK: ${UPDATE_CHECK:-}
   UPDATE_CHECK_URL: ${UPDATE_CHECK_URL:-}
   OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}

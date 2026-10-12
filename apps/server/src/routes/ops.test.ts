@@ -326,7 +326,8 @@ describe("GET /.well-known/security.txt", () => {
       NOW,
     );
     expect(body).toContain("Contact: mailto:sec@example.org\n");
-    expect(body).not.toContain("security@fundroom.com");
+    // The operator's contacts replace the project's; they are not appended to them.
+    for (const contact of SECURITY_TXT_DEFAULT_CONTACT) expect(body).not.toContain(contact);
     expect(body).toContain("Policy: https://example.org/disclosure\n");
     expect(body).toContain("Canonical: https://example.org/investors/.well-known/security.txt\n");
   });

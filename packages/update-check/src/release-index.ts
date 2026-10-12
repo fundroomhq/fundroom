@@ -2,7 +2,7 @@ import { z } from "zod";
 import { isPrerelease, MAX_VERSION_LENGTH, parseSemVer } from "./semver.js";
 
 /*
- * The release index, v1 — a static file on a CDN (`https://releases.fundroom.com/index.json`):
+ * The release index, v1 — a static file on a CDN (`https://releases.fundroom.io/index.json`):
  *
  *   { "schemaVersion": 1, "latest": "1.4.2",
  *     "releases": [{ "version": "1.4.2", "date": "2026-10-01", "url": "https://…",

@@ -3,7 +3,7 @@ import { OutboundHttpError } from "@fundroom/ports";
 import { describe, expect, it, vi } from "vitest";
 import { createUpdateChecker, FAILURE_TTL_MS, SUCCESS_TTL_MS } from "./checker.js";
 
-const URL_ = "https://releases.fundroom.com/index.json";
+const URL_ = "https://releases.fundroom.io/index.json";
 
 const INDEX = {
   schemaVersion: 1,

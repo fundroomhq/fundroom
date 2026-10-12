@@ -103,8 +103,8 @@ A new entry in the default policy's list, or a new policy name, is a security de
 The server answers `GET <BASE_PATH>/.well-known/security.txt` ([RFC 9116](https://www.rfc-editor.org/rfc/rfc9116)), and `GET <BASE_PATH>/security.txt` with a `301` to it:
 
 ```
-Contact: mailto:security@fundroom.com
 Contact: https://github.com/fundroomhq/fundroom/security/advisories/new
+Contact: mailto:security@fundroom.io
 Expires: 2027-03-22T12:00:00Z
 Policy: https://github.com/fundroomhq/fundroom/blob/main/SECURITY.md
 Preferred-Languages: en

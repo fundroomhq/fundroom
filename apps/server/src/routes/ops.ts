@@ -35,8 +35,8 @@ export interface SecurityTxtOptions {
 }
 
 export const SECURITY_TXT_DEFAULT_CONTACT = [
-  "mailto:security@fundroom.com",
   "https://github.com/fundroomhq/fundroom/security/advisories/new",
+  "mailto:security@fundroom.io",
 ] as const;
 export const SECURITY_TXT_DEFAULT_POLICY =
   "https://github.com/fundroomhq/fundroom/blob/main/SECURITY.md";
