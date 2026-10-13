@@ -1,5 +1,13 @@
 # @fundroom/kms-local
 
+## 1.0.0-rc.1
+
+### Patch Changes
+
+- Updated dependencies [[`61715b9`](https://github.com/fundroomhq/fundroom/commit/61715b93796386da1b234b7c3762b802bbe5cb8a)]:
+  - @fundroom/config@1.0.0-rc.1
+  - @fundroom/ports@1.0.0-rc.1
+
 ## 1.0.0-rc.0
 
 ### Minor Changes
