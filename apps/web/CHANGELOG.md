@@ -1,5 +1,14 @@
 # @fundroom/web
 
+## 1.0.0-rc.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fundroom/sdk@1.0.0-rc.1
+  - @fundroomhq/ui@1.0.0-rc.1
+  - @fundroom/charts@0.1.0-rc.1
+
 ## 1.0.0-rc.0
 
 ### Minor Changes

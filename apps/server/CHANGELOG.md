@@ -1,5 +1,100 @@
 # @fundroom/server
 
+## 1.0.0-rc.1
+
+### Patch Changes
+
+- [#28](https://github.com/fundroomhq/fundroom/pull/28) [`2de184c`](https://github.com/fundroomhq/fundroom/commit/2de184c1744090671b1ae5f13d1eb314494da6c2) Thanks [@fundroomio](https://github.com/fundroomio)! - The update check's release index is now published with every release, at `https://releases.fundroom.io/index.json`, and it can describe the time before the first stable release. `latest` is optional in index v1: an index listing only release candidates has none, a release-candidate or development build then reports `unknown` (with no latest version), a stable build reports `current`, and security releases are still taken from the listed releases. Every index accepted before still parses the same.
+  
+  If you run `1.0.0-rc.0`: upgrade, or set `UPDATE_CHECK=false`. That build's default `UPDATE_CHECK_URL` is on the `.com` domain of the same name, which FundRoom does not own: it reports `error` today, and whoever controls that domain could serve an index whose release links the admin Health page would show. Pointing it at `https://releases.fundroom.io/index.json` does not help before 1.0.0 either: its parser requires a stable `latest`, so it reports `error` until a stable release is listed.
+  
+  For maintainers: the `Release` workflow's new `release-index` job (and the `Release index` workflow, which also runs by hand) rebuilds the index from the published GitHub releases: a job with no secrets builds a bundled publisher and the release list, and a job in the GitHub Environment `releases` that installs nothing uploads it to R2 (docs/runbooks/releasing.md, "Release index"). A release is flagged as a security release when a changeset's summary starts with the bold `Security:` marker (read from apps/server's CHANGELOG at the release tag; CI requires such a changeset to bump `@fundroom/server`), or later by a manual run with `security`.
+
+- [#25](https://github.com/fundroomhq/fundroom/pull/25) [`61715b9`](https://github.com/fundroomhq/fundroom/commit/61715b93796386da1b234b7c3762b802bbe5cb8a) Thanks [@fundroomio](https://github.com/fundroomio)! - Report vulnerabilities through GitHub private vulnerability reporting (<https://github.com/fundroomhq/fundroom/security/advisories/new>) or to `security@fundroom.io`. FundRoom's domain is `fundroom.io`; the `.com` of the same name belongs to someone else, so do not send reports there, and disregard the address given in earlier release notes. The default `/.well-known/security.txt` now lists the GitHub advisory form first and `mailto:security@fundroom.io` second (`SECURITY_TXT_CONTACT` still replaces both). The update check's default index moved to `https://releases.fundroom.io/index.json`; an install that set `UPDATE_CHECK_URL` to the old host should unset it or point it at the new one.
+- Updated dependencies [[`2de184c`](https://github.com/fundroomhq/fundroom/commit/2de184c1744090671b1ae5f13d1eb314494da6c2), [`61715b9`](https://github.com/fundroomhq/fundroom/commit/61715b93796386da1b234b7c3762b802bbe5cb8a)]:
+  - @fundroom/update-check@0.0.1-rc.1
+  - @fundroom/config@1.0.0-rc.1
+  - @fundroom/kms-local@1.0.0-rc.1
+  - @fundroom/audit@1.0.0-rc.1
+  - @fundroom/crypto@1.0.0-rc.1
+  - @fundroom/identity@1.0.0-rc.1
+  - @fundroom/portability@0.1.0-rc.1
+  - @fundroom/accreditation@0.1.0-rc.1
+  - @fundroom/anchor-rekor@0.1.0-rc.1
+  - @fundroom/anchor-rfc3161@0.1.0-rc.1
+  - @fundroom/ai@0.1.0-rc.1
+  - @fundroom/api-keys@0.1.0-rc.1
+  - @fundroom/authz@1.0.0-rc.1
+  - @fundroom/billing@0.1.0-rc.1
+  - @fundroom/clickwrap@0.1.0-rc.1
+  - @fundroom/compliance@0.1.0-rc.1
+  - @fundroom/control-plane@0.1.0-rc.1
+  - @fundroom/custom-domains@0.1.0-rc.1
+  - @fundroom/esign@0.1.0-rc.1
+  - @fundroom/integrations@0.1.0-rc.1
+  - @fundroom/module-kit@1.0.0-rc.1
+  - @fundroom/sanctions@0.1.0-rc.1
+  - @fundroom/scim@0.1.0-rc.1
+  - @fundroom/share-links@0.1.0-rc.1
+  - @fundroom/sso@0.1.0-rc.1
+  - @fundroom/module-analytics@0.1.0-rc.1
+  - @fundroom/module-captable@0.1.0-rc.1
+  - @fundroom/module-content@0.1.0-rc.1
+  - @fundroom/module-crm@0.1.0-rc.1
+  - @fundroom/module-data-room@0.1.0-rc.1
+  - @fundroom/module-metrics@0.1.0-rc.1
+  - @fundroom/module-notify@0.1.0-rc.1
+  - @fundroom/module-round@0.1.0-rc.1
+  - @fundroom/module-updates@0.1.0-rc.1
+  - @fundroom/accred-parallel-markets@0.1.0-rc.1
+  - @fundroom/accred-verifyinvestor@0.1.0-rc.1
+  - @fundroom/ai-anthropic@0.1.0-rc.1
+  - @fundroom/ai-openai-compatible@0.1.0-rc.1
+  - @fundroom/authz-openfga@0.1.0-rc.1
+  - @fundroom/domain-caddy-ask@0.1.0-rc.1
+  - @fundroom/domain-cloudflare-saas@0.1.0-rc.1
+  - @fundroom/domain-manual@0.1.0-rc.1
+  - @fundroom/directory@0.1.0-rc.1
+  - @fundroom/esign-documenso@0.1.0-rc.1
+  - @fundroom/esign-docuseal@0.1.0-rc.1
+  - @fundroom/esign-docusign@0.1.0-rc.1
+  - @fundroom/esign-dropbox-sign@0.1.0-rc.1
+  - @fundroom/search@0.1.0-rc.1
+  - @fundroom/sanctions-ofac@0.1.0-rc.1
+  - @fundroom/avscan-clamd@1.0.0-rc.1
+  - @fundroom/avscan-noop@1.0.0-rc.1
+  - @fundroom/email-smtp@1.0.0-rc.1
+  - @fundroom/queue-pgboss@1.0.0-rc.1
+  - @fundroom/render-pdfium@1.0.0-rc.1
+  - @fundroom/storage-fs@1.0.0-rc.1
+  - @fundroom/storage-s3@1.0.0-rc.1
+  - @fundroom/contracts@1.0.0-rc.1
+  - @fundroom/db@1.0.0-rc.1
+  - @fundroom/domain@1.0.0-rc.1
+  - @fundroom/events@1.0.0-rc.1
+  - @fundroom/http@1.0.0-rc.1
+  - @fundroom/mail@1.0.0-rc.1
+  - @fundroom/outbound-http@1.0.0-rc.1
+  - @fundroom/ports@1.0.0-rc.1
+  - @fundroom/storage@1.0.0-rc.1
+  - @fundroom/webhooks@0.1.0-rc.1
+  - @fundroom/sheets-google@0.1.0-rc.1
+  - @fundroom/accred-manual@0.1.0-rc.1
+  - @fundroom/billing-manual@0.1.0-rc.1
+  - @fundroom/billing-stripe@0.1.0-rc.1
+  - @fundroom/chat-slack@0.1.0-rc.1
+  - @fundroom/dns-doh@0.1.0-rc.1
+  - @fundroom/email-postmark@0.1.0-rc.1
+  - @fundroom/email-resend@0.1.0-rc.1
+  - @fundroom/email-ses@0.1.0-rc.1
+  - @fundroom/integration-calcom@0.1.0-rc.1
+  - @fundroom/integration-calendly@0.1.0-rc.1
+  - @fundroom/integration-quickbooks@0.1.0-rc.1
+  - @fundroom/integration-slack@0.1.0-rc.1
+  - @fundroom/integration-stripe@0.1.0-rc.1
+  - @fundroom/integration-xero@0.1.0-rc.1
+  - @fundroom/sanctions-opensanctions@0.1.0-rc.1
+
 ## 1.0.0-rc.0
 
 ### Major Changes

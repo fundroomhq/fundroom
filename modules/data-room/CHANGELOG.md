@@ -1,5 +1,22 @@
 # @fundroom/module-data-room
 
+## 0.1.0-rc.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fundroom/crypto@1.0.0-rc.1
+  - @fundroom/identity@1.0.0-rc.1
+  - @fundroom/authz@1.0.0-rc.1
+  - @fundroom/module-kit@1.0.0-rc.1
+  - @fundroom/storage-fs@1.0.0-rc.1
+  - @fundroom/contracts@1.0.0-rc.1
+  - @fundroom/db@1.0.0-rc.1
+  - @fundroom/domain@1.0.0-rc.1
+  - @fundroom/events@1.0.0-rc.1
+  - @fundroom/ports@1.0.0-rc.1
+  - @fundroom/storage@1.0.0-rc.1
+
 ## 0.1.0-rc.0
 
 ### Minor Changes

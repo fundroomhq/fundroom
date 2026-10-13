@@ -1,5 +1,14 @@
 # @fundroom/events
 
+## 1.0.0-rc.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @fundroom/db@1.0.0-rc.1
+  - @fundroom/domain@1.0.0-rc.1
+  - @fundroom/ports@1.0.0-rc.1
+
 ## 1.0.0-rc.0
 
 ### Minor Changes

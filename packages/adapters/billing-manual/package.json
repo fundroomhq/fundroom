@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/billing-manual",
-  "version": "0.1.0-rc.0",
+  "version": "0.1.0-rc.1",
   "private": true,
   "description": "BillingPort for operators who invoice by hand: no checkout, no webhooks; the operator records the subscription",
   "license": "MIT",
