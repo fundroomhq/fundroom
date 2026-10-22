@@ -43,7 +43,7 @@ services:
       TRUST_PROXY: "true"
 
   hosts:
-    image: nginx:1.29-alpine
+    image: nginx:1.31-alpine
     read_only: true
     tmpfs:
       - /var/cache/nginx
