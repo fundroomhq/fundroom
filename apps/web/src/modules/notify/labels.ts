@@ -58,6 +58,8 @@ export function eventLabel(type: NotifyEventType | NotifyChannelEventType): stri
       return m.notify_event_round_verification_expiring();
     case "round.verification_decided":
       return m.notify_event_round_verification_decided();
+    case "document.scan_infected":
+      return m.notify_event_document_scan_infected();
   }
 }
 

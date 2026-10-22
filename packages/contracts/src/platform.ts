@@ -477,6 +477,16 @@ export const PlatformHealthSchema = z
         detail: z.union([z.string(), z.null()]),
       }),
     ),
+    avscan: z
+      .object({
+        status: z.enum(["ok", "fail", "skipped"]),
+        driver: z.string(),
+        detail: z.string().optional(),
+      })
+      .openapi({
+        description:
+          "The virus scanner's last probe (clamd `PING` + `VERSION`, refreshed every minute; `skipped` for the noop scanner). Read from the cache: this request does not contact the scanner.",
+      }),
     checkedAt: TimestampSchema,
   })
   .openapi("PlatformHealth");

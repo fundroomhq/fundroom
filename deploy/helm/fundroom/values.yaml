@@ -117,7 +117,11 @@ config:
   # FORWARDED_HOST_HEADER (e.g. X-Fundroom-Forwarded-Host) and FORWARDED_CLIENT_IP_HEADER (e.g.
   # X-Fundroom-Client-IP), with EDGE_SHARED_SECRET (and, while rotating,
   # EDGE_SHARED_SECRET_PREVIOUS) in secrets.extra; not with pathMounts. Behind an ingress
-  # controller you rarely need it: the ingress already sees the real Host.
+  # controller you rarely need it: the ingress already sees the real Host. Virus-scan limits
+  # (with av.driver clamd): AV_MAX_SCAN_BYTES (clamd's StreamMaxLength; also caps the upload
+  # ceiling), CLAMD_TIMEOUT_MS, CLAMD_CONNECT_TIMEOUT_MS, CLAMD_MIN_BYTES_PER_SECOND.
+  # MAIL_IGNORE_FOREIGN_SENDERS: "true" when another deployment (e.g. staging) sends from
+  # MAIL_FROM's domain through the same ESP account (its webhook events are then ignored).
   extra: {}
 
 # Secret configuration, rendered into a Secret (unless existingSecret is set) and loaded by every

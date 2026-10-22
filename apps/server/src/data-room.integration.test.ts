@@ -12,7 +12,7 @@ import { createMaintenanceService } from "@fundroom/module-data-room";
 import { brandingLogoKey } from "@fundroom/storage";
 import * as OTPAuth from "otpauth";
 import { PDFDocument, PDFName, StandardFonts } from "pdf-lib";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createLogger } from "./logger.js";
 import { type RunningServer, startServer } from "./server.js";
 import { withSetCookies } from "./test/session-cookies.js";
@@ -1239,5 +1239,352 @@ describe("a folder's rules keep covering its subtree through the trash (E3.2 L-2
     const after = (await json<Tree>(restored)).folders.find((f) => f.id === child.id);
     expect(after?.path).toBe(child.path);
     expect(await grantPath()).toEqual([child.path]);
+  });
+});
+
+describe("scan failures and re-uploads (E-UP-25)", () => {
+  const blobOf = async (versionId: string) => {
+    const r = await running.container.db.pool.query<{
+      id: string;
+      scan_status: string;
+      scan_detail: string | null;
+      scan_engine: string | null;
+      storage_key: string;
+    }>(
+      `SELECT b.id, b.scan_status::text AS scan_status, b.scan_detail, b.scan_engine, b.storage_key
+         FROM dataroom.blob b JOIN dataroom.document_version v ON v.blob_id = b.id
+        WHERE v.id = $1`,
+      [versionId],
+    );
+    const row = r.rows[0];
+    if (row === undefined) throw new Error(`no blob for version ${versionId}`);
+    return row;
+  };
+  const ingestJob = (versionId: string) =>
+    waitFor(async () => {
+      const r = await running.container.db.pool.query<{ state: string; retry_count: number }>(
+        `SELECT state::text AS state, retry_count FROM pgboss.job
+          WHERE name = 'data-room.ingest' AND data->>'versionId' = $1`,
+        [versionId],
+      );
+      return r.rows[0]?.state === "completed" ? r.rows[0] : undefined;
+    });
+
+  let unscannable: Uint8Array;
+  let unscannableVersionId: string;
+  let scanFolderId: string;
+
+  beforeAll(async () => {
+    const res = await request("acme", "/api/v1/data-room/folders", {
+      method: "POST",
+      cookie: editor.cookie,
+      body: JSON.stringify({ parentId: rootId, name: "Scan failures" }),
+    });
+    expect(res.status).toBe(201);
+    const f = (await json<Tree>(res)).folders.find((x) => x.name === "Scan failures");
+    if (f === undefined) throw new Error("folder not created");
+    scanFolderId = f.id;
+  });
+
+  it("a file the scanner cannot scan in full ends the job without a retry and says so", async () => {
+    unscannable = await makePdf(1, "too big to scan");
+    const spy = vi.spyOn(running.container.scanner, "scan").mockImplementation(async (input) => {
+      // Leaves the stream unread on purpose: ingest must release it.
+      expect(input.source).toBe("data-room");
+      return {
+        verdict: "error",
+        engine: "clamd@test",
+        reason: "too_large",
+        detail: "INSTREAM size limit exceeded",
+        retryable: false,
+      };
+    });
+    try {
+      const up = await uploadViaTus(
+        editor,
+        { folderId: scanFolderId },
+        "huge.pdf",
+        "application/pdf",
+        unscannable,
+      );
+      unscannableVersionId = up.versionId;
+      const d = await ingested(owner, up.documentId);
+      expect(d.currentVersion?.renderStatus).toBe("failed");
+      expect(d.scan).toMatchObject({ status: "error", engine: "clamd@test" });
+      // Allowing unscanned files (set above) does not make a failed scan servable.
+      expect(d.availability).toEqual({ viewable: false, download: null, reason: "failed" });
+      const job = await ingestJob(up.versionId);
+      expect(job.retry_count).toBe(0);
+      expect(spy).toHaveBeenCalledTimes(1);
+      const blob = await blobOf(up.versionId);
+      expect(blob).toMatchObject({
+        scan_status: "error",
+        scan_detail: "too_large: INSTREAM size limit exceeded",
+      });
+      const event = await running.container.db.pool.query<{ payload: Record<string, unknown> }>(
+        `SELECT payload FROM core.outbox
+          WHERE workspace_id = $1 AND topic = 'document.ingested' AND payload->>'versionId' = $2`,
+        [acmeId, up.versionId],
+      );
+      expect(event.rows[0]?.payload).toMatchObject({
+        documentId: up.documentId,
+        scanStatus: "error",
+        renderStatus: "failed",
+      });
+      const download = await request(
+        "acme",
+        `/api/v1/data-room/documents/${up.documentId}/download`,
+        { cookie: owner.cookie },
+      );
+      expect(download.status).toBe(403);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("uploading the same bytes again retries the scan (not deduplicated, not a 409)", async () => {
+    const before = await blobOf(unscannableVersionId);
+    expect(await running.container.storage.head(before.storage_key)).toBeDefined();
+    const again = await uploadViaTus(
+      editor,
+      { folderId: scanFolderId },
+      "huge-again.pdf",
+      "application/pdf",
+      unscannable,
+    );
+    expect(again.deduplicated).toBe(false);
+    const d = await ingested(owner, again.documentId);
+    expect(d.scan).toMatchObject({ status: "skipped", engine: "noop" });
+    expect(d.currentVersion?.renderStatus).toBe("ready");
+    const after = await blobOf(again.versionId);
+    expect(after.id).toBe(before.id);
+    expect(after.scan_status).toBe("skipped");
+    expect(after.scan_detail).toBeNull();
+    expect(after.storage_key).toBe(
+      `ws/${acmeId}/blobs/${createHash("sha256").update(unscannable).digest("hex")}`,
+    );
+    // The earlier upload's quarantine copy is gone with the retry.
+    expect(await running.container.storage.head(before.storage_key)).toBeUndefined();
+    // The version that failed first is ingested again with this scan, not left "not scanned".
+    const earlier = await waitFor(async () => {
+      const r = await running.container.db.pool.query<{ render_status: string }>(
+        `SELECT render_status::text AS render_status FROM dataroom.document_version WHERE id = $1`,
+        [unscannableVersionId],
+      );
+      return r.rows[0]?.render_status === "ready" ? r.rows[0] : undefined;
+    });
+    expect(earlier.render_status).toBe("ready");
+  });
+
+  it("a scanner outage keeps the file Processing while the job retries; the last attempt records Scan failed", async () => {
+    const bytes = await makePdf(1, "scanner outage");
+    const scanner = running.container.scanner;
+    const real = scanner.scan.bind(scanner);
+    // Fails exactly twice (the queued job's first attempt, then its last), then scans for real.
+    let failuresLeft = 2;
+    let calls = 0;
+    const spy = vi.spyOn(scanner, "scan").mockImplementation(async (input) => {
+      calls += 1;
+      if (failuresLeft === 0) return real(input);
+      failuresLeft -= 1;
+      if (!(input.body instanceof Uint8Array)) await input.body.cancel();
+      return {
+        verdict: "error",
+        engine: "clamd@test",
+        reason: "unavailable",
+        detail: "clamd: connect ECONNREFUSED",
+        retryable: true,
+      };
+    });
+    const ingest = running.container.jobs.find((j) => j.name === "data-room.ingest");
+    if (ingest === undefined) throw new Error("no ingest job");
+    let versionId: string | undefined;
+    try {
+      const up = await uploadViaTus(
+        editor,
+        { folderId: scanFolderId },
+        "outage.pdf",
+        "application/pdf",
+        bytes,
+      );
+      versionId = up.versionId;
+      // The queued job's first attempt failed and is waiting for its retry: still Processing.
+      await waitFor(async () => {
+        const r = await running.container.db.pool.query<{ state: string }>(
+          `SELECT state::text AS state FROM pgboss.job
+            WHERE name = 'data-room.ingest' AND data->>'versionId' = $1`,
+          [up.versionId],
+        );
+        return r.rows[0]?.state === "retry" ? true : undefined;
+      });
+      // Park the queued retry, so the attempts below are the only ones that run.
+      const parked = await running.container.db.pool.query(
+        `UPDATE pgboss.job SET start_after = now() + interval '1 hour'
+          WHERE name = 'data-room.ingest' AND state = 'retry' AND data->>'versionId' = $1`,
+        [up.versionId],
+      );
+      expect(parked.rowCount).toBe(1);
+      const first = await blobOf(up.versionId);
+      expect(first).toMatchObject({
+        scan_status: "scanning",
+        scan_detail: "unavailable: clamd: connect ECONNREFUSED",
+      });
+      expect(calls).toBe(1);
+      const during = await json<Detail>(await detail(owner, up.documentId));
+      expect(during.availability.reason).toBe("processing");
+      // The last attempt (count = limit) records the failure, then throws to dead-letter.
+      const job = {
+        id: "outage-last",
+        name: "data-room.ingest",
+        data: { workspaceId: acmeId, versionId: up.versionId, blobId: first.id },
+        signal: new AbortController().signal,
+        attempt: { count: 5, limit: 5 },
+      };
+      await expect(ingest.handler(job)).rejects.toThrow(/scan failed/u);
+      expect(calls).toBe(2);
+      expect(await blobOf(up.versionId)).toMatchObject({
+        scan_status: "error",
+        scan_detail: "unavailable: clamd: connect ECONNREFUSED",
+      });
+      const failed = await json<Detail>(await detail(owner, up.documentId));
+      expect(failed.availability.reason).toBe("failed");
+      // A dead letter retried by hand is a fresh job: it scans again once the scanner is back.
+      await ingest.handler({ ...job, id: "outage-retried", attempt: { count: 0, limit: 5 } });
+      expect(calls).toBe(3);
+      expect(await blobOf(up.versionId)).toMatchObject({
+        scan_status: "skipped",
+        scan_detail: null,
+      });
+    } finally {
+      spy.mockRestore();
+      if (versionId !== undefined) {
+        await running.container.db.pool.query(
+          `DELETE FROM pgboss.job WHERE name = 'data-room.ingest' AND state = 'retry'
+            AND data->>'versionId' = $1`,
+          [versionId],
+        );
+      }
+    }
+  });
+
+  it("a promotion that fails once is retried, and the retry hands the blob's other versions on", async () => {
+    const bytes = await makePdf(1, "promotion retried");
+    const scanner = running.container.scanner;
+    const real = scanner.scan.bind(scanner);
+    // 1. A final failure leaves the blob `error` and its first version failed ("not scanned").
+    const unscannableSpy = vi.spyOn(scanner, "scan").mockImplementation(async (input) => {
+      if (!(input.body instanceof Uint8Array)) await input.body.cancel();
+      return {
+        verdict: "error",
+        engine: "clamd@test",
+        reason: "too_large",
+        detail: "INSTREAM size limit exceeded",
+        retryable: false,
+      };
+    });
+    let a: Awaited<ReturnType<typeof uploadViaTus>>;
+    try {
+      a = await uploadViaTus(
+        editor,
+        { folderId: scanFolderId },
+        "two-a.pdf",
+        "application/pdf",
+        bytes,
+      );
+      expect((await ingested(owner, a.documentId)).currentVersion?.renderStatus).toBe("failed");
+    } finally {
+      unscannableSpy.mockRestore();
+    }
+    // 2. The same bytes again: both versions are pending on one blob, each with its own job.
+    // The scan is slow, so the second job finds it claimed and ends; the promotion's first
+    // storage write fails, so the job that scanned throws before handing anything on.
+    const slowSpy = vi.spyOn(scanner, "scan").mockImplementation(async (input) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      return real(input);
+    });
+    const storage = running.container.storage;
+    const put = storage.put.bind(storage);
+    let blobPuts = 0;
+    const putSpy = vi.spyOn(storage, "put").mockImplementation(async (key, ...rest) => {
+      if (key.startsWith(`ws/${acmeId}/blobs/`)) {
+        blobPuts += 1;
+        if (blobPuts === 1) throw new Error("storage write failed (test)");
+      }
+      return put(key, ...rest);
+    });
+    try {
+      const b = await uploadViaTus(
+        editor,
+        { folderId: scanFolderId },
+        "two-b.pdf",
+        "application/pdf",
+        bytes,
+      );
+      expect(b.deduplicated).toBe(false);
+      const blob = await blobOf(b.versionId);
+      expect((await blobOf(a.versionId)).id).toBe(blob.id);
+      const ready = await waitFor(async () => {
+        // Whichever job failed is retried now rather than after its backoff.
+        await running.container.db.pool.query(
+          `UPDATE pgboss.job SET start_after = now()
+            WHERE name = 'data-room.ingest' AND state = 'retry' AND data->>'blobId' = $1`,
+          [blob.id],
+        );
+        const r = await running.container.db.pool.query<{ id: string; render_status: string }>(
+          `SELECT id, render_status::text AS render_status FROM dataroom.document_version
+            WHERE id = ANY($1::uuid[])`,
+          [[a.versionId, b.versionId]],
+        );
+        return r.rows.length === 2 && r.rows.every((v) => v.render_status === "ready")
+          ? r.rows
+          : undefined;
+      }, 60_000);
+      expect(ready).toHaveLength(2);
+      expect(blobPuts).toBeGreaterThanOrEqual(2);
+      expect(await blobOf(b.versionId)).toMatchObject({
+        scan_status: "skipped",
+        storage_key: `ws/${acmeId}/blobs/${createHash("sha256").update(bytes).digest("hex")}`,
+      });
+    } finally {
+      slowSpy.mockRestore();
+      putSpy.mockRestore();
+    }
+  }, 120_000);
+
+  it("an infected file uploaded again is refused with the scanner's verdict", async () => {
+    const infected = await makePdf(1, "infected sample");
+    const spy = vi.spyOn(running.container.scanner, "scan").mockImplementation(async (input) => {
+      if (!(input.body instanceof Uint8Array)) await input.body.cancel();
+      return { verdict: "infected", engine: "clamd@test", detail: "Eicar-Test-Signature" };
+    });
+    try {
+      const up = await uploadViaTus(
+        editor,
+        { folderId: scanFolderId },
+        "sample.pdf",
+        "application/pdf",
+        infected,
+      );
+      const d = await ingested(owner, up.documentId);
+      expect(d.scan).toMatchObject({ status: "infected" });
+      expect(d.availability.reason).toBe("infected");
+      const again = await uploadViaTus(
+        editor,
+        { folderId: scanFolderId },
+        "sample-again.pdf",
+        "application/pdf",
+        infected,
+        { expectComplete: 409 },
+      );
+      const body = await json<{
+        error: { code: string; message: string; conflict?: string; scanStatus?: string };
+      }>(again.complete);
+      expect(body.error.code).toBe("conflict");
+      expect(body.error.message).toBe("the virus scanner flagged this file");
+      expect(body.error).toMatchObject({ conflict: "blob", scanStatus: "infected" });
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

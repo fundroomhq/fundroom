@@ -448,6 +448,7 @@ describe("notification preferences", () => {
           { eventType: "esign.envelope_attention", cadence: "instant" },
           { eventType: "round.signature_completed", cadence: "instant" },
           { eventType: "integration.connection_unhealthy", cadence: "instant" },
+          { eventType: "document.scan_infected", cadence: "instant" },
         ],
         settings: {
           emailEnabled: false,

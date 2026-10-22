@@ -4001,6 +4001,7 @@
   "notify_event_access_review_overdue": "The access review is overdue",
   "notify_event_analytics_hot_lead": "An investor became a hot lead",
   "notify_event_document_downloaded": "An investor downloaded a document",
+  "notify_event_document_scan_infected": "An uploaded file was flagged by the virus scanner",
   "notify_event_document_viewed": "An investor viewed a document",
   "notify_event_esign_envelope_attention": "An e-signature request needs attention",
   "notify_event_integration_connection_unhealthy": "A connected integration stopped working",

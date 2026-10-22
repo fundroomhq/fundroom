@@ -21,6 +21,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@fundroom/ports": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

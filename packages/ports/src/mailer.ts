@@ -123,6 +123,13 @@ export interface MailDeliveryEvent {
   /** Provider diagnostic, e.g. `550 5.1.1 user unknown`. */
   readonly reason: string | undefined;
   readonly provider: string;
+  /**
+   * The sender the provider reports for the message, as a bare lower-cased address (`Name <addr>`
+   * reduced to `addr`). `undefined` when the provider does not say. Lets the webhook tell an event
+   * for another deployment sharing the provider account and sending domain (a staging stack) from
+   * an event for one of our own messages whose row is not committed yet.
+   */
+  readonly from?: string | undefined;
   /** `click` only: the URL the recipient followed, as the provider reports it. */
   readonly url?: string | undefined;
   /**

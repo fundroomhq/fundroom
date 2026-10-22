@@ -422,6 +422,19 @@ function ceilingHit(deps: SignupDeps, phase: "start" | "complete"): void {
   });
 }
 
+/**
+ * Whether signup can finish at all: `SIGNUP_DEFAULT_PLAN` is set, the plan exists and is not
+ * archived (private is fine: the default need not be on the public catalogue). The routes answer
+ * 404 to every signup read and write while it is false, so the page never offers a form whose
+ * `verify` can only fail.
+ */
+export async function signupDefaultPlanLive(deps: SignupDeps): Promise<boolean> {
+  const id = deps.defaultPlanId;
+  if (id === undefined) return false;
+  const plan = await deps.provisioning.db.withHost((tx) => getPlan(tx, id));
+  return plan !== undefined && plan.archivedAt === null;
+}
+
 /** Whether a public signup may claim the slug right now. */
 export async function signupSlugAvailable(deps: SignupDeps, slug: string): Promise<boolean> {
   const s = slug.trim().toLowerCase();

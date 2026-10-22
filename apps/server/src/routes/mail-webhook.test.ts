@@ -9,7 +9,7 @@ import { mailWebhookRoutes } from "./mail-webhook.js";
  */
 const GOOD = "genuine";
 
-function fixture(options: { maxPerMinute?: number; retry?: number } = {}) {
+function fixture(options: { maxPerMinute?: number; retry?: number; foreign?: number } = {}) {
   const ingested: MailDeliveryEvent[][] = [];
   const mailer: MailerPort = {
     driver: "fake",
@@ -38,6 +38,7 @@ function fixture(options: { maxPerMinute?: number; retry?: number } = {}) {
     dropped: 0,
     suppressed: 0,
     retry: options.retry ?? 0,
+    ...(options.foreign === undefined ? {} : { foreign: options.foreign }),
   };
   const app = mailWebhookRoutes({
     mailer: () => mailer,
@@ -85,5 +86,12 @@ describe("mail webhook budgets", () => {
     const res = await post(GOOD);
     expect(res.status).toBe(503);
     expect(res.headers.get("retry-after")).toBe("60");
+  });
+
+  it("answers 200 at once for another deployment's events (foreign, never retried)", async () => {
+    const { post } = fixture({ foreign: 3 });
+    const res = await post(GOOD);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("retry-after")).toBeNull();
   });
 });

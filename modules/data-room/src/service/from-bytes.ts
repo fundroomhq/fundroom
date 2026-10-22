@@ -83,8 +83,9 @@ export class BlobNotReadyError extends Error {
 /**
  * Blob (content-addressed, deduplicated against a servable one), document, version 1, and the
  * ingest job — on the caller's transaction. A blob with the same bytes that is still in the scan
- * pipeline (or failed it) is not reused: `BlobNotReadyError`, so a job retries once the other
- * ingest has finished rather than racing it.
+ * pipeline (or infected) is not reused: `BlobNotReadyError`, so a job retries once the other
+ * ingest has finished rather than racing it. One whose scan ended in `error` is retried with the
+ * staged bytes.
  */
 export async function createDocumentFromStaged(
   services: Pick<ModuleServices, "queue">,
@@ -97,7 +98,24 @@ export async function createDocumentFromStaged(
   const versions = new VersionRepo(ctx, tx);
   let b = await blobs.bySha256(input.staged.sha256);
   let deduplicated = false;
-  if (b !== undefined) {
+  if (b?.scanStatus === "error") {
+    // A failed scan of the same bytes: these bytes are a retry (as for an upload). The previous
+    // quarantine copy, if any, is left to the weekly reconciler.
+    const retried = await blobs.retryScan(b.id, input.staged.key);
+    if (retried === undefined)
+      throw new BlobNotReadyError(`blob ${b.id} with the same bytes is being retried`);
+    b = retried;
+    // The versions already on it were marked failed ("not scanned"): back to pending, and
+    // their ingest runs again with this scan.
+    for (const earlier of await versions.resetRenderForBlob(b.id)) {
+      await services.queue.sendInTransaction(
+        tx,
+        INGEST_JOB,
+        { workspaceId: ctx.workspaceId, versionId: earlier.id, blobId: b.id },
+        { idempotencyKey: `ingest:${earlier.id}` },
+      );
+    }
+  } else if (b !== undefined) {
     if (b.scanStatus !== "clean" && b.scanStatus !== "skipped")
       throw new BlobNotReadyError(`blob ${b.id} with the same bytes is ${b.scanStatus}`);
     deduplicated = true;

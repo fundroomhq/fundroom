@@ -13,5 +13,7 @@ describe("noop scanner", () => {
     expect(await s.scan({ body: new Uint8Array(3) })).toMatchObject({ verdict: "skipped" });
     expect(events).toEqual(["avscan.noop"]);
     await expect(s.healthCheck()).resolves.toBeUndefined();
+    await expect(s.info()).resolves.toBeNull();
+    expect(s.maxScanBytes).toBeNull();
   });
 });

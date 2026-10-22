@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   childPath,
   folderLabel,
+  isFinalScanDetail,
   isPreviewable,
   joinIndex,
+  NOT_EXPORTED_DETAIL,
   numberSiblings,
   parseProtection,
   resolveDeclaredType,
@@ -127,5 +129,30 @@ describe("templates", () => {
     expect(templateById("series-a-dd")?.folders[0]?.children?.length).toBeGreaterThan(0);
     expect(templateById("board")).toBeDefined();
     expect(templateById("nope")).toBeUndefined();
+  });
+});
+
+describe("isFinalScanDetail (E-UP-25)", () => {
+  it("is final only for too_large, partial and the import placeholder", () => {
+    for (const d of [
+      "too_large",
+      "too_large: INSTREAM size limit exceeded",
+      "partial: Heuristics.Limits.Exceeded.MaxFileSize",
+      NOT_EXPORTED_DETAIL,
+    ]) {
+      expect(isFinalScanDetail(d), d).toBe(true);
+    }
+    // Retryable: the reasons a later scan can fix, details from before reasons were recorded,
+    // and no detail at all.
+    for (const d of [
+      "unavailable: clamd: connect ECONNREFUSED",
+      "timeout",
+      "clamd: connect ECONNREFUSED",
+      "upload object missing",
+      "too_large_x",
+      null,
+    ]) {
+      expect(isFinalScanDetail(d), String(d)).toBe(false);
+    }
   });
 });

@@ -288,4 +288,12 @@ export {
   StorageError,
   type StorageErrorCode,
 } from "./storage.js";
-export type { ScanInput, ScanResult, ScanVerdict, VirusScanPort } from "./virus-scan.js";
+export {
+  CLAMD_MAX_DEADLINE_MS,
+  type ScanFailureReason,
+  type ScanInput,
+  type ScannerInfo,
+  type ScanResult,
+  type ScanVerdict,
+  type VirusScanPort,
+} from "./virus-scan.js";

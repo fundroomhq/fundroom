@@ -1,5 +1,4 @@
 import {
-  ApiError,
   createRoute,
   errorResponses,
   jsonResponse,
@@ -8,14 +7,14 @@ import {
 } from "@fundroom/contracts";
 import { listCells } from "@fundroom/control-plane";
 import type { DirectoryCell } from "@fundroom/ports";
-import type { Context } from "hono";
 import type { AppEnv } from "../env.js";
 import type { ApiDeps } from "./deps.js";
+import { signupOpen } from "./signup.js";
 
 /*
  * The signup region picker (E3.11, ADR-0059; owner: agent B): `GET /api/v1/signup/regions`,
  * public, canonical host with no workspace, SIGNUP_MODE=open only (plain 404 otherwise, like the
- * rest of signup).
+ * rest of signup, including while the default plan is not live: `signupOpen` in `signup.ts`).
  *
  * One item per region: this deployment's own region first (`signupUrl: null` — sign up here) when
  * one of this database's cells is active, then every other region with an ACTIVE remote cell that
@@ -46,14 +45,6 @@ type SignupRegion = {
   readonly jurisdiction: DirectoryCell["jurisdiction"];
   readonly signupUrl: string | null;
 };
-
-function requireSignupOpen(c: Context<AppEnv>, deps: ApiDeps): void {
-  const open =
-    deps.controlPlane.operators.signupEnabled &&
-    c.get("classification")?.host === "canonical" &&
-    c.get("workspace") === undefined;
-  if (!open) throw new ApiError("not_found", "no such path");
-}
 
 /** The picker's items from the directory's cells (pure; exported for tests). */
 export function signupRegionsOf(
@@ -143,10 +134,10 @@ export function registerSignupRegionRoutes(api: Api, deps: ApiDeps): void {
       description:
         "The regions this deployment offers at signup (operator-declared). `signupUrl` null = sign up here; else the signup page of the cell serving that region.",
       "x-requires": "public",
+      middleware: [signupOpen(deps)] as const,
       responses: { 200: jsonResponse(s.SignupRegionListSchema, "Regions"), ...ERRORS },
     }),
     async (c) => {
-      requireSignupOpen(c, deps);
       let items: SignupRegion[];
       if (cached !== undefined && cached.until > Date.now()) items = cached.items;
       else {

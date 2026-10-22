@@ -2292,6 +2292,9 @@ importers:
 
   packages/config:
     dependencies:
+      '@fundroom/ports':
+        specifier: workspace:*
+        version: link:../ports
       zod:
         specifier: 'catalog:'
         version: 4.6.1

@@ -301,7 +301,8 @@ form links it next to the terms checkbox.
 The migrate hook runs with `BILLING_DRIVER=none` and `CUSTOM_DOMAIN_DRIVER=manual`, because the
 Stripe and Cloudflare credentials in `secrets.extra` never reach it. With `SANCTIONS_DRIVER=ofac` the
 worker needs egress to `sanctionslistservice.ofac.treas.gov` and `*.amazonaws.com` (mind
-`networkPolicy.egress`); the list is cached in each pod's `/data` scratch volume (an `emptyDir`
+`networkPolicy.egress`; blocked egress shows only as new workspaces staying held while the screen
+retries for about 4 hours — see the sanctions runbook); the list is cached in each pod's `/data` scratch volume (an `emptyDir`
 with S3 storage, so a replaced pod downloads it again; one snapshot is a few MiB). Grant
 operators with `kubectl -n <ns> exec deploy/<fullname>-server -- /nodejs/bin/node /app/dist/cli.js
 operator grant <email>` (after `operator enrol-link <email>` for someone with no passkey or TOTP yet).
@@ -461,7 +462,7 @@ jurisdiction, or S3 storage.
 | `config.mail.from` / `fromName` | `""` | `MAIL_FROM` (required in prod/staging) / `MAIL_FROM_NAME` |
 | `config.customDomains.driver` | `manual` | `CUSTOM_DOMAIN_DRIVER`: `manual`, `caddy-ask` or `cloudflare-saas` (see Custom domains) |
 | `config.customDomains.cnameTarget` | `""` | `CUSTOM_DOMAIN_CNAME_TARGET` |
-| `config.av.driver` / `clamdHost` | `noop` / `""` | `AV_DRIVER` / `CLAMD_HOST` (run ClamAV yourself) |
+| `config.av.driver` / `clamdHost` | `noop` / `""` | `AV_DRIVER` / `CLAMD_HOST` (run ClamAV yourself; set `AV_MAX_SCAN_BYTES` to clamd's `StreamMaxLength` in `config.extra`) |
 | `config.av.acceptUnscanned` | `false` | `AV_ACCEPT_UNSCANNED`; with `driver=noop` in prod/staging the render fails unless this is `true` |
 | `config.metricsEnabled` | `auto` | `METRICS_ENABLED`: `auto` serves `/metrics` in prod/staging only with `secrets.metricsToken`; `true` there requires the token |
 | `config.updateCheck` | `true` | `UPDATE_CHECK` |

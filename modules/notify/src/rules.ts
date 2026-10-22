@@ -94,6 +94,13 @@ export const NOTIFY_EVENT_TYPES = [
    */
   "round.verification_expiring",
   "round.verification_decided",
+  /*
+   * The virus scanner flagged an upload (`document.scan_infected`). A security matter: instant,
+   * addressed to `data-room.manage` (the people who can remove the document) and to whoever
+   * uploaded the file, one alert per blob. A sentence (no actor: the scan is a system job), never a
+   * channel event — the file stays quarantined and nobody outside the workspace staff hears of it.
+   */
+  "document.scan_infected",
 ] as const;
 export type NotifyEventType = (typeof NOTIFY_EVENT_TYPES)[number];
 
@@ -120,6 +127,7 @@ export const DEFAULT_CADENCE: Readonly<Record<NotifyEventType, Cadence>> = {
   "integration.connection_unhealthy": "instant",
   "round.verification_expiring": "instant",
   "round.verification_decided": "instant",
+  "document.scan_infected": "instant",
 };
 
 /**
@@ -192,6 +200,7 @@ export const SENTENCE_EVENT_TYPES = [
   "round.commitment_confirmed",
   "round.verification_expiring",
   "round.verification_decided",
+  "document.scan_infected",
 ] as const satisfies readonly NotifyEventType[];
 
 export function isSentenceEventType(x: string): boolean {
@@ -247,6 +256,8 @@ export function bucketFor(eventType: NotifyEventType, at: Date, id?: string): st
   // verified and later expires is news twice; a redelivery is not).
   if (eventType === "round.verification_expiring") return id ?? "verification_expiring";
   if (eventType === "round.verification_decided") return id ?? "verification_decided";
+  // `id` is the blob: a re-scan of the same quarantined file (a re-ingest) is not news again.
+  if (eventType === "document.scan_infected") return id ?? "scan_infected";
   // Analytics already fires once per member per scoring window; the day bucket only guards
   // against a redelivered event, and still lets a lead that cools and re-heats alert again.
   if (eventType === "analytics.hot_lead") return `d${Math.floor(at.getTime() / DAY_MS)}`;
@@ -293,6 +304,8 @@ export const VERB: Readonly<Record<NotifyEventType, string>> = {
   // Sentences (`isSentenceEventType`), addressed to the investor.
   "round.verification_expiring": "Your accreditation verification expires soon",
   "round.verification_decided": "Your accreditation verification was updated",
+  // A sentence (`isSentenceEventType`): the scan is a system job, not somebody's act.
+  "document.scan_infected": "An uploaded file was flagged by the virus scanner",
 };
 
 export const GROUP_TITLE: Readonly<Record<NotifyEventType, string>> = {
@@ -318,6 +331,7 @@ export const GROUP_TITLE: Readonly<Record<NotifyEventType, string>> = {
   "integration.connection_unhealthy": "Connected services needing attention",
   "round.verification_expiring": "Accreditation verifications expiring",
   "round.verification_decided": "Accreditation verification updates",
+  "document.scan_infected": "Files flagged by the virus scanner",
 };
 
 export interface DigestInput {

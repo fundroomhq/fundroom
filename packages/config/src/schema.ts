@@ -587,13 +587,40 @@ export const envSchema = z.object({
   AV_ACCEPT_UNSCANNED: bool.default(false),
   CLAMD_HOST: z.string().min(1).optional(),
   CLAMD_PORT: port.default(3310),
+  /** Base scan deadline (ms); `CLAMD_MIN_BYTES_PER_SECOND` adds time for large files. */
   CLAMD_TIMEOUT_MS: z.coerce.number().int().min(1000).max(3_600_000).default(120_000),
+  /** How long to wait for the TCP connection to clamd before the scan counts as unavailable. */
+  CLAMD_CONNECT_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(5000),
+  /**
+   * Slowest throughput a scan is allowed (bytes/s); 0 = fixed deadline. The deadline becomes
+   * `CLAMD_TIMEOUT_MS + size / rate` seconds, capped at 20 minutes (scanning jobs expire at 30).
+   */
+  CLAMD_MIN_BYTES_PER_SECOND: z.coerce.number().int().min(0).default(0),
+  /**
+   * Largest file the scanner scans in full (bytes): set it to clamd's `StreamMaxLength`. With
+   * AV_DRIVER=clamd the upload ceiling becomes min(UPLOAD_MAX_BYTES, AV_MAX_SCAN_BYTES) and
+   * bigger inputs are refused before they reach clamd. Ignored with AV_DRIVER=noop.
+   */
+  AV_MAX_SCAN_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_048_576)
+    .max(5 * 1024 ** 4)
+    .optional(),
 
   // --- email ---------------------------------------------------------------
   MAILER_DRIVER: z.enum(MAILER_DRIVERS).default("smtp"),
   MAIL_FROM: z.email().optional(),
   /** Display name for the sender, e.g. `Acme Investor Relations`. */
   MAIL_FROM_NAME: z.string().min(1).max(200).optional(),
+  /**
+   * Set to true when several instances send from MAIL_FROM's domain through one provider account,
+   * e.g. staging and production sharing a Resend account; events whose sender is another address
+   * on that domain are then acknowledged and ignored instead of retried (E-UP-24). Leave false
+   * when a workspace may send from another address on MAIL_FROM's domain (its early events would
+   * be dropped).
+   */
+  MAIL_IGNORE_FOREIGN_SENDERS: bool.default(false),
   /**
    * smtps://user:pass@host:465, or smtp://user:pass@host:587?requireTLS=true (staging/prod refuse
    * plain STARTTLS-if-offered to a public relay, F-08); Mailpit in dev is smtp://localhost:1025
@@ -1194,6 +1221,7 @@ export const LEGACY_ENV_NAMES: Readonly<Partial<Record<keyof RawEnv & string, st
 /** Human examples used in error messages. */
 export const EXAMPLES: Readonly<Partial<Record<keyof RawEnv, string>>> = {
   MAIL_FROM_NAME: "Acme Investor Relations",
+  MAIL_IGNORE_FOREIGN_SENDERS: "true",
   OUTBOUND_HTTP_ALLOW_PRIVATE_HOSTS: "keycloak.internal,10.0.0.5",
   WEBHOOK_ALLOW_PRIVATE_HOSTS: "hooks.internal,10.0.0.7",
   ESIGN_ALLOW_PRIVATE_HOSTS: "documenso.internal,10.0.0.8",
@@ -1219,6 +1247,7 @@ export const EXAMPLES: Readonly<Partial<Record<keyof RawEnv, string>>> = {
   S3_REGION: "auto",
   STORAGE_FS_PATH: "/data/storage",
   CLAMD_HOST: "clamav",
+  AV_MAX_SCAN_BYTES: "104857600",
   ROLES: "api,web,worker",
   MODULES: "access,content,data-room,updates",
   OIDC_ISSUER_URL: "https://accounts.google.com",
@@ -2407,4 +2436,16 @@ export function isLoopbackOrUnspecifiedHost(entry: string): boolean {
   if (isIPv4(h)) return LOOPBACK_OR_UNSPECIFIED.check(h, "ipv4");
   if (isIPv6(h)) return LOOPBACK_OR_UNSPECIFIED.check(h, "ipv6");
   return false;
+}
+
+/**
+ * E-UP-25: the install-wide upload ceiling. With AV_DRIVER=clamd and AV_MAX_SCAN_BYTES set it is
+ * min(UPLOAD_MAX_BYTES, AV_MAX_SCAN_BYTES): a file the scanner cannot scan in full is refused at
+ * upload rather than accepted and left "could not be scanned". Otherwise UPLOAD_MAX_BYTES.
+ */
+export function uploadCeilingBytes(
+  env: Pick<RawEnv, "AV_DRIVER" | "AV_MAX_SCAN_BYTES" | "UPLOAD_MAX_BYTES">,
+): number {
+  if (env.AV_DRIVER !== "clamd" || env.AV_MAX_SCAN_BYTES === undefined) return env.UPLOAD_MAX_BYTES;
+  return Math.min(env.UPLOAD_MAX_BYTES, env.AV_MAX_SCAN_BYTES);
 }

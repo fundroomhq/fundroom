@@ -6,7 +6,7 @@ import {
 } from "@fundroom/module-kit";
 import type { JsonObject } from "@fundroom/ports";
 import { JOB_INGEST } from "./jobs.js";
-import { ROOT_LABEL } from "./model.js";
+import { NOT_EXPORTED_DETAIL, ROOT_LABEL } from "./model.js";
 import { FolderRepo, SearchSourceRepo } from "./repos/dataroom-repo.js";
 import { SEARCH_MODULE } from "./service/search.js";
 
@@ -37,7 +37,7 @@ import { SEARCH_MODULE } from "./service/search.js";
  */
 /** 2: Q&A (`qa_question`, `qa_answer`, E3.3) joined the export. */
 export const PORTABILITY_VERSION = 2;
-export const NOT_EXPORTED_DETAIL = "bytes not carried by the workspace export";
+export { NOT_EXPORTED_DETAIL };
 
 const PROMOTED = new Set(["clean", "skipped"]);
 
@@ -47,9 +47,16 @@ function remapPath(row: JsonObject, column: string, ctx: PortableImportContext):
 }
 
 export function exportBlobRow(row: JsonObject): JsonObject {
-  const status = row["scan_status"];
-  if (typeof status === "string" && PROMOTED.has(status)) return row;
-  return { ...row, storage_key: null };
+  // `scan_claimed_by` (0009) names this install's ingest job: never exported, so an archive
+  // also imports into an install from before that column.
+  let rest = row;
+  if ("scan_claimed_by" in row) {
+    const { scan_claimed_by: _claim, ...unclaimed } = row;
+    rest = unclaimed;
+  }
+  const status = rest["scan_status"];
+  if (typeof status === "string" && PROMOTED.has(status)) return rest;
+  return { ...rest, storage_key: null };
 }
 
 export function importBlobRow(row: JsonObject, ctx: PortableImportContext): JsonObject {

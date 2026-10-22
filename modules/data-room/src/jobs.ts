@@ -35,6 +35,8 @@ export function createDataRoomJobs(services: ModuleServices): JobDefinition<Json
           blobId: data.blobId,
           uploadId: data.uploadId,
           rederive: data.rederive === true,
+          attempt: job.attempt,
+          signal: job.signal,
         });
       },
     },

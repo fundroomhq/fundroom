@@ -247,6 +247,24 @@ export const EVENT_CATALOGUE = {
       .strict(),
   ),
   /*
+   * The virus scanner flagged an upload (E-UP-25 25.5). The blob stays quarantined and is never
+   * served; `notify` alerts staff holding `data-room.manage` and the uploader. `signature` is
+   * the scanner's name for the match (e.g. `Win.Test.EICAR_HDB-1`), not file content.
+   */
+  "document.scan_infected": event(
+    "The virus scanner flagged an uploaded file; it stays quarantined. Staff holding " +
+      "`data-room.manage` and the uploader are alerted.",
+    z
+      .object({
+        documentId: uuid.optional(),
+        versionId: uuid.optional(),
+        blobId: uuid,
+        uploadedBy: uuid.nullable(),
+        signature: z.string().min(1).max(512),
+      })
+      .strict(),
+  ),
+  /*
    * Data-room Q&A (E3.3, ADR-0051). Ids only: the question text is an investor's own words and
    * may identify them to other bidders, so it never leaves the `dataroom` schema. `notify`
    * writes generic copy with a link; search entries are written by the data room itself.

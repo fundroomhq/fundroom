@@ -129,6 +129,22 @@ live workspace.
 Tenants never see screening data: not the matches, not the list, not that a screen happened. Their audit log
 shows only the hold, the release and a suspension.
 
+### Hosted / control plane: what a held workspace answers
+
+While a workspace is held (`pending_review`) or suspended, every tenant route under `/api` answers **423
+`workspace_unavailable`** (details `workspaceStatus`, `reason`) to its staff and a plain **404** to everybody
+else, except: `/api/v1/auth/*`, `/api/v1/me[/…]`, and the reads `GET /api/v1/modules`, `/api/v1/openapi.json`,
+`/api/v1/branding/logo`, `/api/v1/i18n/*` and `/api/v1/setup/status` (plus billing for billing holders). Pages
+and assets always load. `GET /api/v1/setup/status` answers the hold itself: staff get the same 423, which the
+setup wizard shows as the neutral "under review" step with **Check again**; investors and anonymous callers
+get `{ "required": false }`, which says nothing. The wizard's writes stay behind the 423.
+
+Before you open signup on a hosted install, check egress from the **worker** (it runs the screens):
+HTTPS to `sanctionslistservice.ofac.treas.gov` and `*.amazonaws.com` for `ofac`, or to your yente host /
+`api.opensanctions.org` for `opensanctions`. Blocked egress does not fail loudly to the customer: each new
+workspace just stays held while its screen job retries — 8 retries, exponential from 60 s (60 s, 120 s, …),
+about 4 hours in all — and then waits for an operator.
+
 ## Work the review queue
 
 `/platform` → **Sanctions** lists open screenings, newest first: potential matches and errors with no decision

@@ -205,6 +205,18 @@ function str(value: unknown): string | undefined {
 }
 
 /**
+ * `data.from` as Resend echoes it (`Name <addr>` or a bare `addr`) → the bare lower-cased address,
+ * or `undefined` when it is missing or does not look like an address.
+ */
+export function senderAddress(value: unknown): string | undefined {
+  const raw = str(value)?.trim();
+  if (raw === undefined || raw.length > 512) return undefined;
+  const angle = /<([^<>]+)>\s*$/u.exec(raw);
+  const address = (angle?.[1] ?? raw).trim().toLowerCase();
+  return /^[^\s@<>]+@[^\s@<>]+$/u.test(address) ? address : undefined;
+}
+
+/**
  * One Resend webhook body → at most one event. `email.sent` and anything unknown are skipped:
  * a provider adding event types must not turn into 4xx answers and a retry storm.
  */
@@ -220,7 +232,15 @@ export function parseResendEvent(payload: unknown, now: Date): MailDeliveryEvent
   const messageId = str(data["email_id"]);
   if (recipient === undefined || messageId === undefined) return undefined;
   const occurredAt = dateOf(body.created_at, now);
-  const base = { recipient, messageId, occurredAt, provider: "resend", reason: undefined };
+  const from = senderAddress(data["from"]);
+  const base = {
+    recipient,
+    messageId,
+    occurredAt,
+    provider: "resend",
+    reason: undefined,
+    ...(from === undefined ? {} : { from }),
+  };
 
   switch (body.type) {
     case "email.delivered":

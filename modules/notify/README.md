@@ -167,6 +167,13 @@ admin cannot read another's inbox.
   "expires soon" — the payload has no expiry date and the round schema is not this module's to
   read), linking the portal's `/round`. `fanOut` drops an erased or non-active investor and
   honours their cadence.
+- **Infected uploads.** `document.scan_infected` (the data room's ingest job: the virus scanner
+  flagged an upload, which stays quarantined) → staff holding `data-room.manage` plus the uploader
+  (`alsoNotify`, when a member uploaded it), no actor, `resource_kind = 'document'` (`'blob'` when
+  no document points at the file), instant, never a channel event, one alert per blob (a
+  re-ingest collapses). The copy names the scanner's signature, never the file or document title,
+  and links `/admin/data-room/documents/<id>` (or `/admin/data-room`); the uploader reads it in
+  the second person.
 - **Inbox.** `GET /notify/inbox` is keyset-paged on `(created_at, id)` — the cursor carries
   Postgres' microsecond timestamp text, so rows sharing a millisecond are neither skipped nor
   repeated — with `archived` / `unread` filters and an unread count. `POST /inbox/read` (ids or

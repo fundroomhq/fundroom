@@ -38,8 +38,19 @@ staff/system only. Legal hold is enforced by triggers (no soft delete, delete or
    outside the JSON body limit; `Upload-Metadata: upload <base64 upload id>`).
 2. `POST /data-room/uploads/{id}/complete` — assembles multipart parts, verifies size, sniffs the
    magic bytes against the declared type, streams the SHA-256, dedupes against a clean blob, writes
-   blob + document (or version) rows and enqueues `data-room.ingest` in the same transaction.
-3. `data-room.ingest` — scans (`VirusScanPort`), encrypts into the blob key, deletes the quarantine
+   blob + document (or version) rows and enqueues `data-room.ingest` in the same transaction. The
+   same bytes as a blob whose scan ended in `error` are a retry: the blob takes the new quarantine
+   object, goes back to `pending` and is scanned again (the old quarantine copy is deleted). The
+   same bytes as an `infected` blob → 409 "the virus scanner flagged this file"; as one still
+   `pending`/`scanning` → 409 "already being processed". A multipart upload larger than part size ×
+   10 000 parts is refused at start (413 `payload_too_large`, `maxBytes`) before anything is created.
+3. `data-room.ingest` — scans (`VirusScanPort`, `source: "data-room"`). A scanner that is down or
+   times out throws, so the job retries (5 retries, then the dead letters; the blob reads `error`).
+   A file the scanner cannot scan in full (`retryable: false`: over its size limit, or the engine
+   stopped at one of its limits) is final: `scan_status = 'error'`, `scan_detail = '<reason>:
+   <detail>'`, the version `failed`, `document.ingested` published with `scanStatus: "error"`, and
+   the job ends without a retry; the document reads availability `failed` and is never served.
+   Otherwise it encrypts into the blob key, deletes the quarantine
    copy, sanitises PDFs (pdf-lib: `OpenAction`, `AA`, JavaScript / embedded files, XFA, Launch),
    extracts text, renders the thumbnail, marks the version `ready | unsupported | failed`, audits
    `document.ingested` and publishes `document.ingested`. Files over `RENDER_MAX_BYTES` and

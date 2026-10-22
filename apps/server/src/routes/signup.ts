@@ -13,7 +13,9 @@ import {
 import {
   listSignupPlans,
   SIGNUP_RATES,
+  type SignupDeps,
   SignupError,
+  signupDefaultPlanLive,
   signupNetworkKey,
   signupSlugAvailable,
   startSignup,
@@ -22,7 +24,7 @@ import {
 import { systemContext } from "@fundroom/db";
 import { sha256 } from "@fundroom/identity";
 import { issueSessionCookies, readDeviceCookie } from "@fundroom/identity/http";
-import type { Context } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import type { AppEnv } from "../env.js";
 import { cookieModeOf } from "../middleware/auth.js";
 import { cookieBasePathOf } from "../path-mount.js";
@@ -44,6 +46,16 @@ import { type ApiDeps, clientIp, workspaceUrl } from "./deps.js";
  * BILLING_DRIVER=stripe so the owner can subscribe), else `/setup`.
  * `GET /signup/plans` is the public catalogue the applicant chooses from (public, unarchived;
  * no prices — the product stores only the provider's price ids).
+ *
+ * E-UP-26: signup is also closed while the default plan is not live — `SIGNUP_DEFAULT_PLAN`
+ * unset, missing or archived — since `verify` could only fail: every signup route (reads
+ * included) answers 404, and the page config says `signup: false`, so the page shows its closed
+ * screen instead of a form. Both read the same memoised answer (`signupLive`), refreshed at most
+ * every `SIGNUP_LIVE_TTL_MS` per process: for up to that long after a plan is archived or
+ * unarchived the old answer stands (a `verify` in that window still fails cleanly with 404 at
+ * provisioning, and nothing is created). The check runs as route middleware (`signupOpen`), so it
+ * answers before the request is validated: a malformed body to a closed signup is the same 404
+ * as a well-formed one.
  */
 
 type Api = OpenAPIHono<AppEnv>;
@@ -51,13 +63,56 @@ type Api = OpenAPIHono<AppEnv>;
 const TAGS = ["signup"];
 const ERRORS = errorResponses(400, 404, 409, 429, 500, 503);
 
-/** Signup exists only when open, and only on the canonical host with no workspace. */
-function requireSignupOpen(c: Context<AppEnv>, deps: ApiDeps): void {
+/** How long one answer of `signupDefaultPlanLive` is reused (per process, per signup deps). */
+export const SIGNUP_LIVE_TTL_MS = 20_000;
+const liveCache = new WeakMap<
+  SignupDeps,
+  { readonly at: number; readonly live: Promise<boolean> }
+>();
+
+/**
+ * `signupDefaultPlanLive`, memoised for `SIGNUP_LIVE_TTL_MS`: the signup routes and the page
+ * config ask on every request, and the answer changes only when an operator archives or
+ * unarchives the default plan. Concurrent misses share one read; a failed read is not kept.
+ */
+export function signupLive(signup: SignupDeps, now: number = Date.now()): Promise<boolean> {
+  const hit = liveCache.get(signup);
+  if (hit !== undefined && now - hit.at < SIGNUP_LIVE_TTL_MS) return hit.live;
+  const live = signupDefaultPlanLive(signup);
+  liveCache.set(signup, { at: now, live });
+  live.catch(() => {
+    if (liveCache.get(signup)?.live === live) liveCache.delete(signup);
+  });
+  return live;
+}
+
+/** Tests only: forget the memoised answer (after archiving or unarchiving the default plan). */
+export function forgetSignupLive(signup: SignupDeps): void {
+  liveCache.delete(signup);
+}
+
+/**
+ * Signup exists only when open, only on the canonical host with no workspace, and only while the
+ * default plan is live (set, present, not archived; `signupLive`). The plan read comes last, so a
+ * tenant host or a closed install never touches the database for it.
+ */
+export async function requireSignupOpen(c: Context<AppEnv>, deps: ApiDeps): Promise<void> {
   const open =
     deps.controlPlane.operators.signupEnabled &&
     c.get("classification")?.host === "canonical" &&
     c.get("workspace") === undefined;
   if (!open) throw new ApiError("not_found", "no such path");
+  if (!(await signupLive(deps.controlPlane.operators.signup))) {
+    throw new ApiError("not_found", "no such path");
+  }
+}
+
+/** `requireSignupOpen` as route middleware: it runs before query/body validation. */
+export function signupOpen(deps: ApiDeps): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    await requireSignupOpen(c, deps);
+    await next();
+  };
 }
 
 /**
@@ -115,6 +170,7 @@ function toApiError(error: unknown): unknown {
 }
 
 export function registerSignupRoutes(api: Api, deps: ApiDeps): void {
+  const open = signupOpen(deps);
   api.openapi(
     createRoute({
       method: "get",
@@ -122,11 +178,11 @@ export function registerSignupRoutes(api: Api, deps: ApiDeps): void {
       tags: TAGS,
       summary: "Is this workspace address free?",
       "x-requires": "public",
+      middleware: [open] as const,
       request: { query: s.SignupSlugQuery },
       responses: { 200: jsonResponse(s.SignupSlugAvailabilitySchema, "Availability"), ...ERRORS },
     }),
     async (c) => {
-      requireSignupOpen(c, deps);
       const { slug } = c.req.valid("query");
       await hitPerClient(c, deps, "slug", SIGNUP_RATES.slugPerIp);
       const available = await signupSlugAvailable(deps.controlPlane.operators.signup, slug);
@@ -143,10 +199,10 @@ export function registerSignupRoutes(api: Api, deps: ApiDeps): void {
       description:
         "Public, unarchived plans in catalogue order. No prices (the marketing site shows them). 429 past 30 a minute per client.",
       "x-requires": "public",
+      middleware: [open] as const,
       responses: { 200: jsonResponse(s.SignupPlansSchema, "Plans"), ...ERRORS },
     }),
     async (c) => {
-      requireSignupOpen(c, deps);
       await hitPerClient(c, deps, "plans", SIGNUP_RATES.plansPerIp);
       const plans = await listSignupPlans(deps.controlPlane.operators.signup);
       c.header("Cache-Control", "public, max-age=60");
@@ -174,11 +230,11 @@ export function registerSignupRoutes(api: Api, deps: ApiDeps): void {
       description:
         "Responds identically whether or not the email is known. Needs `acceptTerms: true` and the current `termsVersion` (409 `conflict` otherwise). 429 past the per-address, per-IP, per-network (/24, /64) or install budgets.",
       "x-requires": "public",
+      middleware: [open] as const,
       request: { body: jsonBody(s.SignupStartBody) },
       responses: { 200: jsonResponse(OkSchema, "Code sent (or silently not sent)"), ...ERRORS },
     }),
     async (c) => {
-      requireSignupOpen(c, deps);
       const body = c.req.valid("json");
       try {
         await startSignup(deps.controlPlane.operators.signup, {
@@ -208,11 +264,11 @@ export function registerSignupRoutes(api: Api, deps: ApiDeps): void {
       description:
         "Creates the workspace, its owner and the chosen plan (`planId` when public and live, else the default); returns where the owner goes next (`/admin/billing?plan=<id>` when the plan needs a subscription now, else `/setup`). 409 `slug_taken` when the address went meanwhile.",
       "x-requires": "public",
+      middleware: [open] as const,
       request: { body: jsonBody(s.SignupVerifyBody) },
       responses: { 201: jsonResponse(s.SignupCompleteSchema, "Created"), ...ERRORS },
     }),
     async (c) => {
-      requireSignupOpen(c, deps);
       const body = c.req.valid("json");
       const ip = clientIp(c, deps.trustProxy);
       const userAgent = c.req.header("user-agent")?.slice(0, 512);

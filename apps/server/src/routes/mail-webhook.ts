@@ -38,8 +38,13 @@ import { canonicalBaseOf } from "../path-mount.js";
  *    `MAIL_EARLY_EVENT_WINDOW_MS`: the provider's webhook can beat the `core.mail_message` row
  *    the sender writes after the provider accepted the message, so we ask for a retry instead of
  *    losing the event. Consumers are idempotent, so re-delivering the rest of the batch is safe.
+ *    With `MAIL_IGNORE_FOREIGN_SENDERS=true`, not for an unknown event whose sender is another
+ *    address on `MAIL_FROM`'s domain (another deployment sharing the provider account, e.g.
+ *    staging): ingest counts it `foreign`, never
+ *    `retry`, so it does not hold a batch in a ten-minute retry loop.
  *  - **200** otherwise, including for events naming messages we never sent (older than that
- *    window): an unknown id is ignored, and saying so would be an oracle for which ids exist.
+ *    window, or foreign): an unknown id is ignored, and saying so would be an oracle for which
+ *    ids exist.
  */
 export const MAIL_WEBHOOK_MAX_BYTES = 256 * 1024;
 /**

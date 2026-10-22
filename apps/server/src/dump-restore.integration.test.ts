@@ -294,12 +294,14 @@ describe("a logical dump restores as written (E-UP-12)", () => {
     expect(res.stderr).toContain("operator does not exist: public.ltree = public.ltree");
     expect(await locationTriggers(restored)).toEqual([]);
 
-    // The next start migrates: 0008 alone is pending and recreates both triggers.
+    // The next start migrates: 0008 (which recreates both triggers) and the later data-room
+    // migrations are pending.
     const target = createDatabase({ connectionString: urlFor(restored), poolMax: 2 });
     try {
       const result = await runMigrations(target.pool, { sources: productSources() });
       expect(result.applied.map((a) => `${a.module}/${a.name}`)).toEqual([
         "data-room/0008_dump_safe_location_triggers",
+        "data-room/0009_blob_scan_claim",
       ]);
     } finally {
       await target.close();

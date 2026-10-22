@@ -13,7 +13,7 @@ import type {
   WorkOptions,
 } from "@fundroom/ports";
 import { JOB_NAME_RE } from "@fundroom/ports";
-import type { SendOptions as BossSendOptions, Job } from "pg-boss";
+import type { SendOptions as BossSendOptions, JobWithMetadata } from "pg-boss";
 import { PgBoss } from "pg-boss";
 import { pgBossDbFor } from "./repos/drizzle-tx.js";
 
@@ -433,23 +433,26 @@ export function createPgBossQueue(options: PgBossQueueOptions): PgBossQueue {
     async work<T extends JsonObject>(name: string, handler: JobHandler<T>, o?: WorkOptions) {
       requireStarted();
       assertName(name);
-      await boss.work<T>(
+      await boss.work(
         name,
         {
           batchSize: 1,
+          // Metadata carries retryCount/retryLimit, which handlers read as `job.attempt`.
+          includeMetadata: true,
           localConcurrency: Math.min(Math.max(1, o?.concurrency ?? 1), maxConcurrency),
           pollingIntervalSeconds:
             o?.pollIntervalMs !== undefined
               ? Math.max(0.5, o.pollIntervalMs / 1000)
               : pollingIntervalSeconds,
         },
-        async (jobs: Job<T>[]) => {
+        async (jobs: JobWithMetadata<T>[]) => {
           for (const job of jobs) {
             const active: ActiveJob<T> = {
               id: job.id,
               name: job.name,
               data: job.data,
               signal: job.signal,
+              attempt: { count: job.retryCount, limit: job.retryLimit },
             };
             await handler(active);
           }

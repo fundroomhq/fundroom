@@ -131,6 +131,19 @@ function notFound(c: Context<AppEnv>): ApiError {
   return markAuthzDenial(new ApiError("not_found", "no such path"));
 }
 
+/**
+ * Checks 1–3 alone as route middleware, for the operator surface's `public` rows (enrolment):
+ * it runs before body validation, so a request from outside the operator network gets the
+ * surface's plain 404 whatever it sends — never a 400 that confirms the route is there. Marked
+ * as an authorization denial, like every other refusal of the surface.
+ */
+export function requirePlatformSurface(deps: ApiDeps): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    if (!platformSurfaceReachable(c, deps)) throw notFound(c);
+    await next();
+  };
+}
+
 /** The guard for `requires: platform-operator` rows (see the header). `deps` is read per request. */
 export function requirePlatformOperator(deps: ApiDeps): MiddlewareHandler<AppEnv> {
   return async (c, next) => {

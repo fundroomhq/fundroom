@@ -13,7 +13,8 @@ vi.mock("./service/notify.js", async (importOriginal) => ({
   fanOut,
 }));
 
-const { onRoundVerificationDecided, onRoundVerificationExpiring } = await import("./handlers.js");
+const { onDocumentScanInfected, onRoundVerificationDecided, onRoundVerificationExpiring } =
+  await import("./handlers.js");
 const { setNotifyServices } = await import("./service/slot.js");
 
 const V = "7d0f2a3e-0000-4000-8000-000000000001";
@@ -105,5 +106,55 @@ describe("round.verification_decided", () => {
         { tx, ctx: system } as never,
       ),
     ).rejects.toThrow(/got round.verification_expiring/u);
+  });
+});
+
+describe("document.scan_infected", () => {
+  const B = "7d0f2a3e-0000-4000-8000-0000000000b1";
+  const D = "7d0f2a3e-0000-4000-8000-0000000000d1";
+
+  it("data-room managers and the uploader, no actor, the document as resource, per blob", async () => {
+    await onDocumentScanInfected(
+      envelope("document.scan_infected", {
+        documentId: D,
+        versionId: V,
+        blobId: B,
+        uploadedBy: M,
+        signature: "Win.Test.EICAR_HDB-1",
+      }),
+      { tx, ctx: system } as never,
+    );
+    expect(fanOut.mock.calls[0]?.[3]).toEqual({
+      eventType: "document.scan_infected",
+      actorMembershipId: null,
+      resourceKind: "document",
+      resourceId: D,
+      payload: {
+        blobId: B,
+        signature: "Win.Test.EICAR_HDB-1",
+        uploadedBy: M,
+        documentId: D,
+        versionId: V,
+      },
+      bucket: B,
+      permission: "data-room.manage",
+      alsoNotify: [M],
+    });
+  });
+
+  it("a system upload with no document: staff only, the blob as resource", async () => {
+    await onDocumentScanInfected(
+      envelope("document.scan_infected", { blobId: B, uploadedBy: null, signature: "Eicar" }),
+      { tx, ctx: system } as never,
+    );
+    expect(fanOut.mock.calls[0]?.[3]).toEqual({
+      eventType: "document.scan_infected",
+      actorMembershipId: null,
+      resourceKind: "blob",
+      resourceId: B,
+      payload: { blobId: B, signature: "Eicar", uploadedBy: null },
+      bucket: B,
+      permission: "data-room.manage",
+    });
   });
 });

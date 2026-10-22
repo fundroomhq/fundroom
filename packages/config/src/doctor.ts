@@ -1,4 +1,5 @@
 import { createHash, X509Certificate } from "node:crypto";
+import { CLAMD_MAX_DEADLINE_MS } from "@fundroom/ports";
 import { describeKeyRing } from "./key-ring.js";
 import type { AppConfig, SourceMap } from "./load.js";
 import { isPrivateHost } from "./network.js";
@@ -9,6 +10,7 @@ import {
   pemBlocks,
   type RawEnv,
   SECRET_KEYS,
+  uploadCeilingBytes,
 } from "./schema.js";
 import { pgTransportOf } from "./transport.js";
 
@@ -105,6 +107,9 @@ export function ownCellOrigin(config: AppConfig): OwnCellOrigin {
   if (!isCellOrigin(origin)) return { origin: "", basis: "not_a_cell_origin" };
   return { origin, basis: "base_url" };
 }
+
+/** The longest scan deadline the clamd adapter allows (defined with the port). */
+export { CLAMD_MAX_DEADLINE_MS };
 
 export function configWarnings(
   config: AppConfig,
@@ -294,6 +299,58 @@ export function configWarnings(
       key: "SANCTIONS_DRIVER",
       message:
         "OpenSanctions data is licensed CC BY-NC: screening your customers as a business needs a commercial data licence from OpenSanctions (for yente and for the hosted API alike).",
+    });
+  }
+  // E-UP-25: the scanner refuses what clamd would cut short; the upload ceiling follows it.
+  if (config.raw.AV_DRIVER === "clamd") {
+    const maxScan = config.raw.AV_MAX_SCAN_BYTES;
+    if (maxScan === undefined) {
+      warnings.push({
+        key: "AV_MAX_SCAN_BYTES",
+        message: `unset with AV_DRIVER=clamd: uploads up to UPLOAD_MAX_BYTES (${config.raw.UPLOAD_MAX_BYTES} bytes) are accepted, but clamd refuses a stream past its StreamMaxLength (100 MiB in the stock clamav image) and larger files end Scan failed (too_large). Set AV_MAX_SCAN_BYTES to clamd's StreamMaxLength.`,
+      });
+    } else if (config.raw.UPLOAD_MAX_BYTES > maxScan) {
+      warnings.push({
+        key: "UPLOAD_MAX_BYTES",
+        message: `UPLOAD_MAX_BYTES (${config.raw.UPLOAD_MAX_BYTES}) is larger than AV_MAX_SCAN_BYTES (${maxScan}): the upload ceiling is capped to AV_MAX_SCAN_BYTES, since the scanner cannot scan more. Raise clamd's StreamMaxLength and AV_MAX_SCAN_BYTES together to accept larger files.`,
+      });
+    }
+    const rate = config.raw.CLAMD_MIN_BYTES_PER_SECOND;
+    const scaled = rate > 0;
+    // The largest file scanned is the upload ceiling (UPLOAD_MAX_BYTES when AV_MAX_SCAN_BYTES
+    // is unset).
+    const largest = uploadCeilingBytes(config.raw);
+    const deadlineMs =
+      config.raw.CLAMD_TIMEOUT_MS + (scaled ? Math.ceil(largest / rate) * 1000 : 0);
+    const capMinutes = CLAMD_MAX_DEADLINE_MS / 60_000;
+    if (deadlineMs > CLAMD_MAX_DEADLINE_MS) {
+      warnings.push(
+        scaled
+          ? {
+              key: "CLAMD_MIN_BYTES_PER_SECOND",
+              message: `CLAMD_TIMEOUT_MS + ${maxScan === undefined ? "UPLOAD_MAX_BYTES" : "AV_MAX_SCAN_BYTES"} / CLAMD_MIN_BYTES_PER_SECOND is ${Math.round(deadlineMs / 1000)} s, beyond the ${capMinutes}-minute cap (scanning jobs expire after 30): the largest files time out at ${capMinutes} minutes. Raise CLAMD_MIN_BYTES_PER_SECOND or lower AV_MAX_SCAN_BYTES.`,
+            }
+          : {
+              key: "CLAMD_TIMEOUT_MS",
+              message: `CLAMD_TIMEOUT_MS (${config.raw.CLAMD_TIMEOUT_MS} ms) is beyond the ${capMinutes}-minute cap on a scan (scanning jobs expire after 30): scans still end at ${capMinutes} minutes.`,
+            },
+      );
+    }
+    // E-sign artifacts are scanned whole: one larger than the scanner reads in full fails the
+    // collection (`too_large`) instead of being vaulted.
+    if (maxScan !== undefined && config.raw.ESIGN_MAX_ARTIFACT_BYTES > maxScan) {
+      warnings.push({
+        key: "ESIGN_MAX_ARTIFACT_BYTES",
+        message: `ESIGN_MAX_ARTIFACT_BYTES (${config.raw.ESIGN_MAX_ARTIFACT_BYTES}) is larger than AV_MAX_SCAN_BYTES (${maxScan}): a signed document or certificate between the two is downloaded, then refused by the scanner, and the envelope's collection fails as unscannable. Lower ESIGN_MAX_ARTIFACT_BYTES to AV_MAX_SCAN_BYTES or raise clamd's StreamMaxLength and AV_MAX_SCAN_BYTES.`,
+      });
+    }
+  }
+  // E-UP-24: the foreign-sender rule compares against MAIL_FROM's domain; without one it is inert.
+  if (config.raw.MAIL_IGNORE_FOREIGN_SENDERS && config.raw.MAIL_FROM === undefined) {
+    warnings.push({
+      key: "MAIL_IGNORE_FOREIGN_SENDERS",
+      message:
+        "true without MAIL_FROM: no sender is recognised as another instance's, so every unknown young webhook event is still retried. Set MAIL_FROM to this instance's own sender address.",
     });
   }
   if (aiSelfHostedOverridesPublicHost(config.raw)) {

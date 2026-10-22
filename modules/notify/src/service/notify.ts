@@ -72,6 +72,8 @@ export const QA_APPROVE = "data-room.qa_approve";
  * kernel permission held by owners and admins.
  */
 export const INTEGRATIONS_MANAGE = "integrations.manage";
+/** Infected-upload alerts go to whoever can remove the document (a data-room permission). */
+export const DATA_ROOM_MANAGE = "data-room.manage";
 const PAGE = 500;
 const ELIGIBLE = ["active"] as const;
 
@@ -98,7 +100,8 @@ export interface FanOutInput {
     | "workspace"
     | "qa_question"
     | "esign_envelope"
-    | "integration_connection";
+    | "integration_connection"
+    | "blob";
   readonly resourceId: string;
   readonly payload: JsonObject;
   readonly bucket: string;
@@ -569,6 +572,42 @@ function verificationCopy(
   };
 }
 
+/**
+ * An infected upload (`document.scan_infected`): the uploader reads it in the second person, staff
+ * holding `data-room.manage` in the third. The signature is the scanner's name for the match, not
+ * file content; the document's title lives in the `dataroom` schema and is never quoted.
+ */
+function scanInfectedCopy(
+  services: ModuleServices,
+  workspace: Workspace,
+  row: Notification,
+): Omit<Rendered, "title"> {
+  const documentId = payloadId(row, "documentId");
+  const signature = payloadId(row, "signature");
+  const yours = row.membershipId === payloadId(row, "uploadedBy");
+  const what = yours
+    ? `A file you uploaded to the ${workspace.name} data room`
+    : `A file uploaded to the ${workspace.name} data room`;
+  const match = signature === undefined ? "" : ` (${signature})`;
+  return {
+    subject: VERB["document.scan_infected"],
+    paragraphs: [
+      `${what} was flagged by the virus scanner${match}. It stays quarantined and is never shown or downloaded. ${
+        documentId === undefined
+          ? "Check where it came from before uploading the file again."
+          : "Remove the document, and check where the file came from before uploading a clean copy."
+      }`,
+    ],
+    cta: {
+      label: documentId === undefined ? "Open the data room" : "Open the document",
+      url: services.workspaceUrl(
+        workspace,
+        documentId === undefined ? "/admin/data-room" : `/admin/data-room/documents/${documentId}`,
+      ).href,
+    },
+  };
+}
+
 /** Copy for one instant alert: generic noun, actor name, links to the admin pages. */
 export function renderInstant(
   services: ModuleServices,
@@ -597,6 +636,10 @@ export function renderInstant(
         url: services.workspaceUrl(workspace, "/admin/integrations").href,
       },
     };
+  }
+  if (type === "document.scan_infected") {
+    const infected = scanInfectedCopy(services, workspace, row);
+    return { ...infected, title: infected.subject };
   }
   const qa = qaCopy(services, workspace, row, actorName);
   if (qa !== undefined) return { ...qa, title: qa.subject };

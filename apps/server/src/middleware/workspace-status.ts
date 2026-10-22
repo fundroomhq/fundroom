@@ -15,6 +15,9 @@ import { markAuthzDenial } from "./security-events.js";
  *     account: sessions, devices, locale, leaving a view-as);
  *   - `GET /api/v1/modules` (the bootstrap, carrying `workspaceStatus`), `GET /api/v1/openapi.json`,
  *     `GET /api/v1/branding/logo` and `GET /api/v1/i18n/*` (what the sign-in page needs);
+ *   - `GET /api/v1/setup/status`, which reproduces the hold itself (E-UP-26): staff get the same
+ *     423 as here (the setup wizard shows "under review" on it), everybody else `{ required:
+ *     false }` — a plain 404 there would read as a broken instance, and the body says nothing;
  *   - `/api/v1/billing*` and `/api/v1/usage` for a staff member holding `billing.read` or
  *     `billing.manage` — so an owner can pay their way out of a billing suspension;
  *   - `GET /api/v1/residency` for a staff member while the reason is `relocation` (E3.11): the
@@ -47,11 +50,31 @@ const READS: readonly RegExp[] = [
   /^\/api\/v1\/openapi\.json$/u,
   /^\/api\/v1\/branding\/logo\/?$/u,
   /^\/api\/v1\/i18n(?:\/|$)/u,
+  /^\/api\/v1\/setup\/status\/?$/u,
 ];
 const BILLING: RegExp = /^\/api\/v1\/(?:billing|usage)(?:\/|$)/u;
 /** Readable by staff while the workspace is held for a move between cells (E3.11). */
 const RELOCATION_READS: readonly RegExp[] = [/^\/api\/v1\/residency\/?$/u];
 const READ_METHODS: ReadonlySet<string> = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/** The caller the guard treats as staff: a staff membership of this workspace, not viewing-as. */
+export function holdViewerIsStaff(
+  membership: Pick<Membership, "kind"> | undefined,
+  viewingAs: boolean,
+): boolean {
+  return membership !== undefined && membership.kind === "staff" && !viewingAs;
+}
+
+/** The 423 a staff caller gets from a non-active workspace (the guard's, and `/setup/status`'s). */
+export function workspaceUnavailableError(workspace: {
+  readonly status: string;
+  readonly suspendedReason?: string | null | undefined;
+}): ApiError {
+  return new ApiError("workspace_unavailable", "this workspace is unavailable", {
+    workspaceStatus: workspace.status,
+    reason: workspace.suspendedReason,
+  });
+}
 
 /**
  * What the bootstrap and the page config say about a non-active workspace (null when active).
@@ -111,10 +134,10 @@ export function workspaceStatusGuard(
     if (workspace === undefined || workspace.status === "active") return next();
     const classification = c.get("classification");
     const membership = c.get("membership");
-    const staff =
-      membership !== undefined && membership.kind === "staff" && c.get("viewAs") === undefined;
+    const staff = holdViewerIsStaff(membership, c.get("viewAs") !== undefined);
     const billingHolder =
       staff &&
+      membership !== undefined &&
       (options.hasPermission(membership, "billing.read") ||
         options.hasPermission(membership, "billing.manage"));
     if (
@@ -128,15 +151,7 @@ export function workspaceStatusGuard(
     ) {
       return next();
     }
-    if (staff) {
-      return errorResponse(
-        c,
-        new ApiError("workspace_unavailable", "this workspace is unavailable", {
-          workspaceStatus: workspace.status,
-          reason: workspace.suspendedReason,
-        }),
-      );
-    }
+    if (staff) return errorResponse(c, workspaceUnavailableError(workspace));
     return errorResponse(c, markAuthzDenial(new ApiError("not_found", "no such path")));
   };
 }

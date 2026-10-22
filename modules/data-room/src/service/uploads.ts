@@ -5,7 +5,9 @@ import type { ModuleServices } from "@fundroom/module-kit";
 import type { MultipartPart } from "@fundroom/ports";
 import { isStorageError } from "@fundroom/ports";
 import {
+  MULTIPART_MAX_PARTS,
   MULTIPART_PART_BYTES,
+  parseObjectKey,
   partCountFor,
   quarantineKey,
   UPLOAD_URL_TTL_SECONDS,
@@ -88,6 +90,15 @@ export interface UploadService {
 function titleOf(fileName: string): string {
   const base = fileName.replace(/\.[^.]+$/u, "").trim();
   return (base.length > 0 ? base : fileName).slice(0, 300);
+}
+
+function ownQuarantine(ctx: TenantContext, key: string): boolean {
+  try {
+    const parsed = parseObjectKey(key);
+    return parsed.kind === "quarantine" && parsed.workspaceId === ctx.workspaceId.toLowerCase();
+  } catch {
+    return false;
+  }
 }
 
 export function createUploadService(services: ModuleServices): UploadService {
@@ -174,6 +185,17 @@ export function createUploadService(services: ModuleServices): UploadService {
       const method: "tus" | "multipart" = storage.capabilities.presignedMultipart
         ? "multipart"
         : "tus";
+      // Multipart has its own ceiling (part size × the part limit): refuse before any row or
+      // multipart upload exists, so nothing is left behind for the sweep.
+      const multipartMax = MULTIPART_PART_BYTES * MULTIPART_MAX_PARTS;
+      if (method === "multipart" && input.size > multipartMax) {
+        throw new DataRoomError(
+          "payload_too_large",
+          "the file is larger than this workspace allows",
+          { maxBytes: Math.min(ceiling, multipartMax) },
+        );
+      }
+      const count = method === "multipart" ? partCountFor(input.size) : 0;
       const id = crypto.randomUUID();
       const key = quarantineKey(ctx.workspaceId, id);
       const t = now();
@@ -211,7 +233,6 @@ export function createUploadService(services: ModuleServices): UploadService {
       if (method === "tus")
         return { upload: up, method, contentType, tus: { path: "/data-room/uploads/tus" } };
       const mp = await storage.multipart.create(key, { contentType });
-      const count = partCountFor(input.size);
       const parts = [];
       for (let n = 1; n <= count; n++) {
         parts.push({
@@ -309,15 +330,45 @@ export function createUploadService(services: ModuleServices): UploadService {
       }
 
       const t = now();
-      const result = await db.withTenant(ctx, async (tx) => {
+      const done = await db.withTenant(ctx, async (tx) => {
         const blobs = new BlobRepo(ctx, tx);
         const docs = new DocumentRepo(ctx, tx);
         const versions = new VersionRepo(ctx, tx);
         let deduplicated = false;
+        let staleQuarantine: string | undefined;
         let b = await blobs.bySha256(sha256);
         if (b !== undefined) {
           if (b.scanStatus === "clean" || b.scanStatus === "skipped") {
             deduplicated = true;
+          } else if (b.scanStatus === "infected") {
+            throw new DataRoomError("conflict", "the virus scanner flagged this file", {
+              conflict: "blob",
+              scanStatus: "infected",
+            });
+          } else if (b.scanStatus === "error") {
+            // The earlier scan failed (or the blob came from an import without its bytes): these
+            // bytes are a retry. The blob now points at this upload's quarantine object and the
+            // scan starts over; the previous quarantine copy, if any, goes after the commit.
+            const previous = b.storageKey;
+            const retried = await blobs.retryScan(b.id, up.storageKey);
+            if (retried === undefined) {
+              throw new DataRoomError("conflict", "the same file is already being processed", {
+                conflict: "blob",
+                scanStatus: "pending",
+              });
+            }
+            b = retried;
+            if (previous !== up.storageKey) staleQuarantine = previous;
+            // The versions already on this blob were marked failed ("not scanned"): they go
+            // back to pending and their ingest runs again with this scan.
+            for (const earlier of await versions.resetRenderForBlob(b.id)) {
+              await services.queue.sendInTransaction(
+                tx,
+                INGEST_JOB,
+                { workspaceId: ctx.workspaceId, versionId: earlier.id, blobId: b.id },
+                { idempotencyKey: `ingest:${earlier.id}` },
+              );
+            }
           } else {
             throw new DataRoomError("conflict", "the same file is already being processed", {
               conflict: "blob",
@@ -412,9 +463,23 @@ export function createUploadService(services: ModuleServices): UploadService {
           { workspaceId: ctx.workspaceId, uploadId: up.id, versionId: version.id, blobId: b.id },
           { idempotencyKey: `ingest:${version.id}` },
         );
-        return { upload: updatedUp ?? up, document: updatedDoc ?? document, version, deduplicated };
+        return {
+          result: {
+            upload: updatedUp ?? up,
+            document: updatedDoc ?? document,
+            version,
+            deduplicated,
+          },
+          staleQuarantine,
+        };
       });
+      const { result, staleQuarantine } = done;
       if (result.deduplicated) await storage.delete(up.storageKey).catch(() => {});
+      // Only ever this workspace's own quarantine object (an import's placeholder key names no
+      // object); a missing object is fine.
+      if (staleQuarantine !== undefined && ownQuarantine(ctx, staleQuarantine)) {
+        await storage.delete(staleQuarantine).catch(() => {});
+      }
       return result;
     },
 

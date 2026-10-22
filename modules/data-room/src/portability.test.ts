@@ -98,6 +98,11 @@ describe("data-room portability spec", () => {
     for (const s of ["pending", "scanning", "error", "infected"]) {
       expect(exportBlobRow({ ...clean, scan_status: s })["storage_key"]).toBeNull();
     }
+    // The scan claim names this install's job: never exported.
+    expect(exportBlobRow({ ...clean, scan_claimed_by: OLD })).toEqual(clean);
+    expect(
+      exportBlobRow({ ...clean, scan_status: "scanning", scan_claimed_by: OLD }),
+    ).not.toHaveProperty("scan_claimed_by");
   });
 
   it("gives an unexported blob a placeholder key and marks it failed on import", () => {

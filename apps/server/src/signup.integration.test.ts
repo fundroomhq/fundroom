@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "@fundroom/config";
@@ -15,8 +15,10 @@ import { createMemoryMailer, type MemoryMailer } from "@fundroom/mail";
 import type { ProvisionedWorkspace } from "@fundroom/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createLogger } from "./logger.js";
+import { forgetSignupLive } from "./routes/signup.js";
 import { type RunningServer, startServer } from "./server.js";
 import { awaitSignInCode } from "./test/sign-in-mail.js";
+import { CONFIG_META_NAME, type WebConfig } from "./web.js";
 
 /*
  * Self-service signup end to end (E3.10 §5.7, agent A): only on the canonical host with
@@ -56,6 +58,30 @@ async function request(
 
 const post = (path: string, body: unknown, host = CANON, ip?: string) =>
   request(host, `/api/v1/signup${path}`, { method: "POST", body: JSON.stringify(body), ip });
+
+/** A stub web build, so the SPA catch-all renders the page config (E-UP-26: `signup`). */
+function fakeWebDist(): string {
+  const dir = mkdtempSync(join(tmpdir(), "fundroom-web-dist-"));
+  mkdirSync(join(dir, "assets"));
+  writeFileSync(join(dir, "index.html"), "<!doctype html><html><head></head><body></body></html>");
+  return dir;
+}
+
+/** The page config `GET /signup` renders on the canonical host. */
+async function signupPageConfig(): Promise<WebConfig> {
+  const res = await running.app.request(`https://${CANON}/signup`, { headers: { host: CANON } });
+  const html = await res.text();
+  const m = new RegExp(`<meta name="${CONFIG_META_NAME}" content="([^"]*)">`, "u").exec(html);
+  if (!m?.[1]) throw new Error(`no config meta: ${html.slice(0, 200)}`);
+  return JSON.parse(
+    m[1]
+      .replace(/&quot;/gu, '"')
+      .replace(/&#39;/gu, "'")
+      .replace(/&lt;/gu, "<")
+      .replace(/&gt;/gu, ">")
+      .replace(/&amp;/gu, "&"),
+  ) as WebConfig;
+}
 
 async function errorCode(res: Response): Promise<string | undefined> {
   return ((await res.clone().json()) as { error?: { code?: string } }).error?.code;
@@ -102,6 +128,7 @@ beforeAll(async () => {
       SIGNUP_DEFAULT_PLAN: "starter",
       TRUST_PROXY: "true",
       ROLES: "api,web",
+      WEB_DIST_PATH: fakeWebDist(),
       UPDATE_CHECK: "false",
     },
   });
@@ -492,9 +519,11 @@ describe("POST /signup/verify", () => {
   });
 
   it("a missing or archived default plan is a clean 404 with nothing created", async () => {
+    // The code was sent while the plan was live; the plan goes before the applicant finishes.
+    const code = await startAndCode("unlucky@plan.test", "plan-co");
     await superQuery(`UPDATE core.plan SET archived_at = now() WHERE id = 'starter'`);
+    forgetSignupLive(running.container.controlPlane.operators.signup);
     try {
-      const code = await startAndCode("unlucky@plan.test", "plan-co");
       const res = await post("/verify", { email: "unlucky@plan.test", code });
       expect(res.status).toBe(404);
       expect(await errorCode(res)).toBe("not_found");
@@ -506,6 +535,43 @@ describe("POST /signup/verify", () => {
       ).toEqual([]);
     } finally {
       await superQuery(`UPDATE core.plan SET archived_at = NULL WHERE id = 'starter'`);
+      forgetSignupLive(running.container.controlPlane.operators.signup);
     }
+  });
+
+  it("closes every signup read and write while the default plan is archived (E-UP-26)", async () => {
+    await superQuery(`UPDATE core.plan SET archived_at = now() WHERE id = 'starter'`);
+    forgetSignupLive(running.container.controlPlane.operators.signup);
+    try {
+      const reads = ["/slug?slug=closed-co", "/plans", "/regions", "/slug"];
+      for (const path of reads) {
+        const res = await request(CANON, `/api/v1/signup${path}`);
+        expect(res.status, path).toBe(404);
+        expect(await errorCode(res), path).toBe("not_found");
+      }
+      // Writes too, and before validation: a malformed body is the same 404.
+      for (const [path, body] of [
+        ["/start", application("closed@plan.test", "closed-co")],
+        ["/start", {}],
+        ["/verify", { email: "closed@plan.test", code: "123456" }],
+        ["/verify", { nope: true }],
+      ] as const) {
+        const res = await post(path, body);
+        expect(res.status, `${path} ${JSON.stringify(body)}`).toBe(404);
+        expect(await errorCode(res)).toBe("not_found");
+      }
+      expect(await superQuery(`SELECT id FROM core.workspace WHERE slug = 'closed-co'`)).toEqual(
+        [],
+      );
+      // The page shows its closed screen rather than a form whose verify can only fail.
+      expect(await signupPageConfig()).toMatchObject({ signup: false, signupTerms: null });
+    } finally {
+      await superQuery(`UPDATE core.plan SET archived_at = NULL WHERE id = 'starter'`);
+      forgetSignupLive(running.container.controlPlane.operators.signup);
+    }
+    // Restored: the reads answer again, and the page offers the form.
+    expect(await signupPageConfig()).toMatchObject({ signup: true });
+    expect((await request(CANON, "/api/v1/signup/plans")).status).toBe(200);
+    expect((await request(CANON, "/api/v1/signup/slug?slug=closed-co")).status).toBe(200);
   });
 });

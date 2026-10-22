@@ -204,3 +204,22 @@ describe("worker concurrency and the pool size", () => {
     }
   }, 60_000);
 });
+
+describe("the attempt a handler sees", () => {
+  it("counts earlier failures from 0 and carries the queue's retry limit, so the last attempt is count >= limit", async () => {
+    const name = "opstest.attempts";
+    await queue.ensureQueue(name, { retryLimit: 2, retryDelaySeconds: 1, retryBackoff: false });
+    const seen: { count: number; limit: number }[] = [];
+    await queue.work(name, async (job) => {
+      if (job.attempt !== undefined) seen.push({ ...job.attempt });
+      throw new Error("fail every attempt");
+    });
+    await queue.send(name, { n: 1 });
+    await waitForAsync(async () => seen.length === 3);
+    expect(seen).toEqual([
+      { count: 0, limit: 2 },
+      { count: 1, limit: 2 },
+      { count: 2, limit: 2 },
+    ]);
+  }, 60_000);
+});

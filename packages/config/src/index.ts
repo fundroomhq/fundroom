@@ -95,6 +95,7 @@ export {
   STRIPE_METER_EVENT_RE,
   TENANCY_MODES,
   type TenancyMode,
+  uploadCeilingBytes,
   WORKER_MODES,
 } from "./schema.js";
 export {

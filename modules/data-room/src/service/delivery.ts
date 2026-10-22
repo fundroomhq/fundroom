@@ -154,6 +154,16 @@ export function pageCacheKey(
 }
 
 /**
+ * A blob recorded `clean` whose promotion (encrypt into the blob key) has not committed yet: the
+ * same "processing" reason the availability check gives a blob still in the scan pipeline.
+ */
+function stillProcessing(): DataRoomError {
+  return new DataRoomError("conflict", "the file is still being processed", {
+    reason: "processing",
+  });
+}
+
+/**
  * One delivery service (and its PDF/page caches) per process database, so the OpenAPI routes,
  * the raw mount (a differently guarded services wrapper) and detection share one (E3.13 FIX1 D7).
  */
@@ -191,8 +201,7 @@ export function createDeliveryService(
     const bytes = await db.withTenant(ctx, async (tx) => {
       const normalized = await new RenditionRepo(ctx, tx).find(version.id, "pdf", null);
       const encryption = parseEncryption(blob.encryption);
-      if (encryption === undefined)
-        throw new DataRoomError("conflict", "the file is still being processed");
+      if (encryption === undefined) throw stillProcessing();
       if (normalized !== undefined) {
         return objects.readBytes(tx, ctx, normalized.storageKey, encryption);
       }
@@ -221,8 +230,7 @@ export function createDeliveryService(
   ): Promise<RenderedImage> {
     const { ctx, version, blob } = input;
     const encryption = parseEncryption(blob.encryption);
-    if (encryption === undefined)
-      throw new DataRoomError("conflict", "the file is still being processed");
+    if (encryption === undefined) throw stillProcessing();
     const existing = await db.withTenant(ctx, async (tx) => {
       const r = await new RenditionRepo(ctx, tx).find(version.id, "page", pageNo);
       if (r === undefined) return undefined;
@@ -325,8 +333,7 @@ export function createDeliveryService(
     async download(input, variant) {
       const { ctx, version, blob, viewer, document, actor, protection } = input;
       const encryption = parseEncryption(blob.encryption);
-      if (encryption === undefined)
-        throw new DataRoomError("conflict", "the file is still being processed");
+      if (encryption === undefined) throw stillProcessing();
       // A watermarked copy of a forensic document carries a trace of its recipient's mark
       // (visible line + PDF Info `/SeedHostTrace`). Issued before the audit, in its own tx.
       const mark =

@@ -457,6 +457,7 @@ describe("preferences", () => {
       // E3.7: the investor's own verification alerts (the vocabulary is shared).
       { eventType: "round.verification_expiring", cadence: "instant", isDefault: true },
       { eventType: "round.verification_decided", cadence: "instant", isDefault: true },
+      { eventType: "document.scan_infected", cadence: "instant", isDefault: true },
     ]);
     expect(before.settings).toEqual(DEFAULT_SETTINGS);
 
@@ -496,6 +497,7 @@ describe("preferences", () => {
       { eventType: "integration.connection_unhealthy", cadence: "instant", isDefault: true },
       { eventType: "round.verification_expiring", cadence: "instant", isDefault: true },
       { eventType: "round.verification_decided", cadence: "instant", isDefault: true },
+      { eventType: "document.scan_infected", cadence: "instant", isDefault: true },
     ]);
     await put(editor, { preferences: [{ eventType: "document.viewed", cadence: "off" }] });
     const asViewer = await put(viewer, {
@@ -2505,5 +2507,60 @@ describe("overdue access review (E3.2)", () => {
     expect(audits).toHaveLength(2);
     expect(audits[1]?.meta["week"]).not.toBe(audits[0]?.meta["week"]);
     expect(await overdueAudits(initrodeId)).toEqual([]);
+  });
+});
+
+describe("document.scan_infected (an upload the virus scanner flagged)", () => {
+  const BLOB = randomUUID();
+  const DOC = randomUUID();
+  const VER = randomUUID();
+  const scanRows = () =>
+    rows<{ membershipId: string; cadence: string; resourceKind: string; resourceId: string }>(
+      `SELECT membership_id AS "membershipId", cadence, resource_kind AS "resourceKind",
+              resource_id AS "resourceId"
+       FROM notify.notification WHERE event_type = 'document.scan_infected'
+         AND workspace_id = '${acmeId}'::uuid`,
+    );
+
+  it("reaches data-room.manage holders and the uploader, instantly, once per blob", async () => {
+    mailer.clear();
+    const payload = {
+      documentId: DOC,
+      versionId: VER,
+      blobId: BLOB,
+      uploadedBy: viewer.membershipId,
+      signature: "Win.Test.EICAR_HDB-1",
+    };
+    await deliver(
+      handlerFor("document.scan_infected", "notify"),
+      "document.scan_infected",
+      payload,
+      9901,
+    );
+    const got = await scanRows();
+    // owner and editor hold `data-room.manage`; the viewer is told as the uploader. Not the
+    // other viewers, and never an investor.
+    expect(got.map((r) => r.membershipId).sort()).toEqual(
+      [owner.membershipId, editor.membershipId, viewer.membershipId].sort(),
+    );
+    expect(got.every((r) => r.cadence === "instant")).toBe(true);
+    expect(got.every((r) => r.resourceKind === "document" && r.resourceId === DOC)).toBe(true);
+    const mail = await waitFor(async () =>
+      mailer.sent.find(
+        (m) => m.tags?.includes("document.scan_infected") && m.to === "viewer@example.com",
+      ),
+    );
+    expect(mail.subject).toBe("An uploaded file was flagged by the virus scanner");
+    expect(mail.text).toContain("A file you uploaded to the Acme data room");
+    expect(mail.text).toContain("Win.Test.EICAR_HDB-1");
+    expect(mail.text).toContain(`http://acme.${CANON}/admin/data-room/documents/${DOC}`);
+    // A re-ingest of the same quarantined file (a new outbox event) collapses on the blob.
+    await deliver(
+      handlerFor("document.scan_infected", "notify"),
+      "document.scan_infected",
+      payload,
+      9902,
+    );
+    expect(await scanRows()).toHaveLength(3);
   });
 });

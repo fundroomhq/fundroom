@@ -98,11 +98,12 @@ The envelope is `completed` but has no signed copy, and shows an `errorCode`:
 | `artifact_too_large` | signed PDF + certificate exceed `ESIGN_MAX_ARTIFACT_BYTES` (default 25 MiB) | operator raises it (at most 100 MiB) in `.env`, `docker compose up -d`; then **Resync** |
 | `artifact_not_pdf` | the vendor's download is not a PDF (an error page, a redirect target) | fix the vendor side (DocuSeal: file URLs must not redirect; Documenso: S3 upload transport); **Resync** |
 | `artifact_unauthorized`, `artifact_not_found`, `artifact_rejected`, `artifact_invalid_response` | the vendor refused the download | fix credentials or the vendor's state; **Resync** |
+| `artifact_unscannable` | the virus scanner could not scan the file in full (over its stream size limit, or the engine stopped at one of its limits; `errorDetail` names the reason). Never stored unscanned | raise clamd's `StreamMaxLength` / `AV_MAX_SCAN_BYTES` or the engine limits ([av-failure.md](av-failure.md)); then **Resync** |
 | `artifact_infected` | the virus scanner flagged the file | **final**: **Resync** does not clear it. Treat it as a security event ([incident-response.md](incident-response.md)); get a clean copy from the vendor out of band |
 
 **Resync** on a completed envelope without a copy clears the error (except `artifact_infected`) and queues collection again. An NDA acceptance is recorded only once the copy is collected, so an investor waiting at the gate is unblocked by the successful collection.
 
-If there is no `errorCode` and no copy, collection is still retrying: a scanner that is down makes it retry rather than fail ([av-failure.md](av-failure.md)), and the sweep re-queues it every 15 minutes. Check `esign.collect` in the query above and the dead letters:
+If there is no `errorCode` and no copy, collection is still retrying: a scanner that is down or times out makes it retry rather than fail ([av-failure.md](av-failure.md)), and the sweep re-queues it every 15 minutes. Check `esign.collect` in the query above and the dead letters:
 
 ```
 docker compose run --rm app jobs dlq list --workspace <workspace uuid>

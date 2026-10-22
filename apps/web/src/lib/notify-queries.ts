@@ -56,6 +56,8 @@ export const NOTIFY_EVENT_TYPES: readonly NotifyEventType[] = [
   // E3.7: the investor's own accreditation verification (expiring soon / settled), by email.
   "round.verification_expiring",
   "round.verification_decided",
+  // An upload the virus scanner flagged (addressed to `data-room.manage` and the uploader).
+  "document.scan_infected",
 ];
 
 /**

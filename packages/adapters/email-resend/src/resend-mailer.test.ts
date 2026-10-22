@@ -1,7 +1,12 @@
 import { createHmac, randomBytes } from "node:crypto";
 import type { OutboundFetch } from "@fundroom/ports";
 import { describe, expect, it } from "vitest";
-import { createResendMailer, MailerError, parseResendEvent } from "./resend-mailer.js";
+import {
+  createResendMailer,
+  MailerError,
+  parseResendEvent,
+  senderAddress,
+} from "./resend-mailer.js";
 
 const NOW = new Date("2026-09-22T12:00:00.000Z");
 const SECRET_BYTES = randomBytes(24);
@@ -235,6 +240,7 @@ describe("createResendMailer parseWebhook", () => {
         occurredAt: new Date("2026-09-22T11:59:00.000Z"),
         provider: "resend",
         reason: undefined,
+        from: "investors@acme.test",
       },
     ]);
 
@@ -365,5 +371,40 @@ describe("parseResendEvent", () => {
   it("falls back to now when created_at is missing", () => {
     const e = parseResendEvent({ type: "email.delivered", data: base.data }, NOW);
     expect(e?.occurredAt).toEqual(NOW);
+  });
+});
+
+describe("senderAddress", () => {
+  it("reduces Resend's from to a bare lower-cased address", () => {
+    expect(senderAddress("Acme <Investors@Acme.test>")).toBe("investors@acme.test");
+    expect(senderAddress('"Acme, IR" <ir@acme.test> ')).toBe("ir@acme.test");
+    expect(senderAddress("No-Reply-Staging@Mail.FundRoom.io")).toBe(
+      "no-reply-staging@mail.fundroom.io",
+    );
+  });
+
+  it("leaves anything that is not an address undefined", () => {
+    for (const value of [
+      undefined,
+      null,
+      42,
+      "",
+      "Acme",
+      "Acme <>",
+      "a b@c.test",
+      "x".repeat(600),
+    ]) {
+      expect(senderAddress(value), String(value)).toBeUndefined();
+    }
+  });
+
+  it("puts the sender on the event only when Resend sends one", () => {
+    const { from: _from, ...noFrom } = base.data;
+    expect(parseResendEvent({ type: "email.delivered", data: noFrom }, NOW)).not.toHaveProperty(
+      "from",
+    );
+    expect(parseResendEvent({ type: "email.opened", data: base.data }, NOW)?.from).toBe(
+      "investors@acme.test",
+    );
   });
 });
