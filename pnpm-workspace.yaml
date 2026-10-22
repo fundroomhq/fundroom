@@ -53,8 +53,8 @@ catalog:
   # zip bundles: the signed audit export and the DSAR subject export. Pure JS, no deps.
   fflate: "^0.8.3"
   vitest: "^4.1.12"
-  zod: "^4.6.1"
-  yaml: "^2.8.1"
+  zod: "^4.6.7"
+  yaml: "^2.9.1"
   drizzle-orm: "^0.45.2"
   drizzle-kit: "^0.31.10"
   pg: "^8.23.0"
@@ -71,9 +71,9 @@ catalog:
   # 10.0.9: GHSA-g57g-f23g-4646.
   nodemailer: "^10.0.9"
   "@types/nodemailer": "^8.0.1"
-  react-email: "^6.9.5"
+  react-email: "^6.11.2"
   react-dom: "^19.3.0"
-  react: "^19.3.0"
+  react: "^19.3.1"
   "@types/react": "^19.3.0"
   "@tus/server": "^2.4.5"
   "@tus/file-store": "^2.1.1"
@@ -81,8 +81,8 @@ catalog:
   pdf-lib: "^1.17.1"
   # 0.35.5: bundled librsvg fix (GHSA-wq5f-xc86-pv6w).
   sharp: "^0.35.5"
-  undici: "^8.10.2"
-  testcontainers: "^12.1.0"
+  undici: "^8.12.2"
+  testcontainers: "^12.2.1"
   "@testcontainers/toxiproxy": "^12.1.0"
   "@hono/zod-openapi": "^1.6.3"
   "@hono/node-server": "^2.1.1"
