@@ -1,5 +1,25 @@
 # @fundroom/module-data-room
 
+## 0.1.0-rc.1
+
+### Patch Changes
+
+- [#31](https://github.com/fundroomhq/fundroom/pull/31) [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275) Thanks [@fundroomio](https://github.com/fundroomio)! - Scan failures that retrying cannot fix are now final instead of retried until the dead letters. A data-room file the virus scanner cannot scan in full (over its size limit, or the engine stopped at one of its limits) is marked `error` with the reason, `document.ingested` is published with `scanStatus: "error"`, and the document reads "failed"; uploading the same file again retries the scan instead of answering 409, while the same bytes as an infected file get a 409 "the virus scanner flagged this file". An e-signature artifact that cannot be scanned in full fails collection with `artifact_unscannable`. A multipart upload over the part limit is refused with 413 before anything is created, and every scan names its caller (`data-room`, `esign`, `round`) for the scanner metrics. A scanner outage no longer shows "Scan failed" while the ingest job is still retrying: the file stays Processing (`scanning`, with the reason in its scan detail) and only the last attempt records `error` before the job is dead-lettered; a retried dead letter scans again. For that, a job handler now sees which delivery it is (`ActiveJob.attempt: { count, limit }`, from pg-boss's retry count and limit). One ingest job scans a blob at a time (a conditional claim) and the promotion into the content-addressed key holds the blob row, so a re-upload or a second job can no longer race a scan or overwrite a promoted object; re-uploading a file whose scan failed also re-ingests the versions that failed with it. A stopping or expired job aborts its scan (`ScanInput.signal`), the scan deadline is capped at 20 minutes (`CLAMD_MAX_DEADLINE_MS`, now defined once in `@fundroom/ports`), the e-sign collect job expires after 30 minutes, and `doctor` warns when `CLAMD_TIMEOUT_MS` alone passes that cap or when `ESIGN_MAX_ARTIFACT_BYTES` exceeds `AV_MAX_SCAN_BYTES`. Migration `data-room/0009` adds a nullable `scan_claimed_by` column (no rewrite).
+
+- [#31](https://github.com/fundroomhq/fundroom/pull/31) [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275) Thanks [@fundroomio](https://github.com/fundroomio)! - An upload the virus scanner flags now alerts people instead of only being written to the audit log. The data room's ingest job publishes the new `document.scan_infected` event (ids, the uploader and the scanner's signature only), and the notify module turns it into an instant alert for staff holding `data-room.manage` and for the member who uploaded the file, linking the document in the data-room admin. One alert per file; it is never posted to a chat channel. Migration `notify/0013` adds the event type to the preference and notification CHECKs.
+- Updated dependencies [[`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275)]:
+  - @fundroom/ports@1.0.0-rc.1
+  - @fundroom/contracts@1.0.0-rc.1
+  - @fundroom/domain@1.0.0-rc.1
+  - @fundroom/storage-fs@1.0.0-rc.1
+  - @fundroom/authz@1.0.0-rc.1
+  - @fundroom/crypto@1.0.0-rc.1
+  - @fundroom/events@1.0.0-rc.1
+  - @fundroom/identity@1.0.0-rc.1
+  - @fundroom/module-kit@1.0.0-rc.1
+  - @fundroom/storage@1.0.0-rc.1
+  - @fundroom/db@1.0.0-rc.1
+
 ## 0.1.0-rc.0
 
 ### Minor Changes

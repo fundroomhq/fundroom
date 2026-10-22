@@ -1,5 +1,18 @@
 # @fundroom/identity
 
+## 1.0.0-rc.1
+
+### Patch Changes
+
+- Updated dependencies [[`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`61715b9`](https://github.com/fundroomhq/fundroom/commit/61715b93796386da1b234b7c3762b802bbe5cb8a)]:
+  - @fundroom/ports@1.0.0-rc.1
+  - @fundroom/config@1.0.0-rc.1
+  - @fundroom/domain@1.0.0-rc.1
+  - @fundroom/audit@1.0.0-rc.1
+  - @fundroom/authz@1.0.0-rc.1
+  - @fundroom/events@1.0.0-rc.1
+  - @fundroom/db@1.0.0-rc.1
+
 ## 1.0.0-rc.0
 
 ### Minor Changes
