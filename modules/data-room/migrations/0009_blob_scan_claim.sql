@@ -17,6 +17,7 @@
 -- must not touch the blob row. Not exported (portability drops it): it names this install's jobs.
 
 --> statement-breakpoint
+SET LOCAL statement_timeout = '5min';
 ALTER TABLE dataroom.blob ADD COLUMN scan_claimed_by uuid;
 
 --> statement-breakpoint

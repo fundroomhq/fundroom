@@ -88,7 +88,10 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 /** `ClamAV 1.4.2/27431/Tue Oct 21 08:00:00 2026` (the date is clamd's ctime, read as UTC). */
 export function parseClamdVersion(reply: string, engine: string): ScannerInfo | null {
-  const text = reply.replace(/\0+$/u, "").trim();
+  // Trailing NULs are dropped by hand: `/\0+$/` is polynomial on a long run of them.
+  let end = reply.length;
+  while (end > 0 && reply.charCodeAt(end - 1) === 0) end -= 1;
+  const text = reply.slice(0, end).trim();
   const m = /^ClamAV ([^/\s]+)(?:\/(\d+)(?:\/(.+))?)?$/u.exec(text);
   if (!m?.[1]) return null;
   const info: { engine: string; version: string; signatureVersion?: string; signatureDate?: Date } =

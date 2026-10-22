@@ -43,6 +43,9 @@ overrides:
   # Stryker's dashboard client pins qs 6.15.1 exactly; 6.16.0 fixes GHSA-4mjr-xmp4-gh2g,
   # GHSA-q8mj-m7cp-5q26 and GHSA-x5fp-wj9c-mxmx within the same major.
   "typed-rest-client>qs": "^6.16.0"
+  # @changesets/cli 3.0.x allows launch-editor ^2.14.1; 2.14.2 fixes GHSA (fs.existsSync path check)
+  # within the same minor.
+  "@changesets/cli>launch-editor": "^2.14.2"
 
 # Keep one copy of these across the workspace (peer dep sanity).
 catalog:
@@ -98,14 +101,14 @@ catalog:
   "openapi-typescript": "^7.13.0"
   "@types/react-dom": "^19.3.0"
   esbuild: "^0.28.2"
-  vite: "^8.3.0"
+  vite: "^8.3.3"
   "@vitejs/plugin-react": "^6.1.1"
   tailwindcss: "^4.3.3"
   "@tailwindcss/vite": "^4.3.3"
-  storybook: "^10.6.0"
-  "@storybook/react-vite": "^10.6.0"
-  "@storybook/addon-a11y": "^10.6.0"
-  "@storybook/addon-docs": "^10.6.0"
+  storybook: "^10.6.2"
+  "@storybook/react-vite": "^10.6.2"
+  "@storybook/addon-a11y": "^10.6.2"
+  "@storybook/addon-docs": "^10.6.2"
   jsdom: "^30.0.1"
   axe-core: "^4.13.0"
   "@testing-library/react": "^16.3.3"
