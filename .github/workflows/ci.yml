@@ -234,7 +234,9 @@ jobs:
         with:
           base: openapi.base.json
           revision: openapi.head.json
-          fail-on: ${{ contains(github.event.pull_request.labels.*.name, 'api-major') && 'NONE' || 'ERR' }}
+          # Empty disables the failure (the action passes `--fail-on` only when set; `NONE` is not a
+          # level oasdiff accepts). An empty string is falsy in expressions, so the negation comes first.
+          fail-on: ${{ !contains(github.event.pull_request.labels.*.name, 'api-major') && 'ERR' || '' }}
       - name: Schemathesis
         run: |
           pnpm --filter @fundroom/server start:ci &
