@@ -1,5 +1,13 @@
 # @fundroom/sdk
 
+## 1.0.0-rc.1
+
+### Patch Changes
+
+- [#31](https://github.com/fundroomhq/fundroom/pull/31) [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275) Thanks [@fundroomio](https://github.com/fundroomio)! - **Security:** @fundroom/server no longer crashes when clamd drops a connection mid-scan: every clamd exchange settles once, closes its socket and releases the upload stream, and an unhandled promise rejection is logged (`process.unhandled_rejection`) and counted instead of exiting the process. Scan errors now carry a reason: `too_large` and `partial` (clamd `Heuristics.Limits.Exceeded`, "could not be scanned in full" — no longer reported as infected) are final, `unavailable` and `timeout` are retried. New keys `AV_MAX_SCAN_BYTES` (clamd's `StreamMaxLength`; also caps the upload ceiling), `CLAMD_CONNECT_TIMEOUT_MS` and `CLAMD_MIN_BYTES_PER_SECOND`; new metrics `fundroom.avscan.scans`, `.duration`, `.errors`, `.up` and `.signature_age_seconds`; `GET /platform/health` reports the scanner's last probe.
+
+- [#31](https://github.com/fundroomhq/fundroom/pull/31) [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275) Thanks [@fundroomio](https://github.com/fundroomio)! - An upload the virus scanner flags now alerts people instead of only being written to the audit log. The data room's ingest job publishes the new `document.scan_infected` event (ids, the uploader and the scanner's signature only), and the notify module turns it into an instant alert for staff holding `data-room.manage` and for the member who uploaded the file, linking the document in the data-room admin. One alert per file; it is never posted to a chat channel. Migration `notify/0013` adds the event type to the preference and notification CHECKs.
+
 ## 1.0.0-rc.0
 
 ### Minor Changes

@@ -1,5 +1,13 @@
 # @fundroom/email-resend
 
+## 0.1.0-rc.1
+
+### Patch Changes
+
+- [#31](https://github.com/fundroomhq/fundroom/pull/31) [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275) Thanks [@fundroomio](https://github.com/fundroomio)! - Mail webhooks: with the new `MAIL_IGNORE_FOREIGN_SENDERS=true` (default false), an event for a message this deployment never recorded, sent from another address on the `MAIL_FROM` domain (a staging stack sharing the provider account), is answered 200 and counted `foreign` instead of being retried for ten minutes; left false, such events are retried as before. Mail delivery events carry the sender (`MailDeliveryEvent.from`, parsed from Resend's `data.from`), and `fundroom.mail.webhook_events{outcome}` counts webhook events by outcome.
+- Updated dependencies [[`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275)]:
+  - @fundroom/ports@1.0.0-rc.1
+
 ## 0.1.0-rc.0
 
 ### Minor Changes

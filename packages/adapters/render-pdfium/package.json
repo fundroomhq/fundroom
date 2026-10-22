@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/render-pdfium",
-  "version": "1.0.0-rc.0",
+  "version": "1.0.0-rc.1",
   "private": true,
   "description": "DocumentRenderPort adapter: PDFium (WASM) page rasteriser, pdf-lib sanitise + watermark, sharp encoding and image compositing",
   "license": "MIT",

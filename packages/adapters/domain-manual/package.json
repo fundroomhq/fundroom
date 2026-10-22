@@ -1,6 +1,6 @@
 {
   "name": "@fundroom/domain-manual",
-  "version": "0.1.0-rc.0",
+  "version": "0.1.0-rc.1",
   "private": true,
   "description": "CustomDomainProviderPort for operators who terminate TLS themselves: FundRoom verifies ownership and nothing else",
   "license": "MIT",

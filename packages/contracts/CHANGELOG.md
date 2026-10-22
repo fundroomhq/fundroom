@@ -1,5 +1,11 @@
 # @fundroom/contracts
 
+## 1.0.0-rc.1
+
+### Patch Changes
+
+- [#31](https://github.com/fundroomhq/fundroom/pull/31) [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275) Thanks [@fundroomio](https://github.com/fundroomio)! - **Security:** @fundroom/server no longer crashes when clamd drops a connection mid-scan: every clamd exchange settles once, closes its socket and releases the upload stream, and an unhandled promise rejection is logged (`process.unhandled_rejection`) and counted instead of exiting the process. Scan errors now carry a reason: `too_large` and `partial` (clamd `Heuristics.Limits.Exceeded`, "could not be scanned in full" — no longer reported as infected) are final, `unavailable` and `timeout` are retried. New keys `AV_MAX_SCAN_BYTES` (clamd's `StreamMaxLength`; also caps the upload ceiling), `CLAMD_CONNECT_TIMEOUT_MS` and `CLAMD_MIN_BYTES_PER_SECOND`; new metrics `fundroom.avscan.scans`, `.duration`, `.errors`, `.up` and `.signature_age_seconds`; `GET /platform/health` reports the scanner's last probe.
+
 ## 1.0.0-rc.0
 
 ### Minor Changes

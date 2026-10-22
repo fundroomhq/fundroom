@@ -1,5 +1,20 @@
 # @fundroom/control-plane
 
+## 0.1.0-rc.1
+
+### Patch Changes
+
+- [#31](https://github.com/fundroomhq/fundroom/pull/31) [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275) Thanks [@fundroomio](https://github.com/fundroomio)! - Control-plane edges: signup answers 404 on every route, reads included, while the default plan is unset, missing or archived (`signupDefaultPlanLive`); the operator enrolment routes and the signup routes check that they exist before validating the request, so a malformed body from outside gets the same 404 as a well-formed one; `GET /api/v1/setup/status` answers on a held or suspended workspace (423 `workspace_unavailable` to its staff, `{ required: false }` to everybody else) instead of a plain 404; the container image no longer prints Node's `ExperimentalWarning` on every start.
+- Updated dependencies [[`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275), [`8721cd2`](https://github.com/fundroomhq/fundroom/commit/8721cd23dcf46f3e9b4de7317f4e0c1feab56275)]:
+  - @fundroom/ports@1.0.0-rc.1
+  - @fundroom/domain@1.0.0-rc.1
+  - @fundroom/audit@1.0.0-rc.1
+  - @fundroom/crypto@1.0.0-rc.1
+  - @fundroom/identity@1.0.0-rc.1
+  - @fundroom/module-kit@1.0.0-rc.1
+  - @fundroom/portability@0.1.0-rc.1
+  - @fundroom/db@1.0.0-rc.1
+
 ## 0.1.0-rc.0
 
 ### Minor Changes
