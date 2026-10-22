@@ -56,6 +56,14 @@ export interface ActiveJob<T extends JsonObject = JsonObject> {
   readonly data: T;
   /** Fires when the adapter is stopping or the job expired; long handlers should honour it. */
   readonly signal: AbortSignal;
+  /**
+   * Which delivery this is: `count` is the number of earlier failed attempts (0 on the first
+   * run), `limit` the queue's retry limit. `count >= limit` means this is the last attempt: a
+   * throw now dead-letters the job, so a handler that parks state "while retrying" records the
+   * final outcome before throwing. Every adapter sets it; optional only so hand-built jobs in
+   * tests need not (a handler treats it missing as the last attempt).
+   */
+  readonly attempt?: { readonly count: number; readonly limit: number } | undefined;
 }
 
 export type JobHandler<T extends JsonObject = JsonObject> = (job: ActiveJob<T>) => Promise<void>;

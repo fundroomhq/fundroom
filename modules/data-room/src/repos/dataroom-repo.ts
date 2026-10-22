@@ -1,5 +1,6 @@
 import { type TenantContext, TenantRepo, type Tx } from "@fundroom/db";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { FINAL_SCAN_REASONS, NOT_EXPORTED_DETAIL } from "../model.js";
 import {
   type Blob,
   blob,
@@ -456,6 +457,25 @@ export class VersionRepo extends TenantRepo<typeof documentVersion> {
     return rows[0];
   }
 
+  /**
+   * The ingest's final write: only a version still `pending` changes, so of two jobs finishing
+   * the same version (a redelivery racing a hand-on) exactly one gets the row back, and only it
+   * records `document.ingested`.
+   */
+  async finishIfPending(
+    id: string,
+    patch: Pick<DocumentVersion, "pageCount" | "renderStatus" | "renderDetail">,
+  ): Promise<DocumentVersion | undefined> {
+    const rows = await this.tx
+      .update(documentVersion)
+      .set(patch)
+      .where(
+        this.scope(and(eq(documentVersion.id, id), eq(documentVersion.renderStatus, "pending"))),
+      )
+      .returning();
+    return rows[0];
+  }
+
   async firstForBlob(blobId: string): Promise<DocumentVersion | undefined> {
     const rows = await this.tx
       .select()
@@ -464,6 +484,32 @@ export class VersionRepo extends TenantRepo<typeof documentVersion> {
       .orderBy(asc(documentVersion.createdAt))
       .limit(1);
     return rows[0];
+  }
+
+  /** Versions on `blobId` whose ingest has not finished (`render_status = 'pending'`). */
+  async pendingForBlob(blobId: string): Promise<DocumentVersion[]> {
+    return this.tx
+      .select()
+      .from(documentVersion)
+      .where(
+        this.scope(
+          and(eq(documentVersion.blobId, blobId), eq(documentVersion.renderStatus, "pending")),
+        ),
+      )
+      .orderBy(asc(documentVersion.createdAt));
+  }
+
+  /**
+   * A blob's scan is being retried (`BlobRepo.retryScan`): every version on it goes back to
+   * `pending` so its ingest runs again (the earlier attempt marked it `failed`, "not scanned").
+   * Returns the versions, for the caller to enqueue their ingest jobs.
+   */
+  async resetRenderForBlob(blobId: string): Promise<DocumentVersion[]> {
+    return this.tx
+      .update(documentVersion)
+      .set({ renderStatus: "pending", renderDetail: null, pageCount: null })
+      .where(this.scope(eq(documentVersion.blobId, blobId)))
+      .returning();
   }
 
   async countForBlob(blobId: string): Promise<number> {
@@ -517,6 +563,128 @@ export class BlobRepo extends TenantRepo<typeof blob> {
       .update(blob)
       .set(patch)
       .where(this.scope(eq(blob.id, id)))
+      .returning();
+    return rows[0];
+  }
+
+  /**
+   * Claims the blob for one ingest job's scan: `scanning`, recording the claiming version
+   * (`scan_claimed_by`), conditional on the row still naming the quarantine object the job read
+   * (`storageKey`) and on nobody else scanning it. A `scanning` row is only taken over by the
+   * job of the version that claimed it (pg-boss redelivers the same job, so the earlier attempt
+   * was this job's own) or once it is stale (`scanned_at` before `staleBefore`: the scanning job
+   * died and its attempts expired). An `error` row is claimed unless its detail is final
+   * (`isFinalScanDetail`: too large, engine limits, an import without bytes), so a retried dead
+   * letter scans again; a final error waits for the bytes to be uploaded again (`retryScan`).
+   * Undefined when the claim was lost: the caller reloads and does not scan.
+   */
+  async claimScan(
+    id: string,
+    storageKey: string,
+    opts: { readonly claimant: string; readonly at: Date; readonly staleBefore: Date },
+  ): Promise<Blob | undefined> {
+    // `isFinalScanDetail` in SQL; null (no detail) is not final.
+    const exact = [...FINAL_SCAN_REASONS, NOT_EXPORTED_DETAIL].map((d) => sql`${d}`);
+    const prefixed = FINAL_SCAN_REASONS.map(
+      (r) => sql`starts_with(${blob.scanDetail}, ${`${r}:`})`,
+    );
+    const retryable = sql`(${blob.scanDetail} IN (${sql.join(exact, sql`, `)}) OR ${sql.join(prefixed, sql` OR `)}) IS NOT TRUE`;
+    const rows = await this.tx
+      .update(blob)
+      .set({ scanStatus: "scanning", scannedAt: opts.at, scanClaimedBy: opts.claimant })
+      .where(
+        this.scope(
+          and(
+            eq(blob.id, id),
+            eq(blob.storageKey, storageKey),
+            or(
+              eq(blob.scanStatus, "pending"),
+              // a retryable failure (anything but a final detail; a null detail is retryable)
+              and(eq(blob.scanStatus, "error"), retryable),
+              and(
+                eq(blob.scanStatus, "scanning"),
+                or(
+                  eq(blob.scanClaimedBy, opts.claimant),
+                  isNull(blob.scannedAt),
+                  lte(blob.scannedAt, opts.staleBefore),
+                ),
+              ),
+            ),
+          ),
+        ),
+      )
+      .returning();
+    return rows[0];
+  }
+
+  /**
+   * `update`, conditional on the row still naming `storageKey` (the object the caller scanned or
+   * is promoting): undefined when a re-upload or another job moved it on meanwhile.
+   */
+  async updateIfKey(
+    id: string,
+    storageKey: string,
+    patch: Partial<
+      Pick<
+        Blob,
+        "storageKey" | "encryption" | "scanStatus" | "scannedAt" | "scanEngine" | "scanDetail"
+      >
+    >,
+    /** Also conditional on the row still having this `scan_status`. */
+    opts: { readonly scanStatus?: Blob["scanStatus"] } = {},
+  ): Promise<Blob | undefined> {
+    const rows = await this.tx
+      .update(blob)
+      .set(patch)
+      .where(
+        this.scope(
+          and(
+            eq(blob.id, id),
+            eq(blob.storageKey, storageKey),
+            opts.scanStatus === undefined ? undefined : eq(blob.scanStatus, opts.scanStatus),
+          ),
+        ),
+      )
+      .returning();
+    return rows[0];
+  }
+
+  /**
+   * Locks the row for the promotion transaction while it still names `storageKey`, so two jobs
+   * never both encrypt into the content-addressed key (the second would overwrite the object
+   * the first recorded the encryption of). Undefined when it no longer names it. `FOR NO KEY
+   * UPDATE`: the promotion changes no key column, and `document_version.blob_id` references this
+   * row, so a version inserted meanwhile (its FK check takes `FOR KEY SHARE`) is not blocked for
+   * the whole encryption.
+   */
+  async lockForPromotion(id: string, storageKey: string): Promise<Blob | undefined> {
+    const rows = await this.tx
+      .select()
+      .from(blob)
+      .where(this.scope(and(eq(blob.id, id), eq(blob.storageKey, storageKey))))
+      .for("no key update");
+    return rows[0];
+  }
+
+  /**
+   * A blob whose scan ended in `error` gets a fresh copy of its bytes (the same SHA-256 uploaded
+   * again): point it at the new quarantine object and start the scan over. Conditional on the
+   * row still being `error`, so two concurrent re-uploads retry once; undefined when it was not.
+   */
+  async retryScan(id: string, storageKey: string): Promise<Blob | undefined> {
+    const rows = await this.tx
+      .update(blob)
+      .set({
+        storageKey,
+        encryption: {},
+        scanStatus: "pending",
+        scannedAt: null,
+        scanEngine: null,
+        scanDetail: null,
+        scanClaimedBy: null,
+        purgeAfter: null,
+      })
+      .where(this.scope(and(eq(blob.id, id), eq(blob.scanStatus, "error"))))
       .returning();
     return rows[0];
   }

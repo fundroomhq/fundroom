@@ -36,6 +36,7 @@ import type { RateLimitRule } from "@fundroom/ports";
 import type { Context } from "hono";
 import type { AppEnv } from "../env.js";
 import { cookieModeOf, requireSession } from "../middleware/auth.js";
+import { holdViewerIsStaff, workspaceUnavailableError } from "../middleware/workspace-status.js";
 import { cookieBasePathOf } from "../path-mount.js";
 import { residencyTemplateFields } from "../residency/kernel.js";
 import { hasBrand } from "./branding.js";
@@ -53,7 +54,7 @@ import { loginBody } from "./serialize.js";
  * no token exists, and the token routes always answer `conflict`. The status endpoint and the
  * probes stay, for the per-workspace wizard a hosted owner walks after signup (A-5).
  */
-const ERRORS = errorResponses(400, 401, 403, 404, 409, 429, 500, 503);
+const ERRORS = errorResponses(400, 401, 403, 404, 409, 423, 429, 500, 503);
 const TAGS = ["setup"];
 
 /** Token guesses per client address: generous for typos, hopeless for brute force. */
@@ -275,11 +276,21 @@ export function registerSetupRoutes(api: OpenAPIHono<AppEnv>, deps: ApiDeps): vo
       tags: TAGS,
       summary: "Whether first-run setup is still required, and what the wizard can offer",
       description:
-        "Public, but the body depends on the caller. A signed-in active staff owner or admin gets everything, `progress`, `drivers` and `probes` included. While setup is still required, anyone gets what the token and owner steps need (`tenancy`, `instanceName`, `baseUrl`, `passwordEnabled`, `tokenSource`). Once setup is complete, everyone else gets `{ required: false }` only.",
+        "Public, but the body depends on the caller. A signed-in active staff owner or admin gets everything, `progress`, `drivers` and `probes` included. While setup is still required, anyone gets what the token and owner steps need (`tenancy`, `instanceName`, `baseUrl`, `passwordEnabled`, `tokenSource`). Once setup is complete, everyone else gets `{ required: false }` only. While the workspace is held or suspended, its staff get 423 `workspace_unavailable` (details `workspaceStatus`, `reason`) and everyone else `{ required: false }`.",
       responses: { 200: jsonResponse(k.SetupStatusSchema, "Status"), ...ERRORS },
     }),
     async (c) => {
       const { setup } = deps;
+      // A held or suspended workspace (the status guard lets this read through): its staff get
+      // the guard's own 423, which the wizard turns into "under review"; anybody else learns
+      // nothing — not even that setup exists.
+      const held = c.get("workspace");
+      if (held !== undefined && held.status !== "active") {
+        if (holdViewerIsStaff(c.get("membership"), c.get("viewAs") !== undefined)) {
+          throw workspaceUnavailableError(held);
+        }
+        return c.json({ required: false }, 200);
+      }
       const required = await setup.gate.required();
       /*
        * Drivers, probe results, progress and the base URL fingerprint the deployment and are of

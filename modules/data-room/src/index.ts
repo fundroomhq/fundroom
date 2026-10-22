@@ -86,6 +86,7 @@ export const dataRoomModule: ModuleManifest = defineModule({
       "document.viewed",
       "document.downloaded",
       "document.ingested",
+      "document.scan_infected",
       "qa.question_asked",
       "qa.question_assigned",
       "qa.answer_submitted",

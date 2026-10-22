@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  CLAMD_MAX_DEADLINE_MS,
   configWarnings,
   doctorReport,
   formatDoctorReport,
@@ -9,6 +10,7 @@ import {
   redactUrlCredentials,
 } from "./doctor.js";
 import { tryLoadConfig } from "./load.js";
+import { uploadCeilingBytes } from "./schema.js";
 
 const KEY = randomBytes(32).toString("base64");
 
@@ -90,6 +92,18 @@ describe("configWarnings", () => {
     const report = doctorReport(r.config, r.sources);
     expect(report.warnings).toEqual(warnings);
     expect(formatDoctorReport(report)).toContain("Warnings:");
+  });
+
+  it("warns when MAIL_IGNORE_FOREIGN_SENDERS is on without MAIL_FROM (E-UP-24)", () => {
+    const keyed = (env: Record<string, string>) =>
+      configWarnings(load(env).config).filter((w) => w.key === "MAIL_IGNORE_FOREIGN_SENDERS");
+    expect(load({}).config.raw.MAIL_IGNORE_FOREIGN_SENDERS).toBe(false);
+    expect(keyed({ MAIL_IGNORE_FOREIGN_SENDERS: "true" })).toHaveLength(1);
+    expect(keyed({ MAIL_IGNORE_FOREIGN_SENDERS: "true" })[0]?.message).toContain("MAIL_FROM");
+    expect(
+      keyed({ MAIL_IGNORE_FOREIGN_SENDERS: "true", MAIL_FROM: "no-reply@mail.example.com" }),
+    ).toEqual([]);
+    expect(keyed({ MAIL_IGNORE_FOREIGN_SENDERS: "false" })).toEqual([]);
   });
 });
 
@@ -329,5 +343,129 @@ describe("doctor under the control plane (E-UP-11, E-UP-13)", () => {
       origin: "",
       basis: "control_plane_off",
     });
+  });
+});
+
+describe("doctor: virus-scan limits (E-UP-25)", () => {
+  const load = (env: Record<string, string>) => {
+    const r = tryLoadConfig({
+      env: {
+        BASE_URL: "https://portal.example.com",
+        DATABASE_URL: "postgres://seedhost:pw@db:5432/seedhost",
+        FUNDROOM_SECRET_KEY: KEY,
+        ...env,
+      },
+    });
+    if (!r.ok) throw r.error;
+    return r.config;
+  };
+  const avKeys = (env: Record<string, string>) =>
+    configWarnings(load(env))
+      .map((w) => w.key)
+      .filter((k) =>
+        [
+          "AV_MAX_SCAN_BYTES",
+          "UPLOAD_MAX_BYTES",
+          "CLAMD_MIN_BYTES_PER_SECOND",
+          "CLAMD_TIMEOUT_MS",
+          "ESIGN_MAX_ARTIFACT_BYTES",
+        ].includes(k),
+      );
+  const MiB = 1024 * 1024;
+
+  it("asks for AV_MAX_SCAN_BYTES with clamd, and says nothing with noop", () => {
+    const warning = configWarnings(load({ AV_DRIVER: "clamd", CLAMD_HOST: "clamav" })).find(
+      (w) => w.key === "AV_MAX_SCAN_BYTES",
+    );
+    expect(warning?.message).toContain("StreamMaxLength");
+    expect(avKeys({ AV_MAX_SCAN_BYTES: String(MiB) })).toEqual([]);
+    expect(avKeys({})).toEqual([]);
+  });
+
+  it("says the upload ceiling is capped when UPLOAD_MAX_BYTES is larger", () => {
+    const env = { AV_DRIVER: "clamd", CLAMD_HOST: "clamav", AV_MAX_SCAN_BYTES: String(100 * MiB) };
+    const warning = configWarnings(load(env)).find((w) => w.key === "UPLOAD_MAX_BYTES");
+    expect(warning?.message).toContain("capped to AV_MAX_SCAN_BYTES");
+    expect(avKeys({ ...env, UPLOAD_MAX_BYTES: String(100 * MiB) })).toEqual([]);
+  });
+
+  it("warns when the scaled scan deadline passes 20 minutes", () => {
+    const env = {
+      AV_DRIVER: "clamd",
+      CLAMD_HOST: "clamav",
+      AV_MAX_SCAN_BYTES: String(1024 * MiB),
+      UPLOAD_MAX_BYTES: String(1024 * MiB),
+    };
+    // 1 GiB at 768 KiB/s = 1366 s + 120 s > 20 min.
+    expect(avKeys({ ...env, CLAMD_MIN_BYTES_PER_SECOND: String(768 * 1024) })).toEqual([
+      "CLAMD_MIN_BYTES_PER_SECOND",
+    ]);
+    // 1 GiB at 4 MiB/s = 256 s + 120 s.
+    expect(avKeys({ ...env, CLAMD_MIN_BYTES_PER_SECOND: String(4 * MiB) })).toEqual([]);
+    // A fixed deadline past the cap.
+    expect(avKeys({ ...env, CLAMD_TIMEOUT_MS: String(21 * 60_000) })).toEqual(["CLAMD_TIMEOUT_MS"]);
+    expect(CLAMD_MAX_DEADLINE_MS).toBe(20 * 60_000);
+    // AV_MAX_SCAN_BYTES unset: the largest scan is UPLOAD_MAX_BYTES (1 GiB here).
+    const unset = {
+      AV_DRIVER: "clamd",
+      CLAMD_HOST: "clamav",
+      UPLOAD_MAX_BYTES: String(1024 * MiB),
+    };
+    const slow = { ...unset, CLAMD_MIN_BYTES_PER_SECOND: String(768 * 1024) };
+    expect(avKeys(slow)).toEqual(["AV_MAX_SCAN_BYTES", "CLAMD_MIN_BYTES_PER_SECOND"]);
+    expect(
+      configWarnings(load(slow)).find((w) => w.key === "CLAMD_MIN_BYTES_PER_SECOND")?.message,
+    ).toContain("UPLOAD_MAX_BYTES / CLAMD_MIN_BYTES_PER_SECOND");
+    expect(avKeys({ ...unset, CLAMD_MIN_BYTES_PER_SECOND: String(4 * MiB) })).toEqual([
+      "AV_MAX_SCAN_BYTES",
+    ]);
+  });
+
+  it("warns when e-sign artifacts may be larger than the scanner reads", () => {
+    const env = {
+      AV_DRIVER: "clamd",
+      CLAMD_HOST: "clamav",
+      AV_MAX_SCAN_BYTES: String(10 * MiB),
+      UPLOAD_MAX_BYTES: String(10 * MiB),
+    };
+    // ESIGN_MAX_ARTIFACT_BYTES defaults to 25 MiB.
+    const warning = configWarnings(load(env)).find((w) => w.key === "ESIGN_MAX_ARTIFACT_BYTES");
+    expect(warning?.message).toContain("unscannable");
+    expect(avKeys({ ...env, ESIGN_MAX_ARTIFACT_BYTES: String(10 * MiB) })).toEqual([]);
+    // noop: no scanner limit applies.
+    expect(avKeys({ AV_MAX_SCAN_BYTES: String(10 * MiB) })).toEqual([]);
+  });
+
+  it("caps the upload ceiling only with clamd and AV_MAX_SCAN_BYTES", () => {
+    const max = String(100 * MiB);
+    expect(uploadCeilingBytes(load({}).raw)).toBe(5 * 1024 ** 3);
+    expect(uploadCeilingBytes(load({ AV_MAX_SCAN_BYTES: max }).raw)).toBe(5 * 1024 ** 3);
+    const clamd = { AV_DRIVER: "clamd", CLAMD_HOST: "clamav" };
+    expect(uploadCeilingBytes(load(clamd).raw)).toBe(5 * 1024 ** 3);
+    expect(uploadCeilingBytes(load({ ...clamd, AV_MAX_SCAN_BYTES: max }).raw)).toBe(100 * MiB);
+    expect(
+      uploadCeilingBytes(
+        load({ ...clamd, AV_MAX_SCAN_BYTES: max, UPLOAD_MAX_BYTES: String(MiB) }).raw,
+      ),
+    ).toBe(MiB);
+  });
+
+  it("parses the new keys with their defaults and bounds", () => {
+    const raw = load({}).raw;
+    expect(raw.CLAMD_CONNECT_TIMEOUT_MS).toBe(5000);
+    expect(raw.CLAMD_MIN_BYTES_PER_SECOND).toBe(0);
+    expect(raw.AV_MAX_SCAN_BYTES).toBeUndefined();
+    const bad = (env: Record<string, string>) =>
+      tryLoadConfig({
+        env: {
+          BASE_URL: "https://portal.example.com",
+          DATABASE_URL: "postgres://seedhost:pw@db:5432/seedhost",
+          FUNDROOM_SECRET_KEY: KEY,
+          ...env,
+        },
+      }).ok;
+    expect(bad({ AV_MAX_SCAN_BYTES: "1000" })).toBe(false);
+    expect(bad({ CLAMD_CONNECT_TIMEOUT_MS: "50" })).toBe(false);
+    expect(bad({ CLAMD_MIN_BYTES_PER_SECOND: "-1" })).toBe(false);
   });
 });

@@ -172,9 +172,11 @@ export function createDocumentService(services: ModuleServices): DocumentService
     if (blob.scanStatus === "pending" || blob.scanStatus === "scanning") {
       return { viewable: false, download: null, reason: "processing" };
     }
+    // A failed scan before the unscanned check: `error` is never servable, and "failed" (scan
+    // failed, upload it again) is what the reader needs to hear, not "unscanned".
+    if (blob.scanStatus === "error") return { viewable: false, download: null, reason: "failed" };
     if (!blobServable(blob, settings))
       return { viewable: false, download: null, reason: "unscanned" };
-    if (blob.scanStatus === "error") return { viewable: false, download: null, reason: "failed" };
     const previewable = isPreviewable(version.contentType);
     const viewable = decision.allowed && previewable && version.renderStatus === "ready";
     // Staff with the download permission always get the original; investors get what the

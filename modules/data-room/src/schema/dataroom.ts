@@ -95,6 +95,8 @@ export const blob = dataroomSchema.table("blob", {
   scannedAt: timestamp("scanned_at", { withTimezone: true }),
   scanEngine: text("scan_engine"),
   scanDetail: text("scan_detail"),
+  /** 0009: the version whose ingest job claimed the scan (`BlobRepo.claimScan`). */
+  scanClaimedBy: uuid("scan_claimed_by"),
   createdBy: uuid("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   purgeAfter: timestamp("purge_after", { withTimezone: true }),

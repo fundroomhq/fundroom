@@ -34,6 +34,7 @@ import {
 import { platformContext } from "@fundroom/db";
 import type { DirectoryCell } from "@fundroom/ports";
 import type { Context } from "hono";
+import { avscanHealthOf } from "../avscan-signals.js";
 import type { AppEnv } from "../env.js";
 import { requireSession } from "../middleware/auth.js";
 import {
@@ -715,7 +716,8 @@ export function registerPlatformRoutes(api: Api, deps: ApiDeps): void {
       path: "/platform/health",
       tags: TAGS,
       summary: "Install health",
-      description: "Queue depth per queue, the dead-letter count (no payloads) and adapter health.",
+      description:
+        "Queue depth per queue, the dead-letter count (no payloads), adapter health and the virus scanner's last probe.",
       security: sessionSecurity,
       "x-requires": "platform-operator",
       middleware: [operator] as const,
@@ -738,10 +740,28 @@ export function registerPlatformRoutes(api: Api, deps: ApiDeps): void {
             status: r.status,
             detail: r.detail ?? null,
           })),
+          avscan: avscanStatus(deps.scanner),
           checkedAt: new Date().toISOString(),
         },
         200,
       );
     },
   );
+}
+
+/** E-UP-25 (25.6): the cached scanner probe; a scanner built elsewhere (tests) reads as unprobed. */
+function avscanStatus(scanner: ApiDeps["scanner"]): {
+  status: "ok" | "fail" | "skipped";
+  driver: string;
+  detail?: string;
+} {
+  const h = avscanHealthOf(scanner);
+  if (h === null) {
+    return scanner.driver === "noop"
+      ? { status: "skipped", driver: scanner.driver }
+      : { status: "fail", driver: scanner.driver, detail: "not probed" };
+  }
+  return h.detail === undefined
+    ? { status: h.status, driver: h.driver }
+    : { status: h.status, driver: h.driver, detail: h.detail };
 }

@@ -83,7 +83,11 @@ export async function storeEvidenceObject(
   readonly encryption: EvidenceEncryption;
   readonly scan: string;
 }> {
-  const scan = await services.scanner.scan({ body: bytes, size: bytes.byteLength });
+  const scan = await services.scanner.scan({
+    body: bytes,
+    size: bytes.byteLength,
+    source: "round",
+  });
   if (scan.verdict === "infected" || scan.verdict === "error") {
     // Never the file name and never the bytes: the reason is the verdict, and the signature
     // (which can name a customer's document) stays in the log.

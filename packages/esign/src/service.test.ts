@@ -3,6 +3,7 @@ import {
   type ESignAdapterDefinition,
   type ESignDriver,
   ESignProviderError,
+  type ScanFailureReason,
   type ScanVerdict,
 } from "@fundroom/ports";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -396,7 +397,12 @@ interface Harness {
   objects: Map<string, Uint8Array>;
   accepted: unknown[];
   security: unknown[];
-  scan: { verdict: ScanVerdict };
+  scan: {
+    verdict: ScanVerdict;
+    reason?: ScanFailureReason | undefined;
+    retryable?: boolean | undefined;
+    sources: (string | undefined)[];
+  };
   erased: Set<string>;
 }
 
@@ -415,7 +421,7 @@ function harness(
   const objects = new Map<string, Uint8Array>();
   const accepted: unknown[] = [];
   const security: unknown[] = [];
-  const scan = { verdict: "clean" as ScanVerdict };
+  const scan: Harness["scan"] = { verdict: "clean", sources: [] };
   const erased = new Set<string>();
   const key = new Uint8Array(32).fill(7);
   const service = createESignService({
@@ -467,7 +473,17 @@ function harness(
         objects.delete(k);
       },
     },
-    scanner: { scan: async () => ({ verdict: scan.verdict, engine: "test" }) },
+    scanner: {
+      scan: async (input) => {
+        scan.sources.push(input.source);
+        return {
+          verdict: scan.verdict,
+          engine: "test",
+          reason: scan.reason,
+          retryable: scan.retryable,
+        };
+      },
+    },
     outbound: {
       fetch: () => Promise.reject(new Error("no network in unit tests")),
       assess: (url) => ({ ok: true, url: new URL(url), exempt: false }),
@@ -1161,6 +1177,42 @@ describe("sync and collect", () => {
       runJob(h, "esign.collect", { workspaceId: WS, envelopeId: env.id }),
     ).rejects.toThrow(/retrying/u);
     expect(row(env.id).errorCode).toBeNull();
+    expect(h.scan.sources).toEqual(["esign"]);
+  });
+
+  it("an artifact the scanner cannot scan in full fails for good (artifact_unscannable)", async () => {
+    const h = harness();
+    await connect(h);
+    const env = await requestRound(h);
+    h.vendor.complete(row(env.id).providerRef!);
+    await runJob(h, "esign.sync", { workspaceId: WS, envelopeId: env.id });
+    h.scan.verdict = "error";
+    h.scan.reason = "too_large";
+    h.scan.retryable = false;
+    await runJob(h, "esign.collect", { workspaceId: WS, envelopeId: env.id });
+    expect(row(env.id)).toMatchObject({
+      status: "completed",
+      artifacts: null,
+      errorCode: "artifact_unscannable",
+    });
+    expect(row(env.id).errorDetail).toContain("too_large");
+    expect(h.objects.size).toBe(0);
+    // Not a security event: nothing was found, the file could not be checked.
+    expect(h.security).toEqual([]);
+    expect(mem.state.published.some((p) => p.topic === "esign.envelope_completed")).toBe(false);
+    // A retryable error with a reason still throws for the job to retry.
+    const h2 = harness();
+    await connect(h2);
+    const env2 = await requestRound(h2);
+    h2.vendor.complete(row(env2.id).providerRef!);
+    await runJob(h2, "esign.sync", { workspaceId: WS, envelopeId: env2.id });
+    h2.scan.verdict = "error";
+    h2.scan.reason = "timeout";
+    h2.scan.retryable = true;
+    await expect(
+      runJob(h2, "esign.collect", { workspaceId: WS, envelopeId: env2.id }),
+    ).rejects.toThrow(/retrying/u);
+    expect(row(env2.id).errorCode).toBeNull();
   });
 
   it("an oversized artifact is refused (too_large) and a non-PDF is refused", async () => {

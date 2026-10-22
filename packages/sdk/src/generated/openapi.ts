@@ -52150,7 +52150,7 @@ export interface paths {
         };
         /**
          * Install health
-         * @description Queue depth per queue, the dead-letter count (no payloads) and adapter health.
+         * @description Queue depth per queue, the dead-letter count (no payloads), adapter health and the virus scanner's last probe.
          */
         get: {
             parameters: {
@@ -63198,6 +63198,17 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description The workspace is suspended or held for review (`workspace_unavailable`) */
+                423: {
+                    headers: {
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Rate limited; see `Retry-After` */
                 429: {
                     headers: {
@@ -63341,6 +63352,17 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description The workspace is suspended or held for review (`workspace_unavailable`) */
+                423: {
+                    headers: {
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Rate limited; see `Retry-After` */
                 429: {
                     headers: {
@@ -63471,6 +63493,17 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description The workspace is suspended or held for review (`workspace_unavailable`) */
+                423: {
+                    headers: {
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Rate limited; see `Retry-After` */
                 429: {
                     headers: {
@@ -63525,7 +63558,7 @@ export interface paths {
         };
         /**
          * Whether first-run setup is still required, and what the wizard can offer
-         * @description Public, but the body depends on the caller. A signed-in active staff owner or admin gets everything, `progress`, `drivers` and `probes` included. While setup is still required, anyone gets what the token and owner steps need (`tenancy`, `instanceName`, `baseUrl`, `passwordEnabled`, `tokenSource`). Once setup is complete, everyone else gets `{ required: false }` only.
+         * @description Public, but the body depends on the caller. A signed-in active staff owner or admin gets everything, `progress`, `drivers` and `probes` included. While setup is still required, anyone gets what the token and owner steps need (`tenancy`, `instanceName`, `baseUrl`, `passwordEnabled`, `tokenSource`). Once setup is complete, everyone else gets `{ required: false }` only. While the workspace is held or suspended, its staff get 423 `workspace_unavailable` (details `workspaceStatus`, `reason`) and everyone else `{ required: false }`.
          */
         get: {
             parameters: {
@@ -63593,6 +63626,17 @@ export interface paths {
                 };
                 /** @description Conflict with current state */
                 409: {
+                    headers: {
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The workspace is suspended or held for review (`workspace_unavailable`) */
+                423: {
                     headers: {
                         /** @description Correlation id for this request; quote it in support tickets */
                         "X-Request-Id"?: string;
@@ -63734,6 +63778,17 @@ export interface paths {
                 };
                 /** @description Conflict with current state */
                 409: {
+                    headers: {
+                        /** @description Correlation id for this request; quote it in support tickets */
+                        "X-Request-Id"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The workspace is suspended or held for review (`workspace_unavailable`) */
+                423: {
                     headers: {
                         /** @description Correlation id for this request; quote it in support tickets */
                         "X-Request-Id"?: string;
@@ -76705,7 +76760,7 @@ export interface components {
             reason: ("invalid_url" | "not_found" | "rejected" | "rate_limited" | "unavailable" | "not_connected") | null;
         };
         /** @enum {string} */
-        NotifyEventType: "document.viewed" | "document.downloaded" | "update.replied" | "round.interest_submitted" | "round.verification_requested" | "round.commitment_created" | "analytics.hot_lead" | "access_request.submitted" | "access_review.overdue" | "membership.delegate_added" | "qa.question_asked" | "qa.question_assigned" | "qa.answer_submitted" | "qa.answer_released" | "qa.question_declined" | "qa.question_due" | "esign.envelope_attention" | "round.signature_completed" | "round.commitment_confirmed" | "integration.connection_unhealthy" | "round.verification_expiring" | "round.verification_decided";
+        NotifyEventType: "document.viewed" | "document.downloaded" | "update.replied" | "round.interest_submitted" | "round.verification_requested" | "round.commitment_created" | "analytics.hot_lead" | "access_request.submitted" | "access_review.overdue" | "membership.delegate_added" | "qa.question_asked" | "qa.question_assigned" | "qa.answer_submitted" | "qa.answer_released" | "qa.question_declined" | "qa.question_due" | "esign.envelope_attention" | "round.signature_completed" | "round.commitment_confirmed" | "integration.connection_unhealthy" | "round.verification_expiring" | "round.verification_decided" | "document.scan_infected";
         NotifyInbox: {
             items: components["schemas"]["NotifyInboxItem"][];
             nextCursor: string | null;
@@ -77177,6 +77232,13 @@ export interface components {
                 /** @enum {string} */
                 status: "ok" | "fail" | "skipped";
             }[];
+            /** @description The virus scanner's last probe (clamd `PING` + `VERSION`, refreshed every minute; `skipped` for the noop scanner). Read from the cache: this request does not contact the scanner. */
+            avscan: {
+                detail?: string;
+                driver: string;
+                /** @enum {string} */
+                status: "ok" | "fail" | "skipped";
+            };
             /**
              * Format: date-time
              * @description RFC 3339 timestamp, UTC

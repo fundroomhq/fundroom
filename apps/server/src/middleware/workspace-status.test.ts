@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { statusAllows } from "./workspace-status.js";
+import { holdViewerIsStaff, statusAllows, workspaceUnavailableError } from "./workspace-status.js";
 
 /*
  * What a suspended / held workspace still serves (E3.10). The integration test drives the whole
@@ -49,11 +49,38 @@ describe("statusAllows", () => {
     expect(api("/api/v1/residency")).toBe(false);
   });
 
+  it("lets GET /setup/status through: the route reproduces the hold itself (E-UP-26)", () => {
+    expect(api("/api/v1/setup/status")).toBe(true);
+    expect(api("/api/v1/setup/status/")).toBe(true);
+    expect(api("/api/v1/setup/status", "POST")).toBe(false);
+    expect(api("/api/v1/setup/token/verify", "POST")).toBe(false);
+    expect(api("/api/v1/setup/owner", "POST")).toBe(false);
+    expect(api("/api/v1/setup/statusx")).toBe(false);
+  });
+
   it("refuses everything else", () => {
     expect(api("/api/v1/data-room/folders")).toBe(false);
     expect(api("/api/v1/access/members")).toBe(false);
     expect(api("/api/v1/links/abc/redeem", "POST")).toBe(false);
     expect(api("/api/v1/mex")).toBe(false);
     expect(api("/api/v1/authz")).toBe(false);
+  });
+});
+
+describe("the hold's 423", () => {
+  it("is for a staff member of the workspace who is not viewing as someone else", () => {
+    expect(holdViewerIsStaff({ kind: "staff" }, false)).toBe(true);
+    expect(holdViewerIsStaff({ kind: "staff" }, true)).toBe(false);
+    expect(holdViewerIsStaff({ kind: "external" }, false)).toBe(false);
+    expect(holdViewerIsStaff(undefined, false)).toBe(false);
+  });
+
+  it("carries the status and the reason", () => {
+    const error = workspaceUnavailableError({
+      status: "pending_review",
+      suspendedReason: "sanctions",
+    });
+    expect(error.code).toBe("workspace_unavailable");
+    expect(error.details).toEqual({ workspaceStatus: "pending_review", reason: "sanctions" });
   });
 });

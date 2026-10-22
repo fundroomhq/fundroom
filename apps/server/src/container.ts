@@ -33,7 +33,7 @@ import {
   permits,
   prelockIdentityErasure,
 } from "@fundroom/compliance";
-import { type AppConfig, ownCellOrigin } from "@fundroom/config";
+import { type AppConfig, ownCellOrigin, uploadCeilingBytes } from "@fundroom/config";
 import { ensureOwnCell, liveWorkspacesOnCell, repairWorkspaceEntry } from "@fundroom/control-plane";
 import { createCryptoJobs, createEnvelopeService, type EnvelopeService } from "@fundroom/crypto";
 import {
@@ -169,6 +169,7 @@ import { createAiModel, createAiWiring } from "./ai/wiring.js";
 import { withApiKeyAudit } from "./api-key-context.js";
 import { type AuditAnchoring, createAuditAnchoring } from "./audit-anchoring.js";
 import { createAuthzEngineWiring } from "./authz-engine-wiring.js";
+import { instrumentScanner } from "./avscan-signals.js";
 import { createBillingWiring } from "./control-plane/billing-wiring.js";
 import { createCentralAuthWiring } from "./control-plane/central-auth-wiring.js";
 import type {
@@ -737,15 +738,23 @@ export function createContainer(options: ContainerOptions): Container {
   }
 
   // --- scanning + rendering (E1.3) -----------------------------------------------------------
-  const scanner: VirusScanPort =
+  // E-UP-25: wrapped so every scan is counted and timed; with clamd a 60 s probe feeds the
+  // `fundroom.avscan.up` / `signature_age_seconds` gauges and `/platform/health`.
+  const avscan = instrumentScanner(
     raw.AV_DRIVER === "clamd"
       ? createClamdScanner({
           host: raw.CLAMD_HOST ?? "",
           port: raw.CLAMD_PORT,
           timeoutMs: raw.CLAMD_TIMEOUT_MS,
+          connectTimeoutMs: raw.CLAMD_CONNECT_TIMEOUT_MS,
+          minBytesPerSecond: raw.CLAMD_MIN_BYTES_PER_SECOND,
+          maxScanBytes: raw.AV_MAX_SCAN_BYTES ?? null,
           log: hook("avscan"),
         })
-      : createNoopScanner({ log: hook("avscan") });
+      : createNoopScanner({ log: hook("avscan") }),
+    { probe: raw.AV_DRIVER === "clamd", log: hook("avscan") },
+  );
+  const scanner: VirusScanPort = avscan.scanner;
   const renderer = createPdfiumRenderer({
     log: hook("render"),
     maxInputBytes: raw.RENDER_MAX_BYTES,
@@ -1138,6 +1147,11 @@ export function createContainer(options: ContainerOptions): Container {
   const mailFeedback = createMailFeedback({
     db,
     sendDb: mailDb,
+    // E-UP-24: with MAIL_IGNORE_FOREIGN_SENDERS, an unknown event from another address on this
+    // sender's domain is another deployment's (staging sharing the provider account): answered
+    // 200, never retried. Off, every young unknown event is retried as before.
+    mailFrom: raw.MAIL_FROM,
+    ignoreForeign: raw.MAIL_IGNORE_FOREIGN_SENDERS,
     // E3.9 FR1 B8: when BASE_URL is a path mount its origin is the host site's, so only URLs
     // under BASE_URL are ours; otherwise the whole origin, as before.
     ownOrigins: (workspace) => {
@@ -1729,7 +1743,8 @@ export function createContainer(options: ContainerOptions): Container {
     ai,
     keyRing: config.keyRing,
     limits: {
-      uploadMaxBytes: raw.UPLOAD_MAX_BYTES,
+      // E-UP-25: never more than the scanner scans in full (AV_MAX_SCAN_BYTES with clamd).
+      uploadMaxBytes: uploadCeilingBytes(raw),
       renderMaxBytes: raw.RENDER_MAX_BYTES,
       dataDir: raw.DATA_DIR,
     },
@@ -2164,6 +2179,7 @@ export function createContainer(options: ContainerOptions): Container {
       }
       // The relay runs next to the writers: on api nodes, or on a lone worker.
       if (isApi || !config.roles.has("api")) relay.start();
+      avscan.start();
       started = true;
       log("container.started", {
         roles: [...config.roles],
@@ -2195,6 +2211,7 @@ export function createContainer(options: ContainerOptions): Container {
             });
           }
         };
+        avscan.stop();
         await close("relay", () => relay.stop());
         await close("queue", () => queue.stop({ timeoutMs: raw.SHUTDOWN_TIMEOUT_MS }));
         await close("outbound", () => outbound.close());

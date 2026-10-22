@@ -284,3 +284,29 @@ export const FOLDER_TEMPLATES: readonly FolderTemplate[] = [
 export function templateById(id: string): FolderTemplate | undefined {
   return FOLDER_TEMPLATES.find((t) => t.id === id);
 }
+
+// --- scan failures (E-UP-25) -----------------------------------------------------------------
+/**
+ * `scan_detail` of a blob imported without its bytes (portability): an `error` no scan can fix,
+ * only an upload of the same bytes.
+ */
+export const NOT_EXPORTED_DETAIL = "bytes not carried by the workspace export";
+
+/**
+ * Scan failure reasons retrying cannot fix (`ScanFailureReason`): the file is too large for the
+ * scanner, or the engine stopped at one of its limits. Recorded as `scan_detail` = `reason` or
+ * `reason: detail` (ingest's `scanErrorDetail`). The one list both `isFinalScanDetail` and
+ * `BlobRepo.claimScan`'s SQL read.
+ */
+export const FINAL_SCAN_REASONS = ["too_large", "partial"] as const;
+
+/**
+ * An `error` blob's `scan_detail` is final (no job retry, no claim) only when it names a reason
+ * in `FINAL_SCAN_REASONS` or is the import placeholder; anything else, including details written
+ * before reasons were recorded (`clamd: connect ECONNREFUSED`), is retryable.
+ */
+export function isFinalScanDetail(detail: string | null): boolean {
+  if (detail === null) return false;
+  if (detail === NOT_EXPORTED_DETAIL) return true;
+  return FINAL_SCAN_REASONS.some((r) => detail === r || detail.startsWith(`${r}:`));
+}

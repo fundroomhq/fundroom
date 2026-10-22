@@ -1068,7 +1068,16 @@ export function createESignService(deps: ESignServiceDeps): ESignKernel {
     });
   }
 
-  async function runCollect(workspaceId: string, envelopeId: string): Promise<void> {
+  /**
+   * `signal`: the job's abort signal (stop or expiry), handed to every scan. Two artifacts at up
+   * to CLAMD_MAX_DEADLINE_MS each could outlast the job's 30-minute expiry; with the signal the
+   * scan still running at expiry ends `error` (retryable) and the job is retried instead.
+   */
+  async function runCollect(
+    workspaceId: string,
+    envelopeId: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const sctx = sys(workspaceId);
     const pre = await deps.db.withTenant(sctx, async (tx) => {
       const row = await new ESignEnvelopeRepo(sctx, tx).byId(envelopeId);
@@ -1128,7 +1137,12 @@ export function createESignService(deps: ESignServiceDeps): ESignKernel {
       }
     }
     for (const p of pieces) {
-      const verdict = await deps.scanner.scan({ body: p.bytes, size: p.bytes.byteLength });
+      const verdict = await deps.scanner.scan({
+        body: p.bytes,
+        size: p.bytes.byteLength,
+        source: "esign",
+        signal,
+      });
       if (verdict.verdict === "infected") {
         deps.securityEvent?.("esign_artifact_infected", {
           workspaceId,
@@ -1148,6 +1162,29 @@ export function createESignService(deps: ESignServiceDeps): ESignKernel {
           "artifact_infected",
           `the ${p.which} artifact was flagged by the virus scanner`,
           { which: p.which, engine: verdict.engine },
+        );
+        return;
+      }
+      if (verdict.verdict === "error" && verdict.retryable === false) {
+        // Too large for the scanner, or the engine stopped at one of its limits: retrying the
+        // job cannot help, so the collection fails for good (a manual resync may still retry
+        // once the scanner's limits change). Never vaulted unscanned.
+        log("esign.artifact_unscannable", {
+          level: "warn",
+          workspaceId,
+          envelopeId,
+          which: p.which,
+          engine: verdict.engine,
+          reason: verdict.reason ?? null,
+        });
+        await collectFailed(
+          workspaceId,
+          envelopeId,
+          "artifact_unscannable",
+          `the ${p.which} artifact could not be scanned in full${
+            verdict.reason === undefined ? "" : ` (${verdict.reason})`
+          }`,
+          { which: p.which, engine: verdict.engine, reason: verdict.reason ?? null },
         );
         return;
       }
@@ -1366,11 +1403,20 @@ export function createESignService(deps: ESignServiceDeps): ESignKernel {
     },
     {
       name: ESIGN_JOBS.collect,
-      queue: { policy: "short", retryLimit: 6, retryDelaySeconds: 60, retryBackoff: true },
+      queue: {
+        policy: "short",
+        retryLimit: 6,
+        retryDelaySeconds: 60,
+        retryBackoff: true,
+        // Explicit, not the adapter's 15-minute default: collect downloads and virus-scans the
+        // artifacts, and a scan may run up to CLAMD_MAX_DEADLINE_MS (20 min) before it times out.
+        // Two artifacts could take longer: the job's signal ends the scan running at expiry.
+        expireInSeconds: 30 * 60,
+      },
       work: { concurrency: 2 },
       handler: async (job) => {
         const ids = jobIds(job.data);
-        if (ids !== undefined) await runCollect(ids.workspaceId, ids.envelopeId);
+        if (ids !== undefined) await runCollect(ids.workspaceId, ids.envelopeId, job.signal);
       },
     },
     {

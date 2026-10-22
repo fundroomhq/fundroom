@@ -19,6 +19,7 @@ import {
   stripLink,
 } from "@fundroom/mail";
 import type { MailDeliveryEvent, MailStream, OutboundEmail, SentEmail } from "@fundroom/ports";
+import { type Counter, metrics } from "@opentelemetry/api";
 import {
   findMailMessageForWebhook,
   MailMessageRepo,
@@ -48,6 +49,17 @@ import {
  * provider answers the send, fires its `delivered`/`bounce` webhook, and our insert is still in
  * flight). An unknown id whose event is younger than `MAIL_EARLY_EVENT_WINDOW_MS` is counted as
  * `retry`, and the route answers 503 so the provider re-delivers; an older unknown id is ignored.
+ *
+ * Foreign events. Another deployment can share the provider account, and with it the webhook
+ * fan-out (a staging stack sending from `no-reply-staging@` on the production sending domain).
+ * Its events are unknown here and young, so without a test they would be retried for ten minutes
+ * each. With `ignoreForeign` (`MAIL_IGNORE_FOREIGN_SENDERS`, off by default), an unknown id whose
+ * event names a sender (`MailDeliveryEvent.from`) on the same domain as `MAIL_FROM` but a
+ * different address is counted `foreign` and answered 200 at once. Only the same domain: a
+ * workspace's investor updates send from its own verified domain, and those events must keep the
+ * early-event retry. It is opt-in because a workspace may have verified MAIL_FROM's own domain
+ * and send from another address on it: on an instance that shares no provider account, those
+ * early events would be dropped. Known rows are never tested: a row is ours whoever sent it.
  *
  * Provider suppressions. A hard bounce whose `reason` starts with `provider_suppressed:` (Resend
  * `email.suppressed`, Postmark `SubscriptionChange`, SES `OnAccountSuppressionList`) is the
@@ -99,6 +111,17 @@ export type SuppressionReason = MailSuppressionRow["reason"];
 export interface MailFeedbackOptions {
   readonly db: Database;
   /**
+   * The instance's own sender (`MAIL_FROM`, a bare address). With it, an unknown event from
+   * another address on the same domain is `foreign` when `ignoreForeign` is set (see "Foreign
+   * events" above). Without either, no event is foreign.
+   */
+  readonly mailFrom?: string | undefined;
+  /**
+   * `MAIL_IGNORE_FOREIGN_SENDERS`: acknowledge and ignore unknown events from another address on
+   * `mailFrom`'s domain instead of retrying them. Default false (every young unknown is retried).
+   */
+  readonly ignoreForeign?: boolean | undefined;
+  /**
    * Pool for the send path (`suppressionFor`, `recordSent`, `noteProviderSuppression`), which
    * runs inside callers that may hold a `db` connection. Must not be `db` in production — see
    * "The send path and the pool" above. Defaults to `db` for tests that send outside any tx.
@@ -135,6 +158,46 @@ export interface IngestResult {
   readonly suppressed: number;
   /** Events for a message we do not know *yet* (too recent to ignore): the route asks for a retry. */
   readonly retry: number;
+  /**
+   * Unknown events sent from another address on `MAIL_FROM`'s domain: another deployment sharing
+   * the provider account. Never retried. Optional so older result literals still type-check.
+   */
+  readonly foreign?: number;
+}
+
+const WEBHOOK_OUTCOMES = [
+  "recorded",
+  "ignored",
+  "dropped",
+  "suppressed",
+  "retry",
+  "foreign",
+] as const;
+
+let webhookCounter: Counter | undefined;
+function webhookEvents(): Counter {
+  webhookCounter ??= metrics
+    .getMeter("fundroom.mail")
+    .createCounter("fundroom.mail.webhook_events", {
+      description:
+        "Mail provider webhook events by outcome: recorded, ignored (no or unknown id), dropped " +
+        "(tracking refused), suppressed (address newly listed), retry (unknown yet, 503), foreign " +
+        "(another deployment's sender on our domain)",
+    });
+  return webhookCounter;
+}
+
+function domainOf(address: string): string {
+  return address.slice(address.lastIndexOf("@") + 1);
+}
+
+/** `from` names another address on `mailFrom`'s domain (both compared lower-cased). */
+export function isForeignSender(from: string | undefined, mailFrom: string | undefined): boolean {
+  if (from === undefined || mailFrom === undefined) return false;
+  const a = from.trim().toLowerCase();
+  const own = mailFrom.trim().toLowerCase();
+  if (!a.includes("@") || !own.includes("@") || a === own) return false;
+  return domainOf(a) === domainOf(own);
 }
 
 export interface SuppressionView {
@@ -368,6 +431,7 @@ export function createMailFeedback(options: MailFeedbackOptions): MailFeedback {
       let dropped = 0;
       let suppressed = 0;
       let retry = 0;
+      let foreign = 0;
       for (const event of events) {
         const providerMessageId = event.messageId?.trim() ?? "";
         if (providerMessageId === "" || providerMessageId.length > PROVIDER_ID_MAX) {
@@ -380,9 +444,15 @@ export function createMailFeedback(options: MailFeedbackOptions): MailFeedback {
         const occurredAt = Number.isNaN(event.occurredAt.getTime()) ? now() : event.occurredAt;
         if (row === undefined) {
           // Not recorded *yet* (the provider beat our insert): ask for a retry. Otherwise it is
-          // not ours, was swept, or is instance-level mail — never guessed at.
-          if (now().getTime() - occurredAt.getTime() <= MAIL_EARLY_EVENT_WINDOW_MS) retry += 1;
-          else ignored += 1;
+          // not ours, was swept, or is instance-level mail — never guessed at. Another
+          // deployment's sender on our domain (when the operator says one shares the provider
+          // account) is never ours: answered at once, not retried.
+          if (options.ignoreForeign === true && isForeignSender(event.from, options.mailFrom)) {
+            foreign += 1;
+            log("mail.webhook_foreign", { level: "debug", provider, from: event.from });
+          } else if (now().getTime() - occurredAt.getTime() <= MAIL_EARLY_EVENT_WINDOW_MS) {
+            retry += 1;
+          } else ignored += 1;
           continue;
         }
         const ctx = systemContext(row.workspaceId);
@@ -446,10 +516,14 @@ export function createMailFeedback(options: MailFeedbackOptions): MailFeedback {
         if (outcome.published) recorded += 1;
         else if (!providerSuppression) dropped += 1;
       }
+      const result = { recorded, ignored, dropped, suppressed, retry, foreign };
       if (events.length > 0) {
-        log("mail.webhook_ingested", { provider, recorded, ignored, dropped, suppressed, retry });
+        log("mail.webhook_ingested", { provider, ...result });
+        for (const outcome of WEBHOOK_OUTCOMES) {
+          if (result[outcome] > 0) webhookEvents().add(result[outcome], { outcome });
+        }
       }
-      return { recorded, ignored, dropped, suppressed, retry };
+      return result;
     },
 
     async listSuppressions(ctx, page) {

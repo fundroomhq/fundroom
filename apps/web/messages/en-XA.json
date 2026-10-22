@@ -4001,6 +4001,7 @@
   "notify_event_access_review_overdue": "⟦Ţĥé áççéšš ŕéṽíéŵ íš óṽéŕðúé······ ····⟧",
   "notify_event_analytics_hot_lead": "⟦Áñ íñṽéšţóŕ ƀéçáɱé á ĥóţ ļéáð······ ····⟧",
   "notify_event_document_downloaded": "⟦Áñ íñṽéšţóŕ ðóŵñļóáðéð á ðóçúɱéñţ······ ······⟧",
+  "notify_event_document_scan_infected": "⟦Áñ úþļóáðéð ƒíļé ŵáš ƒļáĝĝéð ƀý ţĥé ṽíŕúš šçáññéŕ······ ······ ·····⟧",
   "notify_event_document_viewed": "⟦Áñ íñṽéšţóŕ ṽíéŵéð á ðóçúɱéñţ······ ····⟧",
   "notify_event_esign_envelope_attention": "⟦Áñ é-šíĝñáţúŕé ŕéǫúéšţ ñééðš áţţéñţíóñ······ ······ ·⟧",
   "notify_event_integration_connection_unhealthy": "⟦Á çóññéçţéð íñţéĝŕáţíóñ šţóþþéð ŵóŕķíñĝ······ ······ ··⟧",

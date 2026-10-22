@@ -1,4 +1,4 @@
-import { hstsIncludeSubDomains, metricsEnabled } from "@fundroom/config";
+import { hstsIncludeSubDomains, metricsEnabled, uploadCeilingBytes } from "@fundroom/config";
 import { ApiError } from "@fundroom/contracts";
 import { embedFrameAncestors, parseWorkspaceSettings } from "@fundroom/domain";
 import { securityHeaders } from "@fundroom/http";
@@ -48,6 +48,7 @@ import {
 import { mailWebhookRoutes } from "./routes/mail-webhook.js";
 import { opsRoutes } from "./routes/ops.js";
 import { scimRoutes } from "./routes/scim.js";
+import { signupLive } from "./routes/signup.js";
 import { ssoOpsRoutes } from "./routes/sso-flow.js";
 import { createHttpMetrics, inboundTracing, type Telemetry } from "./telemetry.js";
 import { canonicalHostOf } from "./tenancy.js";
@@ -515,7 +516,8 @@ export function createApp(options: AppOptions): Hono<AppEnv> {
       certProbe,
       updateChecker: container.updateChecker,
       limits: {
-        uploadMaxBytes: raw.UPLOAD_MAX_BYTES,
+        // E-UP-25: never more than the scanner scans in full (AV_MAX_SCAN_BYTES with clamd).
+        uploadMaxBytes: uploadCeilingBytes(raw),
         renderMaxBytes: raw.RENDER_MAX_BYTES,
         dataDir: raw.DATA_DIR,
       },
@@ -644,6 +646,9 @@ export function createApp(options: AppOptions): Hono<AppEnv> {
         billing: container.billing.enabled,
         signupTermsVersion: raw.SIGNUP_TERMS_VERSION,
       },
+      // E-UP-26: the signup page shows its closed screen while the default plan is not live
+      // (the same memoised answer the signup routes use).
+      signupLive: () => signupLive(container.controlPlane.operators.signup),
       ai: container.aiModel !== null,
       links: {
         terms: raw.TERMS_URL ?? null,

@@ -277,7 +277,7 @@ describe("E3.1 access requests", () => {
     const files = readdirSync(dir)
       .filter((f) => f.endsWith(".sql"))
       .sort();
-    expect(files.at(-1)).toBe("0012_verification_member_events.sql");
+    expect(files.at(-1)).toBe("0013_document_scan_infected.sql");
     const listOf = (constraint: string) => {
       let line = "";
       for (const f of files) {
@@ -862,5 +862,80 @@ describe("E3.7 accreditation verification (the investor's own alerts)", () => {
     );
     expect(r.subject).toBe(VERB["round.verification_decided"]);
     expect(r.cta?.url).toBe("https://acme.example.test/round");
+  });
+});
+
+describe("document.scan_infected (an upload the virus scanner flagged)", () => {
+  const services = {
+    workspaceUrl: (_ws: unknown, path: string) => new URL(path, "https://acme.example.test"),
+  } as unknown as ModuleServices;
+  const ws = { id: "w", slug: "acme", name: "Acme", primaryHost: null };
+  const row = (membershipId: string, payload: Record<string, unknown>) =>
+    ({
+      eventType: "document.scan_infected",
+      membershipId,
+      actorMembershipId: null,
+      resourceKind: "documentId" in payload ? "document" : "blob",
+      resourceId: (payload["documentId"] ?? payload["blobId"]) as string,
+      payload,
+    }) as unknown as Notification;
+
+  it("is an instant sentence, never a channel or workspace event, bucketed per blob", () => {
+    const t = "document.scan_infected";
+    expect(isNotifyEventType(t)).toBe(true);
+    expect(effectiveCadence(t, undefined)).toBe("instant");
+    expect(isChannelEventType(t)).toBe(false);
+    expect(isWorkspaceEventType(t)).toBe(false);
+    expect(isSentenceEventType(t)).toBe(true);
+    expect(instantSubject("Ada", t)).toBe("An uploaded file was flagged by the virus scanner");
+    const at = new Date("2026-10-22T10:00:00Z");
+    expect(bucketFor(t, at, "b1")).toBe("b1");
+    // A re-ingest of the same quarantined file days later collapses: one alert per blob.
+    expect(bucketFor(t, new Date(at.getTime() + 172_800_000), "b1")).toBe("b1");
+    const groups = groupForDigest(
+      [{ eventType: t, actorMembershipId: null, resourceId: "d1" }],
+      () => "Ada Lovelace",
+    );
+    expect(groups[0]?.lines).toEqual([VERB[t]]);
+  });
+
+  it("staff read it in the third person, with the signature and a link to the document", () => {
+    const r = renderInstant(
+      services,
+      ws,
+      row("m-staff", {
+        blobId: "b1",
+        documentId: "d1",
+        versionId: "v1",
+        uploadedBy: "m-up",
+        signature: "Win.Test.EICAR_HDB-1",
+      }),
+      "Someone",
+    );
+    expect(r.subject).toBe("An uploaded file was flagged by the virus scanner");
+    expect(r.title).toBe(r.subject);
+    expect(r.paragraphs[0]).toContain(
+      "A file uploaded to the Acme data room was flagged by the virus scanner (Win.Test.EICAR_HDB-1).",
+    );
+    expect(r.paragraphs[0]).toContain("quarantined");
+    expect(r.cta).toEqual({
+      label: "Open the document",
+      url: "https://acme.example.test/admin/data-room/documents/d1",
+    });
+    expect(JSON.stringify(r)).not.toContain("Someone");
+  });
+
+  it("the uploader reads it in the second person; no document links the data room", () => {
+    const r = renderInstant(
+      services,
+      ws,
+      row("m-up", { blobId: "b1", uploadedBy: "m-up", signature: "Eicar-Signature" }),
+      "Someone",
+    );
+    expect(r.paragraphs[0]).toContain("A file you uploaded to the Acme data room");
+    expect(r.cta).toEqual({
+      label: "Open the data room",
+      url: "https://acme.example.test/admin/data-room",
+    });
   });
 });

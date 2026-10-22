@@ -22,7 +22,7 @@ import {
 import { parseCookies } from "@fundroom/identity";
 import type { Context } from "hono";
 import type { AppEnv } from "../env.js";
-import { platformSurfaceReachable } from "../middleware/platform.js";
+import { platformSurfaceReachable, requirePlatformSurface } from "../middleware/platform.js";
 import { cookieBasePathOf } from "../path-mount.js";
 import { type ApiDeps, clientIp } from "./deps.js";
 
@@ -36,7 +36,9 @@ import { type ApiDeps, clientIp } from "./deps.js";
  *
  * Matrix rows are `public` (no user session exists yet); the enrolment cookie is checked in the
  * handlers. Off the canonical host, with CONTROL_PLANE=off or outside PLATFORM_OPERATOR_CIDRS,
- * everything is the plain 404 of the operator surface.
+ * everything is the plain 404 of the operator surface. That check also runs as route middleware
+ * (`reachable`) on every row, ahead of body validation, so an outsider's malformed body is the
+ * same 404 as a well-formed one (E-UP-26); the in-handler checks stay as a second line.
  */
 
 type Api = OpenAPIHono<AppEnv>;
@@ -97,6 +99,7 @@ function toApiError(error: unknown): unknown {
 
 export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
   const enrol = () => deps.controlPlane.operators.enrol;
+  const reachable = requirePlatformSurface(deps);
 
   /** The live enrolment session of this browser, or a plain 404. */
   async function enrolSessionOf(c: Context<AppEnv>): Promise<EnrolSession> {
@@ -129,6 +132,7 @@ export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
       description:
         "Answers `{ ok: true }` after a constant floor whatever the token or address (no oracle); a code is sent only when the token is live and was minted for exactly that address. 429 past the per-IP budget.",
       "x-requires": "public",
+      middleware: [reachable] as const,
       request: { body: jsonBody(p.PlatformEnrolStartBody) },
       responses: { 200: jsonResponse(OkSchema, "Code sent (or silently not sent)"), ...ERRORS },
     }),
@@ -157,6 +161,7 @@ export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
       description:
         "Spends the link, creates the account if the address has none and sets `__Host-op_enrol`, which only the `/platform/enrol/*` routes accept. 400 `invalid_code` for any wrong part; 409 `conflict` (`already_enrolled`) when the account already holds a second factor.",
       "x-requires": "public",
+      middleware: [reachable] as const,
       request: { body: jsonBody(p.PlatformEnrolVerifyBody) },
       responses: { 200: jsonResponse(p.PlatformEnrolSessionSchema, "Enrolling"), ...ERRORS },
     }),
@@ -189,6 +194,7 @@ export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
       tags: TAGS,
       summary: "New operator: the enrolment session in progress",
       "x-requires": "public",
+      middleware: [reachable] as const,
       responses: { 200: jsonResponse(p.PlatformEnrolSessionSchema, "Enrolling"), ...ERRORS },
     }),
     async (c) => {
@@ -204,6 +210,7 @@ export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
       tags: TAGS,
       summary: "New operator: end the enrolment session",
       "x-requires": "public",
+      middleware: [reachable] as const,
       responses: { 204: { description: "Ended" }, ...ERRORS },
     }),
     async (c) => {
@@ -221,6 +228,7 @@ export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
       tags: TAGS,
       summary: "New operator: begin authenticator enrolment (returns the secret once)",
       "x-requires": "public",
+      middleware: [reachable] as const,
       responses: {
         200: jsonResponse(k.TotpEnrolmentSchema, "Pending until the first valid code"),
         ...ERRORS,
@@ -241,6 +249,7 @@ export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
       summary: "New operator: confirm the authenticator; returns recovery codes once",
       description: "Ends the enrolment session.",
       "x-requires": "public",
+      middleware: [reachable] as const,
       request: { body: jsonBody(k.TotpCodeBody) },
       responses: { 200: jsonResponse(k.RecoveryCodesSchema, "Enrolled"), ...ERRORS },
     }),
@@ -265,6 +274,7 @@ export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
       tags: TAGS,
       summary: "New operator: begin registering a passkey",
       "x-requires": "public",
+      middleware: [reachable] as const,
       responses: {
         200: jsonResponse(k.PasskeyRegistrationBegin, "WebAuthn creation options"),
         ...ERRORS,
@@ -289,6 +299,7 @@ export function registerPlatformEnrolRoutes(api: Api, deps: ApiDeps): void {
       summary: "New operator: finish registering a passkey",
       description: "Ends the enrolment session.",
       "x-requires": "public",
+      middleware: [reachable] as const,
       request: { body: jsonBody(k.PasskeyRegistrationFinishBody) },
       responses: { 200: jsonResponse(k.PasskeySummarySchema, "The new passkey"), ...ERRORS },
     }),

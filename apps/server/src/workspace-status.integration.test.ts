@@ -314,6 +314,39 @@ describe("workspace status guard", () => {
     // Anonymous page config: a hold reads as "unavailable", like a suspension.
     expect((await page(hold, "/")).workspaceStatus).toEqual({ status: "suspended", reason: null });
   });
+
+  it("answers GET /setup/status: the guard's 423 to staff, { required: false } to anybody else", async () => {
+    const hold = `hold.${CANON}`;
+    const held = await request(hold, "/api/v1/setup/status", { cookie: holdOwner.cookie });
+    expect(held.status).toBe(423);
+    expect(((await held.json()) as { error: Record<string, unknown> }).error).toMatchObject({
+      code: "workspace_unavailable",
+      workspaceStatus: "pending_review",
+    });
+    const suspended = await request(susp, "/api/v1/setup/status", { cookie: owner.cookie });
+    expect(suspended.status).toBe(423);
+    expect(((await suspended.json()) as { error: Record<string, unknown> }).error).toMatchObject({
+      code: "workspace_unavailable",
+      workspaceStatus: "suspended",
+      reason: "billing",
+    });
+    for (const [host, cookie] of [
+      [hold, undefined],
+      [susp, undefined],
+      [susp, investor.cookie],
+    ] as const) {
+      const res = await request(host, "/api/v1/setup/status", { cookie });
+      expect(res.status, `${host} ${cookie === undefined ? "anonymous" : "investor"}`).toBe(200);
+      expect(await res.json()).toEqual({ required: false });
+    }
+    // Only the read: the wizard's writes stay behind the guard.
+    const write = await request(hold, "/api/v1/setup/token/verify", {
+      method: "POST",
+      cookie: holdOwner.cookie,
+      body: JSON.stringify({ token: "x" }),
+    });
+    expect(write.status).toBe(423);
+  });
 });
 
 describe("setWorkspaceHold", () => {

@@ -1466,4 +1466,23 @@ describe("onboarding a new operator (enrol-link, fix round 2)", () => {
       ).status,
     ).toBe(404);
   });
+
+  it("is the surface's plain 404 from outside the operator network, before validation (E-UP-26)", async () => {
+    const token = await link("outsider@platform.test");
+    for (const [path, body] of [
+      ["/start", {}],
+      ["/start", { token, email: "outsider@platform.test" }],
+      ["/verify", { nope: 1 }],
+      ["/verify", { email: "outsider@platform.test", code: "123456" }],
+      ["/totp/confirm", {}],
+      ["/totp/confirm", { code: "123456" }],
+      ["/passkey/finish", {}],
+    ] as const) {
+      const res = await enrolPost(path, body, { ip: OUT_NET });
+      expect(res.status, `${path} ${JSON.stringify(body)}`).toBe(404);
+      expect(((await res.json()) as { error: { code: string } }).error.code).toBe("not_found");
+    }
+    // The same malformed body from inside is a validation error: the route exists there.
+    expect((await enrolPost("/start", {}, { ip: "10.88.0.1" })).status).toBe(400);
+  });
 });

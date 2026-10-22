@@ -73,6 +73,8 @@ x-app-env: &app-env
   SMTP_URL: ${SMTP_URL:-}
   MAIL_FROM: ${MAIL_FROM:-}
   MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
+  # true when staging and production share one ESP account (see .env.example)
+  MAIL_IGNORE_FOREIGN_SENDERS: ${MAIL_IGNORE_FOREIGN_SENDERS:-}
   # ESP drivers: MAILER_DRIVER=resend|postmark|ses sends over the provider's API and turns
   # its webhook (POST /webhooks/email/<driver>, URL shown on the admin mail screen) into bounces,
   # complaints and opens/clicks. Only the chosen driver's keys matter; empty means unset.
@@ -105,6 +107,11 @@ x-app-env: &app-env
   CLAMD_HOST: ${CLAMD_HOST:-clamav}
   CLAMD_PORT: ${CLAMD_PORT:-}
   CLAMD_TIMEOUT_MS: ${CLAMD_TIMEOUT_MS:-}
+  CLAMD_CONNECT_TIMEOUT_MS: ${CLAMD_CONNECT_TIMEOUT_MS:-}
+  CLAMD_MIN_BYTES_PER_SECOND: ${CLAMD_MIN_BYTES_PER_SECOND:-}
+  # Set to clamd's StreamMaxLength (the av profile's clamd keeps the image default, 100 MiB
+  # unless its clamd.conf says otherwise): with AV_DRIVER=clamd it also caps UPLOAD_MAX_BYTES.
+  AV_MAX_SCAN_BYTES: ${AV_MAX_SCAN_BYTES:-}
   # Jobs processed in parallel by whichever process runs the worker (embedded in `app`, or the
   # `worker` profile). Empty means unset here: the schema default (5) applies, as it does for
   # CLAMD_PORT (3310) and CLAMD_TIMEOUT_MS (120000) above.

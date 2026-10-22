@@ -50,7 +50,8 @@ export const Route = createFileRoute("/signup")({
 
 /*
  * Self-service signup (E3.10, ADR-0058 §5.7) on the canonical host, only when the install runs
- * SIGNUP_MODE=open (`config.signup`; the API 404s otherwise, and so does this page). Three
+ * SIGNUP_MODE=open and its default plan is live (`config.signup`, E-UP-26; the API 404s
+ * otherwise, and so does this page). Three
  * steps: the company and its address → the code emailed to the founder → a link to the new
  * workspace, where they sign in (or central auth hands them over).
  *

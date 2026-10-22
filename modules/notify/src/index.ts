@@ -6,6 +6,7 @@ import {
   onConnectionUnhealthy,
   onDelegateAdded,
   onDocumentDownloaded,
+  onDocumentScanInfected,
   onDocumentViewed,
   onErasureRequested,
   onEsignEnvelopeChanged,
@@ -82,6 +83,8 @@ export const notifyModule: ModuleManifest = defineModule({
       // E3.7 accreditation vendors: the investor hears about their own verification.
       "round.verification_expiring": onRoundVerificationExpiring,
       "round.verification_decided": onRoundVerificationDecided,
+      // The virus scanner flagged an upload: data-room managers and the uploader.
+      "document.scan_infected": onDocumentScanInfected,
       "analytics.hot_lead": onHotLead,
       "access_request.submitted": onAccessRequestSubmitted,
       "access_review.overdue": onAccessReviewOverdue,

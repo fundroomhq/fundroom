@@ -11,6 +11,7 @@ import { eraseMember } from "./service/lifecycle.js";
 import {
   ACCESS_MANAGE,
   ANALYTICS_READ,
+  DATA_ROOM_MANAGE,
   ESIGN_READ,
   fanOut,
   INTEGRATIONS_MANAGE,
@@ -687,6 +688,40 @@ export const onRoundVerificationDecided: EventHandler = typed(
       ),
       permission: null,
       alsoNotify: [p.membershipId],
+    });
+  },
+);
+
+/*
+ * The virus scanner flagged an upload (`document.scan_infected`, published by the data room's
+ * ingest job). Staff holding `data-room.manage` — the people who can remove the document — and the
+ * uploader, when a member uploaded it. No actor: the scan is a system job, and the uploader is a
+ * recipient, not the subject (`fanOut` would otherwise leave them out of the staff list). The
+ * ingest job publishes under a system context, so the host guard below never drops a real alert.
+ * One alert per blob: a re-ingest of the same quarantined file collapses.
+ */
+export const onDocumentScanInfected: EventHandler = typed(
+  "document.scan_infected",
+  async (event, { tx, ctx }) => {
+    if (ctx.actorKind === "host") return;
+    const p = event.payload;
+    const services = notifyServices();
+    const payload: JsonObject = {
+      blobId: p.blobId,
+      signature: p.signature,
+      uploadedBy: p.uploadedBy,
+      ...(p.documentId !== undefined ? { documentId: p.documentId } : {}),
+      ...(p.versionId !== undefined ? { versionId: p.versionId } : {}),
+    };
+    await fanOut(services, ctx, tx, {
+      eventType: "document.scan_infected",
+      actorMembershipId: null,
+      resourceKind: p.documentId !== undefined ? "document" : "blob",
+      resourceId: p.documentId ?? p.blobId,
+      payload,
+      bucket: bucketFor("document.scan_infected", services.now(), p.blobId),
+      permission: DATA_ROOM_MANAGE,
+      ...(p.uploadedBy !== null ? { alsoNotify: [p.uploadedBy] } : {}),
     });
   },
 );

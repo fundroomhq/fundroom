@@ -11,9 +11,10 @@ import type {
   SpreadsheetPort,
 } from "@fundroom/ports";
 import { serve } from "@hono/node-server";
+import { type Counter, metrics } from "@opentelemetry/api";
 import { createApp } from "./app.js";
 import { type Container, type ContainerOptions, createContainer } from "./container.js";
-import { createLogger, type Logger, logHook } from "./logger.js";
+import { createLogger, type Log, type Logger, logHook } from "./logger.js";
 import { COMPILED_IN_MODULES } from "./modules.js";
 import { canonicalBaseOf } from "./path-mount.js";
 import { assertBootInvariants, createReadiness, type Readiness, safeMessage } from "./readiness.js";
@@ -130,6 +131,35 @@ export async function migrate(
   }
 }
 
+let backstopLog: Log | undefined;
+let backstopCounter: Counter | undefined;
+
+/**
+ * E-UP-25 (25.1): a promise rejection nobody handled must not take the process down with every
+ * upload and job in flight (Node's default `--unhandled-rejections=throw`), nor vanish. It is
+ * logged at error level (`process.unhandled_rejection`) and counted
+ * (`fundroom.process.unhandled_rejections`), so it pages, and the process keeps serving. Installed
+ * once per process; a later start (tests) only swaps the log it writes to.
+ */
+export function installUnhandledRejectionBackstop(log: Log): void {
+  const first = backstopLog === undefined;
+  backstopLog = log;
+  if (!first) return;
+  process.on("unhandledRejection", (reason) => {
+    backstopCounter ??= metrics
+      .getMeter("fundroom.process")
+      .createCounter("fundroom.process.unhandled_rejections", {
+        description: "Promise rejections nothing handled (logged; the process keeps running)",
+      });
+    backstopCounter.add(1);
+    backstopLog?.("process.unhandled_rejection", {
+      level: "error",
+      error: reason instanceof Error ? reason.message : String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined,
+    });
+  });
+}
+
 /*
  * E-UP-10: a start that fails must reject with nothing left running, so `fundroom serve` exits
  * non-zero and the platform restarts it. Once the container exists its pools are open and, after
@@ -184,6 +214,8 @@ async function startServerSteps(
   for (const warning of configWarnings(config)) {
     log("config.warning", { level: "warn", key: warning.key, message: warning.message });
   }
+
+  installUnhandledRejectionBackstop(log);
 
   if (options.migrate ?? raw.MIGRATE_ON_START) await migrate(config, logger, modules);
 

@@ -227,6 +227,7 @@ export function harness(server: () => RunningServer, mailer: () => MemoryMailer)
       name,
       data,
       signal: new AbortController().signal,
+      attempt: { count: 0, limit: 0 },
     };
     await def.handler(job);
   }

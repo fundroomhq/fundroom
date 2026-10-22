@@ -288,6 +288,8 @@ beforeAll(async () => {
       STORAGE_FS_PATH: mkdtempSync(join(tmpdir(), "fundroom-storage-")),
       TENANCY_MODE: "multi",
       ROLES: "api",
+      MAIL_FROM: "no-reply@mail.fundroom.io",
+      MAIL_IGNORE_FOREIGN_SENDERS: "true",
     },
   });
   running = await startServer({
@@ -401,6 +403,68 @@ describe("the webhook", () => {
     expect(retried.status).toBe(200);
     expect((await recorded(gammaId)).map((e) => e["providerMessageId"])).toContain(early);
     expect(await suppressionCount(gammaId)).toBe(1);
+  });
+
+  it("an event from no-reply-staging@mail.fundroom.io gets 200 and changes nothing", async () => {
+    const before = await recorded(gammaId);
+    const suppressions = await suppressionCount(gammaId);
+    const res = await webhook([
+      ev("bounce", `staging-${randomUUID()}`, "staging@example.org", {
+        bounceType: "hard",
+        from: "no-reply-staging@mail.fundroom.io",
+        occurredAt: new Date(Date.now() - 30_000).toISOString(),
+      }),
+    ]);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("retry-after")).toBeNull();
+    expect(await recorded(gammaId)).toEqual(before);
+    expect(await suppressionCount(gammaId)).toBe(suppressions);
+  });
+
+  it("still asks for a retry (503) for an early event from our own sender or another domain", async () => {
+    for (const from of ["No-Reply@mail.fundroom.io", "ir@acme-ventures.test"]) {
+      const res = await webhook([
+        ev("delivered", `own-early-${randomUUID()}`, "early@example.org", {
+          from,
+          occurredAt: new Date(Date.now() - 30_000).toISOString(),
+        }),
+      ]);
+      expect(res.status, from).toBe(503);
+    }
+  });
+
+  it("MAIL_IGNORE_FOREIGN_SENDERS decides: on, foreign and logged; off, retried as before", async () => {
+    const event = (): MailDeliveryEvent => ({
+      kind: "bounce",
+      bounceType: "hard",
+      messageId: `staging-${randomUUID()}`,
+      recipient: "staging@example.org",
+      reason: undefined,
+      provider: "fake",
+      from: "no-reply-staging@mail.fundroom.io",
+      occurredAt: new Date(Date.now() - 30_000),
+    });
+    const lines: { event: string; fields: Readonly<Record<string, unknown>> | undefined }[] = [];
+    const feedback = (ignoreForeign: boolean) =>
+      createMailFeedback({
+        db: running.container.db,
+        mailFrom: "no-reply@mail.fundroom.io",
+        ignoreForeign,
+        envelope: running.container.envelope,
+        audit: running.container.audit,
+        allowsTracking: async () => false,
+        log: (e, fields) => lines.push({ event: e, fields }),
+      });
+    const on = await feedback(true).ingest("fake", [event()]);
+    expect(on).toMatchObject({ foreign: 1, retry: 0, ignored: 0 });
+    expect(lines.find((l) => l.event === "mail.webhook_foreign")?.fields).toMatchObject({
+      provider: "fake",
+      from: "no-reply-staging@mail.fundroom.io",
+    });
+    lines.length = 0;
+    const off = await feedback(false).ingest("fake", [event()]);
+    expect(off).toMatchObject({ foreign: 0, retry: 1 });
+    expect(lines.some((l) => l.event === "mail.webhook_foreign")).toBe(false);
   });
 });
 

@@ -167,6 +167,25 @@ jobs:
       - run: pnpm build
       - run: pnpm test:integration
 
+  av:
+    name: Virus scanning (real clamd)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: Pre-pull test images (ClamAV, Toxiproxy, Postgres 18)
+        # clamd starts from the image's bundled signatures (no freshclam): only Docker Hub is hit.
+        run: |
+          docker pull clamav/clamav:1.4
+          docker pull ghcr.io/shopify/toxiproxy:2.12.0
+          docker pull postgres:18-alpine
+      - run: pnpm build
+      - name: Upload → clamd → quarantine / serve / refuse, and clamd cut mid-scan
+        env:
+          FUNDROOM_TEST_CLAMD: "1"
+        run: pnpm exec vitest run --project integration apps/server/src/avscan.integration.test.ts
+
   contract:
     name: API contract (oasdiff, Schemathesis)
     runs-on: ubuntu-24.04
@@ -215,7 +234,9 @@ jobs:
         with:
           base: openapi.base.json
           revision: openapi.head.json
-          fail-on: ${{ contains(github.event.pull_request.labels.*.name, 'api-major') && 'NONE' || 'ERR' }}
+          # Empty disables the failure (the action passes `--fail-on` only when set; `NONE` is not a
+          # level oasdiff accepts). An empty string is falsy in expressions, so the negation comes first.
+          fail-on: ${{ !contains(github.event.pull_request.labels.*.name, 'api-major') && 'ERR' || '' }}
       - name: Schemathesis
         run: |
           pnpm --filter @fundroom/server start:ci &
@@ -508,7 +529,7 @@ jobs:
   ci-ok:
     name: CI OK
     runs-on: ubuntu-24.04
-    needs: [static, unit, integration, contract, migrations, e2e, a11y, design-system, wordpress, helm]
+    needs: [static, unit, integration, av, contract, migrations, e2e, a11y, design-system, wordpress, helm]
     if: always()
     steps:
       - name: Check results

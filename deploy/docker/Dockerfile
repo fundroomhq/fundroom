@@ -94,6 +94,9 @@ LABEL org.opencontainers.image.title="FundRoom" \
       org.opencontainers.image.source="https://github.com/fundroomhq/fundroom" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${FUNDROOM_VERSION}"
+# NODE_OPTIONS: --disable-warning=ExperimentalWarning drops the two warnings the passkey library
+# prints at import (it probes `crypto.subtle.supports`) on every process start, CLI commands
+# included; deprecation and other warnings still print. Never `--no-warnings`.
 ENV NODE_ENV=production \
     APP_ENV=prod \
     HOST=0.0.0.0 \
@@ -103,7 +106,7 @@ ENV NODE_ENV=production \
     WEB_DIST_PATH=/app/web \
     TRUST_PROXY=true \
     FONTCONFIG_FILE=/app/fonts/fonts.conf \
-    NODE_OPTIONS=--enable-source-maps
+    NODE_OPTIONS="--enable-source-maps --disable-warning=ExperimentalWarning"
 WORKDIR /app
 COPY --from=build --chown=nonroot:nonroot /out/server /app
 COPY --from=build --chown=nonroot:nonroot /out/web /app/web

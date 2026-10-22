@@ -12003,6 +12003,30 @@
               ]
             }
           },
+          "avscan": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "fail",
+                  "skipped"
+                ]
+              },
+              "driver": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "driver"
+            ],
+            "description": "The virus scanner's last probe (clamd `PING` + `VERSION`, refreshed every minute; `skipped` for the noop scanner). Read from the cache: this request does not contact the scanner."
+          },
           "checkedAt": {
             "type": "string",
             "format": "date-time",
@@ -12014,6 +12038,7 @@
           "queues",
           "deadLetters",
           "adapters",
+          "avscan",
           "checkedAt"
         ]
       },
@@ -20779,7 +20804,8 @@
           "round.commitment_confirmed",
           "integration.connection_unhealthy",
           "round.verification_expiring",
-          "round.verification_decided"
+          "round.verification_decided",
+          "document.scan_infected"
         ]
       },
       "NotifyCadence": {
@@ -33945,7 +33971,7 @@
           "setup"
         ],
         "summary": "Whether first-run setup is still required, and what the wizard can offer",
-        "description": "Public, but the body depends on the caller. A signed-in active staff owner or admin gets everything, `progress`, `drivers` and `probes` included. While setup is still required, anyone gets what the token and owner steps need (`tenancy`, `instanceName`, `baseUrl`, `passwordEnabled`, `tokenSource`). Once setup is complete, everyone else gets `{ required: false }` only.",
+        "description": "Public, but the body depends on the caller. A signed-in active staff owner or admin gets everything, `progress`, `drivers` and `probes` included. While setup is still required, anyone gets what the token and owner steps need (`tenancy`, `instanceName`, `baseUrl`, `passwordEnabled`, `tokenSource`). Once setup is complete, everyone else gets `{ required: false }` only. While the workspace is held or suspended, its staff get 423 `workspace_unavailable` (details `workspaceStatus`, `reason`) and everyone else `{ required: false }`.",
         "responses": {
           "200": {
             "description": "Status",
@@ -34039,6 +34065,24 @@
           },
           "409": {
             "description": "Conflict with current state",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "The workspace is suspended or held for review (`workspace_unavailable`)",
             "headers": {
               "X-Request-Id": {
                 "description": "Correlation id for this request; quote it in support tickets",
@@ -34248,6 +34292,24 @@
           },
           "409": {
             "description": "Conflict with current state",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "The workspace is suspended or held for review (`workspace_unavailable`)",
             "headers": {
               "X-Request-Id": {
                 "description": "Correlation id for this request; quote it in support tickets",
@@ -34501,6 +34563,24 @@
               }
             }
           },
+          "423": {
+            "description": "The workspace is suspended or held for review (`workspace_unavailable`)",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Rate limited; see `Retry-After`",
             "headers": {
@@ -34714,6 +34794,24 @@
               }
             }
           },
+          "423": {
+            "description": "The workspace is suspended or held for review (`workspace_unavailable`)",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Rate limited; see `Retry-After`",
             "headers": {
@@ -34890,6 +34988,24 @@
           },
           "409": {
             "description": "Conflict with current state",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Correlation id for this request; quote it in support tickets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "The workspace is suspended or held for review (`workspace_unavailable`)",
             "headers": {
               "X-Request-Id": {
                 "description": "Correlation id for this request; quote it in support tickets",
@@ -83999,7 +84115,7 @@
           "platform"
         ],
         "summary": "Install health",
-        "description": "Queue depth per queue, the dead-letter count (no payloads) and adapter health.",
+        "description": "Queue depth per queue, the dead-letter count (no payloads), adapter health and the virus scanner's last probe.",
         "security": [
           {
             "session": []
@@ -121211,7 +121327,7 @@
                         "cadence"
                       ]
                     },
-                    "maxItems": 22
+                    "maxItems": 23
                   },
                   "settings": {
                     "type": "object",

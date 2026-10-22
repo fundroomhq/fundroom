@@ -144,4 +144,23 @@ describe("event catalogue", () => {
     expect(isEventTopic("document.viewed")).toBe(true);
     expect(isEventTopic("constructor")).toBe(false);
   });
+
+  it("document.scan_infected: ids, the uploader and the signature; the document is optional", () => {
+    const blobId = "01920000-0000-7000-8000-00000000000c";
+    expect(
+      defineEvent("document.scan_infected", { blobId, uploadedBy: null, signature: "Eicar" })
+        .payload,
+    ).toEqual({ blobId, uploadedBy: null, signature: "Eicar" });
+    expect(() =>
+      defineEvent("document.scan_infected", { blobId, uploadedBy: M1, signature: "" }),
+    ).toThrow(EventCatalogueError);
+    expect(() =>
+      defineEvent("document.scan_infected", {
+        blobId,
+        uploadedBy: M1,
+        signature: "Eicar",
+        filename: "invoice.pdf",
+      } as never),
+    ).toThrow(EventCatalogueError);
+  });
 });

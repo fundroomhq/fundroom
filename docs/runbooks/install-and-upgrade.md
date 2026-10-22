@@ -291,6 +291,7 @@ An air-gapped install that still wants the notice can mirror the index and point
 | `CUSTOM_DOMAIN_DRIVER` | app | `caddy-ask`; `manual` in Helm and the PaaS templates |
 | `UPDATE_CHECK` / `UPDATE_CHECK_URL` | app | `true` / `https://releases.fundroom.io/index.json` |
 | `AV_ACCEPT_UNSCANNED` | app | `false`; prod/staging refuse `AV_DRIVER=noop` without it |
+| `AV_MAX_SCAN_BYTES` | app and worker | unset; with `AV_DRIVER=clamd` set it to clamd's `StreamMaxLength` (it then caps `UPLOAD_MAX_BYTES`; `doctor` warns while unset). Scanner timeouts, metrics and alerts (`fundroom.avscan.up`, `fundroom.avscan.signature_age_seconds`): [av-failure.md](av-failure.md) |
 | `POSTGRES_PASSWORD` | Compose `.env` | required; `seedhost` on stacks created before |
 | `EDGE_TRUSTED_PROXIES` | Compose `.env` (caddy) | empty: Caddy trusts no forwarded headers |
 | `image.tag`, `image.digest`, `config.updateCheck`, `postgresql.mode` | Helm values | see the chart README |

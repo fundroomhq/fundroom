@@ -34,5 +34,9 @@ export function createNoopScanner(options: NoopScannerOptions = {}): VirusScanPo
     async healthCheck() {
       /* nothing to probe */
     },
+    async info() {
+      return null;
+    },
+    maxScanBytes: null,
   };
 }

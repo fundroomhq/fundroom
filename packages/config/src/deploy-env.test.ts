@@ -795,6 +795,124 @@ describe("E-UP-4 signup terms and footer links in the deploy surfaces", () => {
   });
 });
 
+describe("E-UP-25 virus-scan limits in the deploy surfaces", () => {
+  const E_UP_25 = ["AV_MAX_SCAN_BYTES", "CLAMD_CONNECT_TIMEOUT_MS", "CLAMD_MIN_BYTES_PER_SECOND"];
+  const anchor = (
+    read("deploy/compose/compose.yaml").split(/^x-app-env: &app-env$/mu)[1] ?? ""
+  ).split(/^\S/mu)[0] as string;
+  const defaults = new Map(
+    [...anchor.matchAll(/^ {2}([A-Z][A-Z0-9_]*): \$\{\1:-([^}]*)\}$/gmu)].map(
+      (m) => [m[1] as string, m[2] as string] as const,
+    ),
+  );
+
+  it("are config keys and none is a secret (plain config.extra values)", () => {
+    for (const key of E_UP_25) {
+      expect(ENV_KEYS, key).toContain(key);
+      expect(SECRET_KEYS.has(key), key).toBe(false);
+    }
+  });
+
+  it("compose passes every key through with an empty default, which loads as before", () => {
+    for (const key of E_UP_25) expect(defaults.get(key), key).toBe("");
+    const env: Record<string, string> = {
+      BASE_URL: "http://localhost:3000",
+      DATABASE_URL: "postgres://u:p@localhost:5432/db",
+      FUNDROOM_SECRET_KEY: randomBytes(32).toString("base64"),
+    };
+    for (const key of E_UP_25) env[key] = defaults.get(key) ?? "";
+    const loaded = tryLoadConfig({ env });
+    expect(loaded.ok ? [] : loaded.error.issues).toEqual([]);
+    if (!loaded.ok) return;
+    expect(loaded.config.raw.AV_MAX_SCAN_BYTES).toBeUndefined();
+    expect(loaded.config.raw.CLAMD_CONNECT_TIMEOUT_MS).toBe(5000);
+    expect(loaded.config.raw.CLAMD_MIN_BYTES_PER_SECOND).toBe(0);
+  });
+
+  it("the Helm values say they go in config.extra (no own values)", () => {
+    const values = read("deploy/helm/fundroom/values.yaml");
+    const configExtra =
+      values.split("# -- Any other non-secret env keys")[1]?.split(/^ {2}extra: \{\}$/mu)[0] ?? "";
+    for (const key of E_UP_25) expect(configExtra, `config.extra: ${key}`).toContain(key);
+    const templates = filesIn("deploy/helm/fundroom/templates", /\.(?:ya?ml|tpl)$/u)
+      .map(read)
+      .join("\n");
+    for (const key of E_UP_25) expect(templates, key).not.toContain(key);
+  });
+
+  it(".env.example documents every key as a commented line", () => {
+    const example = read(".env.example");
+    for (const key of E_UP_25) expect(example).toMatch(new RegExp(`^#${key}=`, "mu"));
+  });
+
+  it("the generated PaaS templates do not set them", () => {
+    const generated = artifacts().filter((x) =>
+      /^deploy\/(?:render|railway|fly|coolify)\//u.test(x.path),
+    );
+    expect(generated.length).toBeGreaterThan(4);
+    for (const a of generated) {
+      for (const key of E_UP_25) expect(a.names, `${a.path} ${key}`).not.toContain(key);
+    }
+  });
+
+  it("the AV runbook documents every key", () => {
+    const runbook = read("docs/runbooks/av-failure.md");
+    for (const key of E_UP_25) expect(runbook, key).toContain(`\`${key}\``);
+  });
+});
+
+describe("E-UP-24 foreign mail senders in the deploy surfaces", () => {
+  const KEY = "MAIL_IGNORE_FOREIGN_SENDERS";
+  const anchor = (
+    read("deploy/compose/compose.yaml").split(/^x-app-env: &app-env$/mu)[1] ?? ""
+  ).split(/^\S/mu)[0] as string;
+
+  it("is a config key and not a secret (a plain config.extra value)", () => {
+    expect(ENV_KEYS).toContain(KEY);
+    expect(SECRET_KEYS.has(KEY)).toBe(false);
+  });
+
+  it("compose passes it through with an empty default, which loads as off", () => {
+    expect(anchor).toMatch(new RegExp(`^ {2}${KEY}: \\$\\{${KEY}:-\\}$`, "mu"));
+    const loaded = tryLoadConfig({
+      env: {
+        BASE_URL: "http://localhost:3000",
+        DATABASE_URL: "postgres://u:p@localhost:5432/db",
+        FUNDROOM_SECRET_KEY: randomBytes(32).toString("base64"),
+        [KEY]: "",
+      },
+    });
+    expect(loaded.ok ? [] : loaded.error.issues).toEqual([]);
+    if (loaded.ok) expect(loaded.config.raw.MAIL_IGNORE_FOREIGN_SENDERS).toBe(false);
+  });
+
+  it("the Helm values say it goes in config.extra; the templates do not set it", () => {
+    const values = read("deploy/helm/fundroom/values.yaml");
+    const configExtra =
+      values.split("# -- Any other non-secret env keys")[1]?.split(/^ {2}extra: \{\}$/mu)[0] ?? "";
+    expect(configExtra).toContain(KEY);
+    const templates = filesIn("deploy/helm/fundroom/templates", /\.(?:ya?ml|tpl)$/u)
+      .map(read)
+      .join("\n");
+    expect(templates).not.toContain(KEY);
+  });
+
+  it("both .env.example files document it as a commented line, and the runbook names it", () => {
+    for (const path of [".env.example", "deploy/compose/.env.example"]) {
+      expect(read(path), path).toMatch(new RegExp(`^#${KEY}=false$`, "mu"));
+    }
+    expect(read("docs/runbooks/rotate-keys.md")).toContain(`\`${KEY}=true\``);
+  });
+
+  it("the generated PaaS templates do not set it", () => {
+    const generated = artifacts().filter((x) =>
+      /^deploy\/(?:render|railway|fly|coolify)\//u.test(x.path),
+    );
+    expect(generated.length).toBeGreaterThan(4);
+    for (const a of generated) expect(a.names, a.path).not.toContain(KEY);
+  });
+});
+
 describe("Helm chart secret keys", () => {
   const tpl = read("deploy/helm/fundroom/templates/_helpers.tpl");
   /** Secret keys under every name the loader reads (A-2: the old names are secrets too). */

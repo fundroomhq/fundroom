@@ -195,7 +195,10 @@ export interface WebControlPlaneFacts {
   readonly enabled: boolean;
   /** CENTRAL_AUTH=on. The start path is only offered on a workspace host (see `centralAuthFor`). */
   readonly centralAuth: boolean;
-  /** SIGNUP_MODE=open. Offered on the canonical host only. */
+  /**
+   * SIGNUP_MODE=open (under the control plane) and, on the page that offers it, the default plan
+   * is live (`MountWebOptions.signupLive`, E-UP-26). Offered on the canonical host only.
+   */
   readonly signup: boolean;
   /** CONTROL_PLANE=on and a BILLING_DRIVER. */
   readonly billing: boolean;
@@ -380,6 +383,13 @@ export interface MountWebOptions {
   readonly setupRequired?: (() => Promise<boolean>) | undefined;
   /** E3.10: central auth, signup and billing for the page config. */
   readonly controlPlane?: WebControlPlaneFacts | undefined;
+  /**
+   * E-UP-26: whether signup can finish (the default plan is live; memoised by the caller, see
+   * `signupLive` in routes/signup.ts). Asked only where signup would be offered — the canonical
+   * host with no workspace, `controlPlane.signup` on — and `signup` is false when it answers no,
+   * so the page shows its closed screen instead of a form whose `verify` can only fail.
+   */
+  readonly signupLive?: (() => Promise<boolean>) | undefined;
   /** E3.12: an AI model is configured on this install (`WebConfig.ai`). */
   readonly ai?: boolean | undefined;
   /** E-UP-4: the footer links (`WebConfig.links`). */
@@ -403,6 +413,19 @@ export function isSourceMapPath(path: string): boolean {
     // A malformed escape: judge the raw path; serveStatic will not find such a file either.
   }
   return /\.map$/iu.test(decoded.trimEnd());
+}
+
+/** `options.controlPlane` with `signup` off while the default plan is not live (E-UP-26). */
+async function liveControlPlane(
+  options: MountWebOptions,
+  cl: Classification,
+  workspace: unknown,
+): Promise<WebControlPlaneFacts | undefined> {
+  const cp = options.controlPlane;
+  if (cp?.signup !== true || options.signupLive === undefined) return cp;
+  if (cl.host !== "canonical" || workspace !== undefined) return cp;
+  // A database blip reads as closed: the closed screen, never a 500 page.
+  return (await options.signupLive().catch(() => false)) ? cp : { ...cp, signup: false };
 }
 
 export function mountWeb(app: Hono<AppEnv>, options: MountWebOptions): void {
@@ -496,7 +519,7 @@ export function mountWeb(app: Hono<AppEnv>, options: MountWebOptions): void {
           ? await options.embedOrigins(workspace.id)
           : [],
       setupRequired: options.setupRequired ? await options.setupRequired() : undefined,
-      controlPlane: options.controlPlane,
+      controlPlane: await liveControlPlane(options, classification, workspace),
       viewerIsStaff: c.get("membership")?.kind === "staff",
       ai: options.ai,
       links: options.links,
