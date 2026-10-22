@@ -52,7 +52,7 @@ catalog:
   typescript: "~5.9.3"
   # zip bundles: the signed audit export and the DSAR subject export. Pure JS, no deps.
   fflate: "^0.8.3"
-  vitest: "^4.1.11"
+  vitest: "^4.1.12"
   zod: "^4.6.1"
   yaml: "^2.8.1"
   drizzle-orm: "^0.45.2"
@@ -63,7 +63,7 @@ catalog:
   "@simplewebauthn/server": "^14.0.1"
   otpauth: "^9.5.2"
   openid-client: "^6.8.8"
-  hono: "^4.13.7"
+  hono: "^4.13.11"
   jose: "^6.2.12"
   pg-boss: "^12.31.0"
   "@aws-sdk/client-s3": "^3.1130.0"

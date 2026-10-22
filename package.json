@@ -45,12 +45,12 @@
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@types/node": "^24.13.4",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "dependency-cruiser": "^18.2.0",
     "lefthook": "^2.1.12",
     "tsx": "^4.23.13",
     "turbo": "^2.10.12",
     "typescript": "~5.9.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }
